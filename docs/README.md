@@ -18,6 +18,7 @@ Esta carpeta contiene la documentación técnica y funcional generada a partir d
 12. [Planificación](12-PLANIFICACION.md)
 13. [División de Trabajo del Equipo](13-DIVISION-EQUIPO.md)
 14. [Reglas de Trabajo Simultáneo](14-REGLAS-TRABAJO-SIMULTANEO.md)
+15. [Plantilla de Prompt para el Equipo](15-PLANTILLA-PROMPT.md)
 
 ## Fuente principal
 
