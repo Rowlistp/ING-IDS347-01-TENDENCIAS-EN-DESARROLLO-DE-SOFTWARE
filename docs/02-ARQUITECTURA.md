@@ -94,13 +94,15 @@ Responsabilidades:
 ## 4. Flujo lógico de comunicación
 
 ```text
-[React Web] --------                                           >---- [API .NET 8] ---- [PostgreSQL]
+[React Web] --------\
+                     \
+                      >---- [API .NET 8] ---- [PostgreSQL]
                      /
 [Flutter Mobile] ---/
 
-                         |---- [SMTP]
-                         |---- [SMS Gateway]
-                         |---- [Servicio OAuth 2.0]
+                            |---- [SMTP]
+                            |---- [SMS Gateway]
+                            |---- [Servicio OAuth 2.0]
 ```
 
 ## 5. Capas sugeridas para el backend
