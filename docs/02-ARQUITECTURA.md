@@ -1,50 +1,50 @@
-﻿# 02 - Arquitectura del Sistema
+# 02 - Arquitectura del Sistema
 
 ## 1. Objetivo
 
-Definir la arquitectura tÃ©cnica inicial de la soluciÃ³n a partir del SRS y de las decisiones tomadas por el equipo.
+Definir la arquitectura técnica inicial de la solución a partir del SRS y de las decisiones tomadas por el equipo.
 
-## 2. Estilo arquitectÃ³nico
+## 2. Estilo arquitectónico
 
-Se propone una arquitectura cliente-servidor basada en API REST, con separaciÃ³n entre:
+Se propone una arquitectura cliente-servidor basada en API REST, con separación entre:
 
 - Frontend web.
-- AplicaciÃ³n mÃ³vil.
+- Aplicación móvil.
 - Backend.
 - Base de datos.
 - Servicios externos.
-- Servicios de autenticaciÃ³n y seguridad.
+- Servicios de autenticación y seguridad.
 
 ## 3. Componentes principales
 
 ### Frontend web
 
-**TecnologÃ­a:** React + Tailwind CSS.
+**Tecnología:** React + Tailwind CSS.
 
 Responsabilidades:
 
-- AdministraciÃ³n.
-- GestiÃ³n de usuarios.
-- GestiÃ³n de empleados.
-- GestiÃ³n de vehÃ­culos.
-- GestiÃ³n de departamentos.
-- GestiÃ³n de inventario.
-- CreaciÃ³n y emisiÃ³n de tickets.
+- Administración.
+- Gestión de usuarios.
+- Gestión de empleados.
+- Gestión de vehículos.
+- Gestión de departamentos.
+- Gestión de inventario.
+- Creación y emisión de tickets.
 - Dashboard.
 - Reportes.
-- AuditorÃ­a.
+- Auditoría.
 
-El frontend consumirÃ¡ exclusivamente la API REST del backend.
+El frontend consumirá exclusivamente la API REST del backend.
 
 ### Backend
 
-**TecnologÃ­a:** .NET 10 Web API + Entity Framework Core.
+**Tecnología:** .NET 10 Web API + Entity Framework Core.
 
 Responsabilidades:
 
 - Aplicar reglas de negocio.
 - Exponer API REST.
-- Gestionar autenticaciÃ³n y autorizaciÃ³n.
+- Gestionar autenticación y autorización.
 - Gestionar tickets.
 - Gestionar QR.
 - Gestionar solicitudes.
@@ -52,12 +52,12 @@ Responsabilidades:
 - Procesar despachos.
 - Gestionar cierres diarios.
 - Generar reportes.
-- Registrar auditorÃ­a.
+- Registrar auditoría.
 - Integrarse con correo y SMS.
 
 ### Base de datos
 
-**TecnologÃ­a:** PostgreSQL.
+**Tecnología:** PostgreSQL.
 
 Responsabilidades:
 
@@ -67,31 +67,31 @@ Responsabilidades:
 - Tickets.
 - Solicitudes.
 - Despachos.
-- AuditorÃ­a.
+- Auditoría.
 - Historial de movimientos.
 
-### AplicaciÃ³n mÃ³vil
+### Aplicación móvil
 
-**TecnologÃ­a:** Flutter.
+**Tecnología:** Flutter.
 
 Responsabilidades:
 
 - Login seguro.
 - Escaneo QR.
-- ValidaciÃ³n de ticket.
-- ConfirmaciÃ³n visual.
+- Validación de ticket.
+- Confirmación visual.
 - Registro de despacho.
 - Consulta de estado de tickets.
-- SincronizaciÃ³n inmediata.
+- Sincronización inmediata.
 
 ### Servicios externos
 
 - SMTP para correo.
 - SMS Gateway.
-- Servicios de autenticaciÃ³n OAuth 2.0 cuando aplique.
-- GeneraciÃ³n/validaciÃ³n de QR, si se implementa como servicio independiente.
+- Servicios de autenticación OAuth 2.0 cuando aplique.
+- Generación/validación de QR, si se implementa como servicio independiente.
 
-## 4. Flujo lÃ³gico de comunicaciÃ³n
+## 4. Flujo lógico de comunicación
 
 ```text
 [React Web] --------\
@@ -121,41 +121,41 @@ PostgreSQL / Servicios externos
 
 En la primera fase puede mantenerse una estructura simple, evitando sobrearquitectura.
 
-## 6. Seguridad arquitectÃ³nica
+## 6. Seguridad arquitectónica
 
 - HTTPS/TLS 1.3.
 - JWT para sesiones/API.
-- OAuth 2.0 para autorizaciÃ³n cuando corresponda.
+- OAuth 2.0 para autorización cuando corresponda.
 - RBAC.
-- ContraseÃ±as almacenadas mediante mecanismos seguros de hashing.
-- Cifrado en reposo segÃºn el requisito AES-256.
-- QR con firma digital, SHA-256 y token de validaciÃ³n.
-- AuditorÃ­a de accesos y cambios.
+- Contraseñas almacenadas mediante mecanismos seguros de hashing.
+- Cifrado en reposo según el requisito AES-256.
+- QR con firma digital, SHA-256 y token de validación.
+- Auditoría de accesos y cambios.
 
 ## 7. Disponibilidad
 
-El SRS requiere disponibilidad 24/7. La arquitectura deberÃ¡ considerar posteriormente:
+El SRS requiere disponibilidad 24/7. La arquitectura deberá considerar posteriormente:
 
 - Despliegue redundante.
 - Monitoreo.
 - Backups.
-- RecuperaciÃ³n ante fallos.
+- Recuperación ante fallos.
 - Registro centralizado de errores.
 - Health checks.
 
-El proveedor y la estrategia concreta de infraestructura no estÃ¡n definidos por el SRS.
+El proveedor y la estrategia concreta de infraestructura no están definidos por el SRS.
 
-## 8. Principios de diseÃ±o
+## 8. Principios de diseño
 
-- SeparaciÃ³n de responsabilidades.
-- API como punto central de integraciÃ³n.
+- Separación de responsabilidades.
+- API como punto central de integración.
 - Seguridad por defecto.
 - Trazabilidad.
-- ValidaciÃ³n de datos.
+- Validación de datos.
 - Evitar duplicidad de tickets.
 - Transacciones para operaciones sensibles de inventario.
-- ConfiguraciÃ³n mediante variables de entorno.
-- Independencia entre clientes web y mÃ³vil.
+- Configuración mediante variables de entorno.
+- Independencia entre clientes web y móvil.
 
 ## 9. Decisiones pendientes
 
@@ -166,6 +166,4 @@ El proveedor y la estrategia concreta de infraestructura no estÃ¡n definidos p
 - Mecanismo exacto de firma digital del QR.
 - Estrategia de almacenamiento de PDFs.
 - Estrategia de observabilidad.
-- PolÃ­tica de backups.
-
-
+- Política de backups.
