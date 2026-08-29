@@ -1,0 +1,8 @@
+# Outputs de compilación
+**/bin/
+**/obj/
+*.user
+.vs/
+
+# Secretos — nunca al repo
+**/appsettings.Development.json
