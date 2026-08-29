@@ -50,6 +50,7 @@ backend/
 │   ├── Data/
 │   │   └── AppDbContext.cs
 │   └── Migrations/                     ← generado por EF Core, no editar a mano
+├── docker-compose.yml                  ← levanta PostgreSQL con un solo comando
 ├── FuelTrack.sln
 └── .gitignore
 ```
@@ -190,22 +191,56 @@ Sin controllers de negocio. Sin autenticación JWT (eso es Fase 1, Builder 2).
 
 ---
 
-## 9. Instalación de PostgreSQL
+## 9. PostgreSQL vía Docker (portabilidad)
 
-- Instalar PostgreSQL 16 para Windows desde postgresql.org.
-- Usuario: `postgres`, puerto: `5432`.
-- Crear base de datos: `fueltrack_db`.
-- La connection string se guarda solo en `appsettings.Development.json` (fuera de git).
+El proyecto debe poder correr en cualquier máquina (incluyendo la del maestro) sin instalación manual de PostgreSQL. La solución es un `docker-compose.yml` en la raíz de `backend/`:
+
+```yaml
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fueltrack_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: fueltrack2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
+```
+
+**Para levantar la base de datos:**
+```bash
+docker-compose up -d
+```
+
+**Requisito:** Docker Desktop instalado en la máquina. Un solo comando, sin configuración extra.
+
+**Connection string** en `appsettings.Development.json` (en `.gitignore`):
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=fueltrack_db;Username=postgres;Password=fueltrack2026"
+  }
+}
+```
+
+La contraseña `fueltrack2026` es fija en el `docker-compose.yml` (que sí va al repo), por lo que `appsettings.Development.json` puede omitir la contraseña si se usa la del compose. Alternativamente se usa un `.env` para separar secretos del compose.
 
 ---
 
 ## 10. Entregable y criterio de terminado
 
+- [ ] `docker-compose up -d` levanta PostgreSQL sin errores.
 - [ ] Proyecto compila sin errores (`dotnet build`).
-- [ ] `dotnet ef database update` crea todas las tablas en PostgreSQL sin errores.
+- [ ] `dotnet ef database update` crea todas las tablas sin errores.
 - [ ] Swagger abre en `https://localhost:5001/swagger` (sin endpoints de negocio).
 - [ ] Commit en rama `feature/backend-datos` con mensaje: `chore: setup proyecto backend y schema inicial (Fase 0)`.
 - [ ] `appsettings.Development.json` está en `.gitignore` (no se sube al repo).
+- [ ] `docker-compose.yml` sí se sube al repo (no contiene secretos reales).
 
 ---
 
