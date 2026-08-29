@@ -12,4 +12,5 @@ public class Usuario
     public ICollection<MovimientoInventario> MovimientosInventario { get; set; } = new List<MovimientoInventario>();
     public ICollection<Despacho> DespachosOperados { get; set; } = new List<Despacho>();
     public ICollection<Auditoria> Auditorias { get; set; } = new List<Auditoria>();
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }
