@@ -49,7 +49,12 @@ public sealed class AuthService
                 username,
                 usuario?.Id,
                 ip,
-                new { Motivo = usuario is not null && !usuario.Activo ? "UsuarioInactivo" : "CredencialesInvalidas" },
+                new
+                {
+                    Motivo = usuario is not null && !usuario.Activo
+                        ? "UsuarioInactivo"
+                        : "CredencialesInvalidas"
+                },
                 cancellationToken);
 
             return null;
@@ -64,13 +69,14 @@ public sealed class AuthService
         var (accessToken, accessExpires) = _tokens.CreateAccessToken(usuario, roles);
         var rawRefreshToken = _tokens.CreateRefreshToken();
         var refreshHash = TokenService.HashRefreshToken(rawRefreshToken);
+        var now = DateTime.UtcNow;
 
         _db.RefreshTokens.Add(new RefreshToken
         {
             TokenHash = refreshHash,
             UsuarioId = usuario.Id,
-            CreatedAtUtc = DateTime.UtcNow,
-            ExpiresAtUtc = DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenDays),
+            CreatedAtUtc = now,
+            ExpiresAtUtc = now.AddDays(_jwtOptions.RefreshTokenDays),
             CreatedByIp = ip
         });
 
@@ -101,18 +107,31 @@ public sealed class AuthService
         string? ip,
         CancellationToken cancellationToken = default)
     {
-        var tokenHash = TokenService.HashRefreshToken(rawRefreshToken);
-
-        var stored = await _db.RefreshTokens
-            .Include(t => t.Usuario)
-                .ThenInclude(u => u.UsuarioRoles)
-                    .ThenInclude(ur => ur.Rol)
-            .SingleOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken);
-
-        if (stored is null || !stored.IsActive || !stored.Usuario.Activo)
+        if (string.IsNullOrWhiteSpace(rawRefreshToken))
             return null;
 
-        var roles = stored.Usuario.UsuarioRoles
+        var tokenHash = TokenService.HashRefreshToken(rawRefreshToken);
+        var now = DateTime.UtcNow;
+
+        await using var transaction = await _db.Database
+            .BeginTransactionAsync(cancellationToken);
+
+        var stored = await _db.RefreshTokens
+            .AsNoTracking()
+            .SingleOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken);
+
+        if (stored is null || stored.RevokedAtUtc is not null || stored.ExpiresAtUtc <= now)
+            return null;
+
+        var usuario = await _db.Usuarios
+            .Include(u => u.UsuarioRoles)
+            .ThenInclude(ur => ur.Rol)
+            .SingleOrDefaultAsync(u => u.Id == stored.UsuarioId, cancellationToken);
+
+        if (usuario is null || !usuario.Activo)
+            return null;
+
+        var roles = usuario.UsuarioRoles
             .Select(ur => ur.Rol.Nombre)
             .Distinct()
             .OrderBy(x => x)
@@ -120,41 +139,60 @@ public sealed class AuthService
 
         var newRawRefreshToken = _tokens.CreateRefreshToken();
         var newHash = TokenService.HashRefreshToken(newRawRefreshToken);
-        var now = DateTime.UtcNow;
 
-        stored.RevokedAtUtc = now;
-        stored.RevokedByIp = ip;
-        stored.ReplacedByTokenHash = newHash;
+        // Reclama el refresh token mediante una actualizacion condicional atomica.
+        // Si otra solicitud ya lo uso, rowsAffected sera 0 y esta solicitud falla.
+        var rowsAffected = await _db.RefreshTokens
+            .Where(t =>
+                t.Id == stored.Id &&
+                t.TokenHash == tokenHash &&
+                t.RevokedAtUtc == null &&
+                t.ExpiresAtUtc > now)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(t => t.RevokedAtUtc, now)
+                    .SetProperty(t => t.RevokedByIp, ip)
+                    .SetProperty(t => t.ReplacedByTokenHash, newHash),
+                cancellationToken);
+
+        if (rowsAffected != 1)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return null;
+        }
 
         _db.RefreshTokens.Add(new RefreshToken
         {
             TokenHash = newHash,
-            UsuarioId = stored.UsuarioId,
+            UsuarioId = usuario.Id,
             CreatedAtUtc = now,
             ExpiresAtUtc = now.AddDays(_jwtOptions.RefreshTokenDays),
             CreatedByIp = ip
         });
 
-        var (accessToken, accessExpires) = _tokens.CreateAccessToken(stored.Usuario, roles);
+        var (accessToken, accessExpires) = _tokens.CreateAccessToken(usuario, roles);
 
         await _db.SaveChangesAsync(cancellationToken);
 
+        // La auditoria queda dentro de la misma transaccion de rotacion.
         await _audit.WriteAsync(
             "TOKEN_RENOVADO",
             "Usuario",
-            stored.UsuarioId.ToString(),
-            stored.UsuarioId,
+            usuario.Id.ToString(),
+            usuario.Id,
             ip,
             null,
             cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
 
         return new AuthResponse
         {
             AccessToken = accessToken,
             RefreshToken = newRawRefreshToken,
             AccessTokenExpiresAtUtc = accessExpires,
-            UsuarioId = stored.Usuario.Id,
-            NombreUsuario = stored.Usuario.NombreUsuario,
+            UsuarioId = usuario.Id,
+            NombreUsuario = usuario.NombreUsuario,
             Roles = roles
         };
     }
@@ -164,6 +202,9 @@ public sealed class AuthService
         string? ip,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(rawRefreshToken))
+            return false;
+
         var tokenHash = TokenService.HashRefreshToken(rawRefreshToken);
 
         var stored = await _db.RefreshTokens
@@ -207,12 +248,17 @@ public sealed class AuthService
         usuario.PasswordHash = _passwords.Hash(nuevaContrasena);
 
         var activeTokens = await _db.RefreshTokens
-            .Where(t => t.UsuarioId == usuarioId && t.RevokedAtUtc == null && t.ExpiresAtUtc > DateTime.UtcNow)
+            .Where(t =>
+                t.UsuarioId == usuarioId &&
+                t.RevokedAtUtc == null &&
+                t.ExpiresAtUtc > DateTime.UtcNow)
             .ToListAsync(cancellationToken);
+
+        var now = DateTime.UtcNow;
 
         foreach (var token in activeTokens)
         {
-            token.RevokedAtUtc = DateTime.UtcNow;
+            token.RevokedAtUtc = now;
             token.RevokedByIp = ip;
         }
 
