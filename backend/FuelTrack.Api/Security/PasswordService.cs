@@ -11,6 +11,7 @@ public sealed class PasswordService
     private const int SaltSize = 16;
     private const int HashSize = 32;
     public const int MinimumLength = 12;
+    public const int MaximumLength = 128;
 
     public string Hash(string password)
     {
@@ -34,7 +35,10 @@ public sealed class PasswordService
 
     public bool Verify(string password, string storedHash)
     {
-        if (string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(storedHash))
+        if (string.IsNullOrWhiteSpace(password) ||
+            password.Length > MaximumLength ||
+            string.IsNullOrWhiteSpace(storedHash) ||
+            storedHash.Length > 512)
             return false;
 
         var parts = storedHash.Split('$');
@@ -75,6 +79,7 @@ public sealed class PasswordService
             throw new ArgumentException("La contraseña es obligatoria.", nameof(password));
 
         if (password.Length < MinimumLength ||
+            password.Length > MaximumLength ||
             password.Any(char.IsWhiteSpace) ||
             !password.Any(char.IsUpper) ||
             !password.Any(char.IsLower) ||
@@ -82,7 +87,7 @@ public sealed class PasswordService
             !password.Any(character => char.IsPunctuation(character) || char.IsSymbol(character)))
         {
             throw new ArgumentException(
-                $"La contraseña debe tener al menos {MinimumLength} caracteres, mayúscula, minúscula, número y carácter especial.",
+                $"La contraseña debe tener entre {MinimumLength} y {MaximumLength} caracteres, mayúscula, minúscula, número y carácter especial, sin espacios.",
                 nameof(password));
         }
     }

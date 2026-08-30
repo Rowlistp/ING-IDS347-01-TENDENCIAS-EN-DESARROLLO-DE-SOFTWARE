@@ -1,0 +1,53 @@
+name: Backend Security
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-security.yml"
+  push:
+    branches:
+      - feature/seguridad-movil
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-security.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FUELTRACK_TEST_CONNECTION: Host=localhost;Port=5432;Database=fueltrack_security_test;Username=postgres;Pooling=false
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: fueltrack_security_test
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fueltrack_security_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore backend/FuelTrack.slnx
+
+      - name: Build
+        run: dotnet build backend/FuelTrack.slnx --no-restore --configuration Release
+
+      - name: Test including PostgreSQL
+        run: dotnet test backend/FuelTrack.slnx --no-build --configuration Release --logger "console;verbosity=normal"

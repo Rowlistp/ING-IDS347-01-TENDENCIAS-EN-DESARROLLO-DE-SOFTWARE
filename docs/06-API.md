@@ -35,6 +35,16 @@ PUT    /api/v1/users/{id}
 PATCH  /api/v1/users/{id}/status
 ```
 
+### Auditoría
+
+```text
+GET    /api/v1/audit?pagina=1&tamanoPagina=50
+```
+
+- Solo `Administrador` y `Auditor`.
+- Consulta paginada y de solo lectura.
+- No expone `DatosRelevantes`, contraseñas, tokens ni secretos.
+
 ### Empleados
 
 ```text

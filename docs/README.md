@@ -35,4 +35,4 @@ Estos documentos amplían y organizan el SRS; cuando incluyen una propuesta téc
 - React.
 - Tailwind CSS.
 - Flutter.
-- JWT + OAuth 2.0.
+- JWT en Fase 1; OAuth 2.0 pendiente de proveedor e implementación.

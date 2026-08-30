@@ -9,6 +9,6 @@ public sealed class ResetPasswordRequest
     public int UsuarioId { get; set; }
 
     [Required]
-    [MinLength(PasswordService.MinimumLength)]
+    [StringLength(PasswordService.MaximumLength, MinimumLength = PasswordService.MinimumLength)]
     public string NuevaContrasena { get; set; } = string.Empty;
 }

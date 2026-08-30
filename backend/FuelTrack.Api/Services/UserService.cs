@@ -101,12 +101,19 @@ public sealed class UserService
         string? ip,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+        await AcquireAdministratorGuardAsync(cancellationToken);
+
         var usuario = await _db.Usuarios
             .Include(u => u.UsuarioRoles)
+            .ThenInclude(ur => ur.Rol)
             .SingleOrDefaultAsync(u => u.Id == id, cancellationToken);
 
         if (usuario is null)
+        {
+            await transaction.RollbackAsync(cancellationToken);
             return null;
+        }
 
         var username = request.NombreUsuario.Trim();
 
@@ -118,6 +125,21 @@ public sealed class UserService
         }
 
         var roles = await ResolveRolesAsync(request.RolIds, cancellationToken);
+        var isAdministrator = usuario.UsuarioRoles.Any(
+            ur => ur.Rol.Nombre == Roles.Administrador);
+        var remainsAdministrator = roles.Any(
+            rol => rol.Nombre == Roles.Administrador);
+
+        if (isAdministrator && !remainsAdministrator)
+        {
+            if (actorUsuarioId == id)
+            {
+                throw new AdministrativeLockoutException(
+                    "Un administrador no puede retirar su propio rol Administrador.");
+            }
+
+            await EnsureAnotherActiveAdministratorAsync(id, cancellationToken);
+        }
 
         usuario.NombreUsuario = username;
         usuario.SecurityVersion++;
@@ -137,6 +159,8 @@ public sealed class UserService
             new { usuario.NombreUsuario, Roles = roles.Select(r => r.Nombre) },
             cancellationToken);
 
+        await transaction.CommitAsync(cancellationToken);
+
         return await GetByIdAsync(id, cancellationToken);
     }
 
@@ -147,14 +171,28 @@ public sealed class UserService
         string? ip,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+        await AcquireAdministratorGuardAsync(cancellationToken);
+
         var usuario = await _db.Usuarios
+            .Include(u => u.UsuarioRoles)
+            .ThenInclude(ur => ur.Rol)
             .SingleOrDefaultAsync(u => u.Id == id, cancellationToken);
 
         if (usuario is null)
+        {
+            await transaction.RollbackAsync(cancellationToken);
             return false;
+        }
 
         if (usuario.Activo == activo)
+        {
+            await transaction.CommitAsync(cancellationToken);
             return true;
+        }
+
+        if (!activo && usuario.UsuarioRoles.Any(ur => ur.Rol.Nombre == Roles.Administrador))
+            await EnsureAnotherActiveAdministratorAsync(id, cancellationToken);
 
         usuario.Activo = activo;
         usuario.SecurityVersion++;
@@ -183,7 +221,38 @@ public sealed class UserService
             null,
             cancellationToken);
 
+        await transaction.CommitAsync(cancellationToken);
+
         return true;
+    }
+
+    private async Task EnsureAnotherActiveAdministratorAsync(
+        int excludedUserId,
+        CancellationToken cancellationToken)
+    {
+        var anotherAdministratorExists = await _db.Usuarios
+            .AsNoTracking()
+            .AnyAsync(
+                u => u.Id != excludedUserId &&
+                    u.Activo &&
+                    u.UsuarioRoles.Any(ur => ur.Rol.Nombre == Roles.Administrador),
+                cancellationToken);
+
+        if (!anotherAdministratorExists)
+        {
+            throw new AdministrativeLockoutException(
+                "La operación dejaría el sistema sin un administrador activo.");
+        }
+    }
+
+    private async Task AcquireAdministratorGuardAsync(CancellationToken cancellationToken)
+    {
+        if (_db.Database.IsNpgsql())
+        {
+            await _db.Database.ExecuteSqlRawAsync(
+                "SELECT pg_advisory_xact_lock(2026083001)",
+                cancellationToken);
+        }
     }
 
     private async Task<List<Rol>> ResolveRolesAsync(

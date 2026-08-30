@@ -12,31 +12,37 @@ Definir una matriz inicial RBAC a partir de los actores y responsabilidades del 
 - Supervisor.
 - Despachador.
 - Auditor.
-- Solicitante/Consulta.
+- Consulta.
+- Solicitante.
+
+`Consulta` es el rol mínimo de lectura definido por el SRS. `Solicitante` se
+conserva como rol técnico distinto porque el actor aparece en los flujos de
+solicitudes y podrá operar sobre recursos propios cuando Fase 3 defina esa
+relación. No son alias: el alcance exacto de ambos sigue pendiente de aprobación.
 
 ## 3. Matriz inicial
 
-| Función | Admin | Supervisor | Despachador | Auditor | Solicitante/Consulta |
-|---|---:|---:|---:|---:|---:|
-| Configurar sistema | Sí | No | No | No | No |
-| Gestionar usuarios | Sí | No | No | No | No |
-| Gestionar roles | Sí | No | No | No | No |
-| Gestionar empleados | Sí | Según política | No | Lectura | No |
-| Gestionar vehículos | Sí | Según política | No | Lectura | No |
-| Gestionar departamentos | Sí | Según política | No | Lectura | No |
-| Crear solicitud | Según política | Sí | No | No | Sí |
-| Aprobar solicitudes | Sí/según política | Sí | No | No | No |
-| Emitir ticket | Sí/según política | Sí | No | No | No |
-| Consultar ticket | Sí | Sí | Sí | Sí | Propios |
-| Escanear QR | No | Opcional | Sí | No | No |
-| Registrar despacho | No | Según política | Sí | No | No |
-| Registrar recepción | Sí | Sí | No | No | No |
-| Ajustar inventario | Sí | Sí | No | No | No |
-| Consultar inventario | Sí | Sí | Según necesidad | Sí | No |
-| Cierre diario | Según política | Sí | Sí | Lectura | No |
-| Consultar reportes | Sí | Sí | Limitado | Sí | Limitado |
-| Exportar reportes | Sí | Sí | No | Sí | No |
-| Consultar auditoría | Sí | Limitado | No | Sí | No |
+| Función | Admin | Supervisor | Despachador | Auditor | Consulta | Solicitante |
+|---|---:|---:|---:|---:|---:|---:|
+| Configurar sistema | Sí | No | No | No | No | No |
+| Gestionar usuarios | Sí | No | No | No | No | No |
+| Gestionar roles | Sí | No | No | No | No | No |
+| Gestionar empleados | Sí | Según política | No | Lectura | Lectura pendiente | No |
+| Gestionar vehículos | Sí | Según política | No | Lectura | Lectura pendiente | No |
+| Gestionar departamentos | Sí | Según política | No | Lectura | Lectura pendiente | No |
+| Crear solicitud | Según política | Sí | No | No | No | Sí |
+| Aprobar solicitudes | Sí/según política | Sí | No | No | No | No |
+| Emitir ticket | Sí/según política | Sí | No | No | No | No |
+| Consultar ticket | Sí | Sí | Sí | Sí | Alcance pendiente | Propios |
+| Escanear QR | No | Opcional | Sí | No | No | No |
+| Registrar despacho | No | Según política | Sí | No | No | No |
+| Registrar recepción | Sí | Sí | No | No | No | No |
+| Ajustar inventario | Sí | Sí | No | No | No | No |
+| Consultar inventario | Sí | Sí | Según necesidad | Sí | Alcance pendiente | No |
+| Cierre diario | Según política | Sí | Sí | Lectura | Lectura pendiente | No |
+| Consultar reportes | Sí | Sí | Limitado | Sí | Alcance pendiente | Limitado |
+| Exportar reportes | Sí | Sí | No | Sí | No | No |
+| Consultar auditoría | Sí | No | No | Sí | No | No |
 
 ## 4. Principio de mínimo privilegio
 
@@ -64,7 +70,7 @@ El SRS no especifica estas restricciones, por lo que requieren aprobación.
 
 ## 7. Pendientes
 
-- Diferencia exacta entre rol "Consulta" y actor "Solicitante".
+- Alcance funcional exacto de `Consulta` y alcance de recursos propios de `Solicitante`.
 - Permisos del Administrador sobre despachos.
 - Alcance departamental.
 - Permisos de anulación de tickets.

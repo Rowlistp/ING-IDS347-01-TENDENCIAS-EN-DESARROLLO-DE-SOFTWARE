@@ -14,6 +14,7 @@ public sealed class RolesTests
             "Supervisor",
             "Despachador",
             "Auditor",
+            "Consulta",
             "Solicitante"
         };
 

@@ -45,6 +45,8 @@ public class AppDbContext : DbContext
             .HasIndex(u => u.NombreUsuario).IsUnique();
         modelBuilder.Entity<Usuario>()
             .Property(u => u.SecurityVersion).HasDefaultValue(1);
+        modelBuilder.Entity<Rol>()
+            .HasIndex(r => r.Nombre).IsUnique();
         modelBuilder.Entity<Empleado>()
             .HasIndex(e => e.Codigo).IsUnique();
         modelBuilder.Entity<Empleado>()

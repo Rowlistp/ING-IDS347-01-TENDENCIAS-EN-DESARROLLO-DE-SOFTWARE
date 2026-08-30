@@ -12,7 +12,12 @@ El SRS requiere:
 - MFA opcional.
 - Gestión de sesiones.
 
-El equipo ha definido JWT + OAuth 2.0 para la API.
+JWT con access token corto y refresh token rotatorio es el mecanismo activo de
+Fase 1.
+
+**Pendiente de implementación: no existe proveedor OAuth 2.0 configurado en Fase 1.**
+
+**MFA pendiente: no implementado ni configurado en Fase 1.**
 
 ### Propuesta
 
@@ -20,7 +25,13 @@ El equipo ha definido JWT + OAuth 2.0 para la API.
 - Refresh token protegido.
 - Revocación de sesiones.
 - Bloqueo/desactivación de usuarios.
-- MFA configurable para roles sensibles.
+- MFA configurable para roles sensibles cuando se apruebe su política.
+
+Los JWT incluyen una versión de seguridad del usuario. Cada petición autenticada
+comprueba en base de datos que el usuario siga activo y que la versión coincida.
+Desactivar, restablecer contraseña o cambiar roles incrementa esta versión e
+invalida inmediatamente los access tokens anteriores, además de revocar refresh
+tokens cuando corresponde.
 
 ## 3. Autorización
 
@@ -50,6 +61,19 @@ La implementación concreta debe definirse según infraestructura:
 Aunque el SRS no define el algoritmo de password hashing, las contraseñas no deben almacenarse cifradas de forma reversible ni en texto plano.
 
 La selección del algoritmo y parámetros debe formalizarse durante implementación.
+
+### Decisión de Fase 1
+
+- PBKDF2-HMAC-SHA-512 con salt aleatorio de 128 bits.
+- 210,000 iteraciones y hash de 256 bits.
+- Comparación en tiempo constante.
+- Entre 12 y 128 caracteres, sin espacios, con mayúscula, minúscula, número y carácter especial.
+- La política se aplica en el servicio al crear usuarios, restablecer contraseñas y crear el administrador inicial.
+
+La verificación solo acepta el formato versionado `PBKDF2-SHA512`, entre
+100,000 y 1,000,000 iteraciones, salt de 16 bytes y hash de 32 bytes. Los hashes
+corruptos, sobredimensionados o con parámetros fuera de rango se rechazan sin
+propagar errores internos.
 
 ## 7. Seguridad del QR
 
@@ -89,12 +113,19 @@ Datos mínimos:
 - Hora.
 - IP.
 
-La condición de "registro inalterable" del SRS requiere una estrategia específica que debe definirse antes de producción.
+`GET /api/v1/audit` permite consulta paginada únicamente a `Administrador` y
+`Auditor`. La respuesta omite `DatosRelevantes` para no exponer accidentalmente
+hashes, tokens u otros secretos históricos.
+
+**Pendiente de implementación: la inmutabilidad exigida por RS-06 no está
+resuelta en Fase 1.** El modelo actual permite registrar y consultar eventos,
+pero requiere una estrategia de append-only, permisos de base de datos y
+retención antes de producción.
 
 ## 9. Seguridad de API
 
 - JWT.
-- OAuth 2.0.
+- OAuth 2.0 pendiente; no hay proveedor configurado en Fase 1.
 - Autorización por rol.
 - Validación estricta de entradas.
 - Protección contra exposición de errores internos.
@@ -131,10 +162,9 @@ Usar variables de entorno o un gestor de secretos.
 ## 12. Pendientes de definición
 
 - Duración de tokens.
-- Política MFA.
-- Política de contraseñas.
+- Política e implementación MFA.
 - Rotación de secretos.
-- Estrategia de firma digital.
+- Proveedor externo OAuth 2.0 e integración correspondiente.
 - Estrategia de auditoría inmutable.
 - Retención de logs.
 - Respuesta a incidentes.

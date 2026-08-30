@@ -1,10 +1,12 @@
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Auth;
+using FuelTrack.Api.DTOs.Users;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Security;
 using FuelTrack.Api.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace FuelTrack.Api.Tests.Services;
@@ -168,6 +170,138 @@ public sealed class AuthServiceRefreshTests
         Assert.AreEqual(2, storedUser.SecurityVersion);
         Assert.IsNotNull((await _db.RefreshTokens.SingleAsync()).RevokedAtUtc);
         Assert.IsTrue(await _db.Auditorias.AnyAsync(item => item.Evento == "PASSWORD_RESET_ADMIN"));
+    }
+
+    [TestMethod]
+    public async Task DisableUser_RevokesRefreshTokensAndPreventsRefresh()
+    {
+        var admin = new Usuario
+        {
+            NombreUsuario = "admin-disable",
+            PasswordHash = _passwords.Hash("Clave-Admin-123!"),
+            Activo = true
+        };
+        var user = new Usuario
+        {
+            NombreUsuario = "user-disable",
+            PasswordHash = _passwords.Hash("Clave-Usuario-123!"),
+            Activo = true
+        };
+        _db.Usuarios.AddRange(admin, user);
+        await _db.SaveChangesAsync();
+
+        var login = await _auth.LoginAsync(
+            new LoginRequest
+            {
+                NombreUsuario = user.NombreUsuario,
+                Contrasena = "Clave-Usuario-123!"
+            },
+            "127.0.0.1");
+        Assert.IsNotNull(login);
+
+        var users = new UserService(_db, _passwords, _audit);
+        Assert.IsTrue(await users.SetStatusAsync(
+            user.Id,
+            false,
+            admin.Id,
+            "127.0.0.1"));
+
+        _db.ChangeTracker.Clear();
+        var storedRefresh = await _db.RefreshTokens
+            .SingleAsync(item => item.TokenHash == TokenService.HashRefreshToken(login.RefreshToken));
+        Assert.IsNotNull(storedRefresh.RevokedAtUtc);
+        Assert.IsNull(await _auth.RefreshAsync(login.RefreshToken, "127.0.0.1"));
+    }
+
+    [TestMethod]
+    public async Task Update_SelfRemovalOfAdministratorRole_IsBlocked()
+    {
+        var adminRole = new Rol { Nombre = Roles.Administrador };
+        var consultaRole = new Rol { Nombre = Roles.Consulta };
+        var admin = new Usuario
+        {
+            NombreUsuario = "admin-self-role",
+            PasswordHash = _passwords.Hash("Clave-Admin-123!"),
+            Activo = true
+        };
+        admin.UsuarioRoles.Add(new UsuarioRol { Usuario = admin, Rol = adminRole });
+        _db.AddRange(consultaRole, admin);
+        await _db.SaveChangesAsync();
+
+        var users = new UserService(_db, _passwords, _audit);
+        await Assert.ThrowsExactlyAsync<AdministrativeLockoutException>(
+            () => users.UpdateAsync(
+                admin.Id,
+                new UpdateUserRequest
+                {
+                    NombreUsuario = admin.NombreUsuario,
+                    RolIds = [consultaRole.Id]
+                },
+                admin.Id,
+                "127.0.0.1"));
+    }
+
+    [TestMethod]
+    public async Task SetStatus_LastActiveAdministrator_IsBlocked()
+    {
+        var adminRole = new Rol { Nombre = Roles.Administrador };
+        var admin = new Usuario
+        {
+            NombreUsuario = "admin-last-active",
+            PasswordHash = _passwords.Hash("Clave-Admin-123!"),
+            Activo = true
+        };
+        admin.UsuarioRoles.Add(new UsuarioRol { Usuario = admin, Rol = adminRole });
+        _db.Add(admin);
+        await _db.SaveChangesAsync();
+
+        var users = new UserService(_db, _passwords, _audit);
+        await Assert.ThrowsExactlyAsync<AdministrativeLockoutException>(
+            () => users.SetStatusAsync(
+                admin.Id,
+                false,
+                999,
+                "127.0.0.1"));
+    }
+
+    [TestMethod]
+    public async Task PasswordPolicy_IsSharedByCreateResetAndBootstrap()
+    {
+        var user = new Usuario
+        {
+            NombreUsuario = "password-policy-user",
+            PasswordHash = _passwords.Hash("Clave-Inicial-123!"),
+            Activo = true
+        };
+        _db.Usuarios.Add(user);
+        await _db.SaveChangesAsync();
+
+        var users = new UserService(_db, _passwords, _audit);
+        await Assert.ThrowsExactlyAsync<ArgumentException>(
+            () => users.CreateAsync(
+                new CreateUserRequest
+                {
+                    NombreUsuario = "password-policy-created",
+                    Contrasena = "debil"
+                },
+                user.Id,
+                "127.0.0.1"));
+        await Assert.ThrowsExactlyAsync<ArgumentException>(
+            () => _auth.ResetPasswordAsync(
+                user.Id,
+                "debil",
+                user.Id,
+                "127.0.0.1"));
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["BootstrapAdmin:Username"] = "bootstrap-policy",
+                ["BootstrapAdmin:Password"] = "debil"
+            })
+            .Build();
+        var seed = new SecuritySeedService(_db, _passwords, configuration);
+        await Assert.ThrowsExactlyAsync<ArgumentException>(() => seed.SeedAsync());
     }
 
     [TestMethod]
