@@ -30,6 +30,7 @@ La división es **por capa técnica**, alineada a las fortalezas de cada builder
 |---|---|---|
 | Fase 0 | DbContext, entidades, migraciones iniciales | – |
 | Fase 2 | Catálogos: empleados, vehículos, departamentos | RF-02, RF-03, RF-04 |
+| Fase 3 | Solicitudes de combustible | RF-05, RF-11 |
 | Fase 6-7 | Inventario completo + cierre diario | RF-14 a RF-18 |
 | Fase 8 | Reportes y exportación | RF-19, RF-20 |
 
@@ -95,3 +96,6 @@ Después de cada fase entregada por cualquiera de los tres builders, los 3 teste
 - Si Builder 2 necesita apoyo puntual de otro builder para la app móvil, dado que concentra varios módulos de alta complejidad (seguridad + QR + Flutter).
 - Frecuencia de sincronización entre builders (ej. daily corto, o solo al cerrar cada fase).
 - Herramienta de gestión de tareas (issues de GitHub, Trello, etc.) para dar seguimiento visual a esta división.
+- La Fase 3 (Solicitudes, RF-05/RF-11) no tenía builder asignado explícitamente; se resolvió asignándola a Builder 1 junto con el resto del backend.
+- RF-21 (Trazabilidad, actor Auditor) no aparece asignado a ningún builder ni en ninguna fase de `12-PLANIFICACION.md`. Pendiente de que el equipo decida a quién corresponde.
+- RF-22 (Dashboard ejecutivo): el backend (endpoint `GET /api/v1/dashboard/summary` y su lógica) no está asignado a ningún builder, aunque el frontend sí lo tiene Builder 3 en Fase 8. Pendiente de que el equipo decida a quién corresponde.
