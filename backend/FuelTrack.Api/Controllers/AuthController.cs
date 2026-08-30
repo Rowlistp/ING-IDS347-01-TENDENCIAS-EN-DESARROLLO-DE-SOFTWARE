@@ -68,12 +68,21 @@ public sealed class AuthController : ControllerBase
         if (!TryGetCurrentUserId(out var adminId))
             return Unauthorized();
 
-        var updated = await _auth.ResetPasswordAsync(
-            request.UsuarioId,
-            request.NuevaContrasena,
-            adminId,
-            GetClientIp(),
-            cancellationToken);
+        bool updated;
+
+        try
+        {
+            updated = await _auth.ResetPasswordAsync(
+                request.UsuarioId,
+                request.NuevaContrasena,
+                adminId,
+                GetClientIp(),
+                cancellationToken);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { code = "PASSWORD_POLICY_FAILED", message = ex.Message });
+        }
 
         return updated ? NoContent() : NotFound();
     }

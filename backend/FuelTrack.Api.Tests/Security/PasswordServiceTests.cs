@@ -39,12 +39,23 @@ public sealed class PasswordServiceTests
         Assert.IsFalse(_sut.Verify("Incorrecta-123!", hash));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("")]
     [DataRow("texto-no-valido")]
     [DataRow("PBKDF2-SHA512$abc$xxx$yyy")]
     public void Verify_WithMalformedHash_ReturnsFalse(string storedHash)
     {
         Assert.IsFalse(_sut.Verify("Clave-123!", storedHash));
+    }
+
+    [TestMethod]
+    [DataRow("Corta-1!")]
+    [DataRow("sin-mayuscula-1!")]
+    [DataRow("SIN-MINUSCULA-1!")]
+    [DataRow("SinNumero-Especial!")]
+    [DataRow("SinEspecial123")]
+    public void Hash_WithWeakPassword_RejectsPolicyViolation(string password)
+    {
+        Assert.ThrowsExactly<ArgumentException>(() => _sut.Hash(password));
     }
 }

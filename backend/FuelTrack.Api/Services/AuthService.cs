@@ -1,3 +1,4 @@
+using System.Data.Common;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Auth;
 using FuelTrack.Api.Models;
@@ -142,18 +143,27 @@ public sealed class AuthService
 
         // Reclama el refresh token mediante una actualizacion condicional atomica.
         // Si otra solicitud ya lo uso, rowsAffected sera 0 y esta solicitud falla.
-        var rowsAffected = await _db.RefreshTokens
-            .Where(t =>
-                t.Id == stored.Id &&
-                t.TokenHash == tokenHash &&
-                t.RevokedAtUtc == null &&
-                t.ExpiresAtUtc > now)
-            .ExecuteUpdateAsync(
-                setters => setters
-                    .SetProperty(t => t.RevokedAtUtc, now)
-                    .SetProperty(t => t.RevokedByIp, ip)
-                    .SetProperty(t => t.ReplacedByTokenHash, newHash),
-                cancellationToken);
+        int rowsAffected;
+        try
+        {
+            rowsAffected = await _db.RefreshTokens
+                .Where(t =>
+                    t.Id == stored.Id &&
+                    t.TokenHash == tokenHash &&
+                    t.RevokedAtUtc == null &&
+                    t.ExpiresAtUtc > now)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(t => t.RevokedAtUtc, now)
+                        .SetProperty(t => t.RevokedByIp, ip)
+                        .SetProperty(t => t.ReplacedByTokenHash, newHash),
+                    cancellationToken);
+        }
+        catch (DbException)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return null;
+        }
 
         if (rowsAffected != 1)
         {
@@ -239,6 +249,10 @@ public sealed class AuthService
         string? ip,
         CancellationToken cancellationToken = default)
     {
+        PasswordService.ValidatePolicy(nuevaContrasena);
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+
         var usuario = await _db.Usuarios
             .SingleOrDefaultAsync(u => u.Id == usuarioId, cancellationToken);
 
@@ -272,6 +286,8 @@ public sealed class AuthService
             ip,
             new { UsuarioObjetivoId = usuarioId },
             cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
 
         return true;
     }

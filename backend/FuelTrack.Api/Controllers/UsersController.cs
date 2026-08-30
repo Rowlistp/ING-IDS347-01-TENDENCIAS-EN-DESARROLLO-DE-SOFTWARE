@@ -51,6 +51,10 @@ public sealed class UsersController : ControllerBase
 
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { code = "PASSWORD_POLICY_FAILED", message = ex.Message });
+        }
         catch (InvalidOperationException ex)
         {
             return Conflict(new { code = "USER_CONFLICT", message = ex.Message });
