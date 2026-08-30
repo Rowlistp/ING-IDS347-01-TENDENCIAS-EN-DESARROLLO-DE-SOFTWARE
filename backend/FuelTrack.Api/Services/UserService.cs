@@ -120,6 +120,7 @@ public sealed class UserService
         var roles = await ResolveRolesAsync(request.RolIds, cancellationToken);
 
         usuario.NombreUsuario = username;
+        usuario.SecurityVersion++;
         _db.UsuarioRoles.RemoveRange(usuario.UsuarioRoles);
         usuario.UsuarioRoles = roles
             .Select(rol => new UsuarioRol { UsuarioId = id, RolId = rol.Id })
@@ -152,7 +153,11 @@ public sealed class UserService
         if (usuario is null)
             return false;
 
+        if (usuario.Activo == activo)
+            return true;
+
         usuario.Activo = activo;
+        usuario.SecurityVersion++;
 
         if (!activo)
         {

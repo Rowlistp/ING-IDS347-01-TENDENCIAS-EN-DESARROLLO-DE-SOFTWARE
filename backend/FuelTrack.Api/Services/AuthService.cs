@@ -260,6 +260,7 @@ public sealed class AuthService
             return false;
 
         usuario.PasswordHash = _passwords.Hash(nuevaContrasena);
+        usuario.SecurityVersion++;
 
         var activeTokens = await _db.RefreshTokens
             .Where(t =>

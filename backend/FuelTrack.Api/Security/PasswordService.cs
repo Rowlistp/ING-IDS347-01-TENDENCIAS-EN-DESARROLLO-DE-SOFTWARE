@@ -75,10 +75,11 @@ public sealed class PasswordService
             throw new ArgumentException("La contraseña es obligatoria.", nameof(password));
 
         if (password.Length < MinimumLength ||
+            password.Any(char.IsWhiteSpace) ||
             !password.Any(char.IsUpper) ||
             !password.Any(char.IsLower) ||
             !password.Any(char.IsDigit) ||
-            !password.Any(character => !char.IsLetterOrDigit(character)))
+            !password.Any(character => char.IsPunctuation(character) || char.IsSymbol(character)))
         {
             throw new ArgumentException(
                 $"La contraseña debe tener al menos {MinimumLength} caracteres, mayúscula, minúscula, número y carácter especial.",

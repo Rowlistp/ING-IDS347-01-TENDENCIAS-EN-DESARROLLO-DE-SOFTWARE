@@ -165,6 +165,7 @@ public sealed class AuthServiceRefreshTests
         var storedUser = await _db.Usuarios.SingleAsync(item => item.Id == user.Id);
         Assert.IsTrue(_passwords.Verify("Clave-Nueva-456!", storedUser.PasswordHash));
         Assert.IsFalse(_passwords.Verify("Clave-Anterior-123!", storedUser.PasswordHash));
+        Assert.AreEqual(2, storedUser.SecurityVersion);
         Assert.IsNotNull((await _db.RefreshTokens.SingleAsync()).RevokedAtUtc);
         Assert.IsTrue(await _db.Auditorias.AnyAsync(item => item.Evento == "PASSWORD_RESET_ADMIN"));
     }

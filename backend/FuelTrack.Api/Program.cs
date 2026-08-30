@@ -1,4 +1,5 @@
 using System.Text;
+using System.Security.Claims;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.Security;
 using FuelTrack.Api.Services;
@@ -49,12 +50,38 @@ builder.Services
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30)
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var userIdClaim = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                var versionClaim = context.Principal?.FindFirstValue(TokenService.SecurityVersionClaim);
+
+                if (!int.TryParse(userIdClaim, out var userId) ||
+                    !int.TryParse(versionClaim, out var securityVersion))
+                {
+                    context.Fail("Token sin versión de seguridad válida.");
+                    return;
+                }
+
+                var sessions = context.HttpContext.RequestServices
+                    .GetRequiredService<SessionValidationService>();
+                if (!await sessions.IsValidAsync(
+                        userId,
+                        securityVersion,
+                        context.HttpContext.RequestAborted))
+                {
+                    context.Fail("La sesión fue revocada.");
+                }
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<PasswordService>();
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<SessionValidationService>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
@@ -117,10 +144,13 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsEnvironment("Testing"))
 {
+    using var scope = app.Services.CreateScope();
     var seeder = scope.ServiceProvider.GetRequiredService<SecuritySeedService>();
     await seeder.SeedAsync();
 }
 
 app.Run();
+
+public partial class Program;
