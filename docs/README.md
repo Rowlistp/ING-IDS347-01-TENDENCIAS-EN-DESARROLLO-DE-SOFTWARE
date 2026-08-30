@@ -19,6 +19,8 @@ Esta carpeta contiene la documentación técnica y funcional generada a partir d
 13. [División de Trabajo del Equipo](13-DIVISION-EQUIPO.md)
 14. [Reglas de Trabajo Simultáneo](14-REGLAS-TRABAJO-SIMULTANEO.md)
 15. [Plantilla de Prompt para el Equipo](15-PLANTILLA-PROMPT.md)
+16. [Decisión de Plataforma Backend: .NET 10](16-DECISION-NET10.md)
+17. [Pruebas de Fase 1 - Seguridad](17-PRUEBAS-FASE1-SEGURIDAD.md)
 
 ## Fuente principal
 
@@ -27,7 +29,7 @@ Estos documentos amplían y organizan el SRS; cuando incluyen una propuesta téc
 
 ## Stack definido por el equipo
 
-- .NET 8 Web API.
+- .NET 10 Web API.
 - Entity Framework Core.
 - PostgreSQL.
 - React.

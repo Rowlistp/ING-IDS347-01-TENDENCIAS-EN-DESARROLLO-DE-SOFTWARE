@@ -12,7 +12,7 @@ El proyecto contempla una plataforma web administrativa y una aplicación móvil
 
 | Componente | Tecnología |
 |---|---|
-| Backend | .NET 8 Web API |
+| Backend | .NET 10 Web API |
 | ORM | Entity Framework Core |
 | Base de datos | PostgreSQL |
 | Frontend web | React |
@@ -51,7 +51,7 @@ También existe un [índice interno de documentación](docs/README.md).
 ```text
 [React Web] --------\
                      \
-                      >---- [API .NET 8] ---- [PostgreSQL]
+                      >---- [API .NET 10] ---- [PostgreSQL]
                      /
 [Flutter Mobile] ---/
 

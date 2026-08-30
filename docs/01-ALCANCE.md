@@ -82,7 +82,7 @@ Según el SRS, el proyecto contempla:
 
 El SRS propone varias alternativas. Para este proyecto el equipo ha definido:
 
-- Backend: .NET 8 Web API.
+- Backend: .NET 10 Web API.
 - ORM: Entity Framework Core.
 - Base de datos: PostgreSQL.
 - Frontend web: React.

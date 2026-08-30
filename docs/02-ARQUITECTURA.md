@@ -38,7 +38,7 @@ El frontend consumirá exclusivamente la API REST del backend.
 
 ### Backend
 
-**Tecnología:** .NET 8 Web API + Entity Framework Core.
+**Tecnología:** .NET 10 Web API + Entity Framework Core.
 
 Responsabilidades:
 
@@ -96,7 +96,7 @@ Responsabilidades:
 ```text
 [React Web] --------\
                      \
-                      >---- [API .NET 8] ---- [PostgreSQL]
+                      >---- [API .NET 10] ---- [PostgreSQL]
                      /
 [Flutter Mobile] ---/
 

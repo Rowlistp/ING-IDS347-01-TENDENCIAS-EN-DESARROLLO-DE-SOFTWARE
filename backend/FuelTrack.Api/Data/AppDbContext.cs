@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<Rol> Roles => Set<Rol>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<UsuarioRol> UsuarioRoles => Set<UsuarioRol>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Empleado> Empleados => Set<Empleado>();
     public DbSet<Vehiculo> Vehiculos => Set<Vehiculo>();
     public DbSet<SolicitudCombustible> SolicitudesCombustible => Set<SolicitudCombustible>();
@@ -29,21 +30,17 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // UsuarioRol — PK compuesta
         modelBuilder.Entity<UsuarioRol>()
             .HasKey(ur => new { ur.UsuarioId, ur.RolId });
 
-        // Ticket — Guid generado automáticamente por PostgreSQL
         modelBuilder.Entity<Ticket>()
             .Property(t => t.Id)
             .ValueGeneratedOnAdd();
 
-        // Auditoria — DatosRelevantes almacenado como jsonb en PostgreSQL
         modelBuilder.Entity<Auditoria>()
             .Property(a => a.DatosRelevantes)
             .HasColumnType("jsonb");
 
-        // Índices únicos
         modelBuilder.Entity<Usuario>()
             .HasIndex(u => u.NombreUsuario).IsUnique();
         modelBuilder.Entity<Empleado>()
@@ -62,8 +59,9 @@ public class AppDbContext : DbContext
             .HasIndex(d => d.TicketId).IsUnique();
         modelBuilder.Entity<CierreDiario>()
             .HasIndex(c => c.Fecha).IsUnique();
+        modelBuilder.Entity<RefreshToken>()
+            .HasIndex(t => t.TokenHash).IsUnique();
 
-        // Precisión decimal (18,4) para todos los campos de volumen y cantidad
         modelBuilder.Entity<Vehiculo>().Property(v => v.CapacidadTanque).HasPrecision(18, 4);
         modelBuilder.Entity<Vehiculo>().Property(v => v.Odometro).HasPrecision(18, 4);
         modelBuilder.Entity<SolicitudCombustible>().Property(s => s.CantidadSolicitada).HasPrecision(18, 4);
@@ -81,26 +79,29 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<CierreDiario>().Property(c => c.InventarioFinal).HasPrecision(18, 4);
         modelBuilder.Entity<CierreDiario>().Property(c => c.Diferencias).HasPrecision(18, 4);
 
-        // Despacho -> Ticket: Restrict (ticket consumido no se puede borrar en cascada)
         modelBuilder.Entity<Despacho>()
             .HasOne(d => d.Ticket)
             .WithOne(t => t.Despacho)
             .HasForeignKey<Despacho>(d => d.TicketId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Despacho -> Operador (Usuario): Restrict
         modelBuilder.Entity<Despacho>()
             .HasOne(d => d.Operador)
             .WithMany(u => u.DespachosOperados)
             .HasForeignKey(d => d.OperadorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Auditoria -> Usuario: SetNull (auditoría persiste aunque se desactive el usuario)
         modelBuilder.Entity<Auditoria>()
             .HasOne(a => a.Usuario)
             .WithMany(u => u.Auditorias)
             .HasForeignKey(a => a.UsuarioId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasOne(t => t.Usuario)
+            .WithMany(u => u.RefreshTokens)
+            .HasForeignKey(t => t.UsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         base.OnModelCreating(modelBuilder);
     }
