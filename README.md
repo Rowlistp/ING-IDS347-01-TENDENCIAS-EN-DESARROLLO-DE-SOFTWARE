@@ -18,7 +18,7 @@ El proyecto contempla una plataforma web administrativa y una aplicación móvil
 | Frontend web | React |
 | Estilos web | Tailwind CSS |
 | Aplicación móvil | Flutter |
-| Autenticación / API | JWT + OAuth 2.0 |
+| Autenticación / API | JWT interno + OAuth2/OIDC con Keycloak 26.7.3 |
 | Integraciones | API REST, SMTP y SMS Gateway |
 
 ## Documentación
@@ -43,6 +43,14 @@ La documentación del proyecto se encuentra en [`docs/`](docs/).
 10. [Plan de pruebas](docs/10-PLAN-PRUEBAS.md)
 11. [Estrategia de despliegue](docs/11-DESPLIEGUE.md)
 12. [Planificación del desarrollo](docs/12-PLANIFICACION.md)
+13. [División de trabajo](docs/13-DIVISION-EQUIPO.md)
+14. [Reglas de trabajo simultáneo](docs/14-REGLAS-TRABAJO-SIMULTANEO.md)
+15. [Plantilla de prompt](docs/15-PLANTILLA-PROMPT.md)
+16. [Decisión .NET 10](docs/16-DECISION-NET10.md)
+17. [Pruebas de Fase 1](docs/17-PRUEBAS-FASE1-SEGURIDAD.md)
+18. [Cierre de Fase 1](docs/18-CIERRE-FASE1.md)
+19. [Matriz de trazabilidad](docs/19-MATRIZ-TRAZABILIDAD.md)
+20. [Decisiones técnicas](docs/20-DECISIONES-TECNICAS.md)
 
 También existe un [índice interno de documentación](docs/README.md).
 
@@ -55,14 +63,22 @@ También existe un [índice interno de documentación](docs/README.md).
                      /
 [Flutter Mobile] ---/
 
-                            |---- [SMTP]
-                            |---- [SMS Gateway]
-                            |---- [OAuth 2.0]
+                            |---- [Keycloak 26.7.3]
+                            |---- [SMTP, pendiente]
+                            |---- [SMS Gateway, pendiente]
 ```
 
 ## Estado actual
 
-Actualmente el repositorio contiene la **documentación base de análisis, arquitectura y planificación** del proyecto.
+La **Fase 1 — Seguridad y Administración está implementada y validada**. Incluye
+autenticación local, OAuth2/OIDC con Keycloak 26.7.3, Authorization Code + PKCE
+S256, JWT interno, RBAC local, usuarios, roles, sesiones y auditoría append-only.
+
+El repositorio también contiene el backend base y catálogos desarrollados por
+otros builders. Esto no significa que el sistema completo ni las fases
+posteriores estén terminados. La implementación usa .NET 10 y dispone del
+workflow GitHub Actions `Backend Security` para compilar y ejecutar pruebas con
+PostgreSQL y Keycloak reales.
 
 El SRS se conserva como documento fuente. Los documentos adicionales organizan los requisitos y registran las decisiones técnicas del equipo sin sustituir el contenido original.
 
@@ -87,8 +103,11 @@ La arquitectura contempla los requisitos establecidos en el SRS, incluyendo:
 
 - RBAC.
 - JWT.
-- OAuth 2.0.
+- OAuth2/OIDC con Keycloak 26.7.3 y JWT interno.
 - TLS 1.3.
 - AES-256 para datos en reposo.
 - SHA-256 y firma/token para códigos QR.
 - Auditoría de operaciones sensibles.
+
+TLS 1.3 y AES-256 en reposo requieren configuración y evidencia del despliegue
+productivo. QR seguro, SMTP/SMS y móvil pertenecen a fases posteriores.

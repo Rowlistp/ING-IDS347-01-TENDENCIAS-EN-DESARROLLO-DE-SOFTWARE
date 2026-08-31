@@ -2,7 +2,12 @@
 
 ## Estado
 
-`FASE 1`
+`FASE 1: READY FOR PR`
+
+## Objetivo
+
+Cerrar y validar la seguridad y administración base de FuelTrack sin anticipar
+Tickets/QR, despacho móvil ni notificaciones de fases posteriores.
 
 ## Alcance terminado
 
@@ -12,6 +17,17 @@
 - RBAC, usuarios y catálogo cerrado de roles.
 - Auditoría consultable y append-only.
 - Hardening de contraseñas, tokens, concurrencia y último administrador.
+
+## Arquitectura de autenticación
+
+- Autenticación local con usuario/contraseña y JWT interno independiente.
+- Sesiones mediante refresh tokens almacenados como hash, rotatorios y revocables.
+- OAuth2/OIDC con Keycloak 26.7.3, realm `fueltrack` y audiencia `fueltrack-api`.
+- Authorization Code + PKCE S256 para `fueltrack-web` y `fueltrack-mobile`, ambos
+  clientes públicos sin client secret.
+- Implicit Flow y password/direct access grants deshabilitados.
+- Identidad Keycloak vinculada con un usuario local activo; autorización de
+  negocio exclusivamente mediante roles locales de PostgreSQL.
 
 ## Requisitos
 
@@ -27,12 +43,24 @@
 
 ## Evidencias
 
-- Tests rápidos de contraseñas, JWT, sesiones, servicios y pipeline HTTP.
+- Gestión de usuarios: crear, modificar, activar/desactivar, asignar roles y
+  restablecer contraseñas, con protección del último Administrador activo.
+- Catálogo cerrado de seis roles y `GET /api/v1/roles` solo para Administrador.
+- Contraseñas PBKDF2-HMAC-SHA-512, política fuerte y validación defensiva de hashes.
+- Tests de JWT, sesiones, refresh rotation, revocación, 401/403 y pipeline HTTP.
 - PostgreSQL real: migraciones desde cero, restricciones, concurrencia y trigger append-only.
 - Keycloak real `26.7.3`: metadata, Authorization Code + PKCE S256 y validación API.
-- CI ejecuta restore, build y toda la suite con PostgreSQL y Keycloak.
+- Auditoría transaccional, consulta segura y bloqueo PostgreSQL de update/delete.
+- CI `Backend Security` ejecuta restore, build y la suite con PostgreSQL y Keycloak.
 - Migraciones EF completas desde base vacía.
 - Endpoints: auth, users, `GET /api/v1/roles` y auditoría paginada.
+
+## Resultado final
+
+- Build: 0 errores y 0 warnings en el gate de cierre.
+- Tests: 59 aprobados, 0 fallidos y 0 omitidos en el gate completo.
+- PostgreSQL y Keycloak/OIDC reales: aprobados.
+- Alcance diferido documentado sin marcar requisitos futuros como terminados.
 
 ## Diferidos explícitos
 

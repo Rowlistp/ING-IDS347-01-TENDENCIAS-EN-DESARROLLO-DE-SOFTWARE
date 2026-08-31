@@ -31,12 +31,12 @@ Definir una estrategia inicial de despliegue sin seleccionar todavía un proveed
 ## 3. Componentes a desplegar
 
 - Frontend React.
-- API .NET 8.
+- API .NET 10.
 - PostgreSQL.
 - Aplicación Flutter Android.
-- Servicio SMTP.
-- SMS Gateway.
-- Servicios de autenticación.
+- Servicio SMTP (pendiente de Fase 9).
+- SMS Gateway (pendiente de Fase 9).
+- Keycloak 26.7.3 para OAuth2/OIDC.
 - Almacenamiento de reportes/PDF si aplica.
 
 ## 4. Configuración
@@ -92,25 +92,24 @@ Se recomienda incluir:
 
 No está especificado en el SRS.
 
-Propuesta futura:
+Ya existe GitHub Actions para validación de backend/security:
 
 ```text
 Commit/PR
    |
-Build
+Restore + Build .NET 10
    |
-Tests
+Tests con PostgreSQL y Keycloak reales
    |
-Security checks
-   |
-Artifact
-   |
-Deploy staging
-   |
-Approval
-   |
-Deploy production
+Resultado del gate
 ```
+
+Esto no constituye despliegue continuo. Artifact, staging, aprobación y
+producción permanecen pendientes hasta definir la infraestructura.
+
+Para desarrollo y pruebas existe infraestructura reproducible en
+`infra/keycloak/`, con realm importable y clientes públicos sin secretos. Sus
+credenciales son fixtures no productivos.
 
 ## 9. Aplicación móvil
 

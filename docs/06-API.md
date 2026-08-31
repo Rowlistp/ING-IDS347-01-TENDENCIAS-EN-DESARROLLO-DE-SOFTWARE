@@ -2,7 +2,10 @@
 
 ## 1. Objetivo
 
-Definir una propuesta inicial de recursos REST. El SRS exige una API REST, pero no especifica rutas ni contratos exactos.
+Registrar rutas implementadas y propuestas de recursos REST. El SRS exige una
+API REST, pero no especifica rutas ni contratos exactos. Las secciones de Fase 1
+y catálogos reflejan el backend actual; los módulos de fases posteriores siguen
+siendo propuestas hasta su implementación.
 
 ## 2. Convenciones
 
@@ -64,31 +67,45 @@ GET    /api/v1/audit?pagina=1&tamanoPagina=50
 
 ### Empleados
 
+Rutas implementadas actualmente por Builder 1:
+
 ```text
-GET    /api/v1/employees
-GET    /api/v1/employees/{id}
-POST   /api/v1/employees
-PUT    /api/v1/employees/{id}
-PATCH  /api/v1/employees/{id}/status
+GET    /api/v1/empleados
+GET    /api/v1/empleados/{id}
+POST   /api/v1/empleados
+PUT    /api/v1/empleados/{id}
+DELETE /api/v1/empleados/{id}  # desactivación lógica
 ```
 
 ### Vehículos
 
+Rutas implementadas actualmente por Builder 1:
+
 ```text
-GET    /api/v1/vehicles
-GET    /api/v1/vehicles/{id}
-POST   /api/v1/vehicles
-PUT    /api/v1/vehicles/{id}
-PATCH  /api/v1/vehicles/{id}/status
+GET    /api/v1/vehiculos
+GET    /api/v1/vehiculos/{id}
+POST   /api/v1/vehiculos
+PUT    /api/v1/vehiculos/{id}
+DELETE /api/v1/vehiculos/{id}  # desactivación lógica
 ```
 
 ### Departamentos
 
+Rutas implementadas actualmente por Builder 1:
+
 ```text
-GET    /api/v1/departments
-POST   /api/v1/departments
-PUT    /api/v1/departments/{id}
+GET    /api/v1/departamentos
+GET    /api/v1/departamentos/{id}
+POST   /api/v1/departamentos
+PUT    /api/v1/departamentos/{id}
+DELETE /api/v1/departamentos/{id}  # desactivación lógica
 ```
+
+> **Bloqueo de integración:** el contrato inicial proponía `/employees`,
+> `/vehicles` y `/departments`, pero el backend existente expone las rutas en
+> español mostradas arriba. No hay una decisión registrada que autorice renombrar
+> el backend. Builder 1 y los consumidores web/móvil deben acordar la convención
+> definitiva antes de integrar estos catálogos; no deben asumir alias inexistentes.
 
 ### Solicitudes
 
@@ -152,12 +169,6 @@ GET /api/v1/reports
 GET /api/v1/reports/export
 ```
 
-### Auditoría
-
-```text
-GET /api/v1/audit
-```
-
 ### Dashboard
 
 ```text
@@ -205,3 +216,4 @@ GET /api/v1/dashboard/summary
 - Idempotencia.
 - Rate limiting.
 - OpenAPI/Swagger final.
+- Convención definitiva español/inglés para las rutas de catálogos de Builder 1.

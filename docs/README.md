@@ -21,6 +21,9 @@ Esta carpeta contiene la documentación técnica y funcional generada a partir d
 15. [Plantilla de Prompt para el Equipo](15-PLANTILLA-PROMPT.md)
 16. [Decisión de Plataforma Backend: .NET 10](16-DECISION-NET10.md)
 17. [Pruebas de Fase 1 - Seguridad](17-PRUEBAS-FASE1-SEGURIDAD.md)
+18. [Cierre de Fase 1](18-CIERRE-FASE1.md)
+19. [Matriz de Trazabilidad](19-MATRIZ-TRAZABILIDAD.md)
+20. [Decisiones Técnicas](20-DECISIONES-TECNICAS.md)
 
 ## Fuente principal
 
@@ -35,4 +38,7 @@ Estos documentos amplían y organizan el SRS; cuando incluyen una propuesta téc
 - React.
 - Tailwind CSS.
 - Flutter.
-- JWT en Fase 1; OAuth 2.0 pendiente de proveedor e implementación.
+- JWT interno como mecanismo independiente.
+- OAuth2/OIDC con Keycloak 26.7.3.
+- Authorization Code + PKCE S256 para clientes públicos web y móvil.
+- RBAC de negocio resuelto exclusivamente con usuarios y roles locales de PostgreSQL.

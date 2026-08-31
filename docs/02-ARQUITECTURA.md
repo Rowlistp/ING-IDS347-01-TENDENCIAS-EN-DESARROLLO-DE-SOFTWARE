@@ -84,12 +84,25 @@ Responsabilidades:
 - Consulta de estado de tickets.
 - Sincronización inmediata.
 
-### Servicios externos
+### Servicios externos previstos o integrados
 
-- SMTP para correo.
-- SMS Gateway.
-- Servicios de autenticación OAuth 2.0 cuando aplique.
+- SMTP para correo (pendiente de Fase 9).
+- SMS Gateway (pendiente de Fase 9).
+- Keycloak 26.7.3 como proveedor OAuth2/OIDC (integrado en Fase 1).
 - Generación/validación de QR, si se implementa como servicio independiente.
+
+### Autenticación y autorización
+
+- Realm Keycloak: `fueltrack`.
+- Clientes públicos: `fueltrack-web` y `fueltrack-mobile`, sin client secret.
+- Recurso/audiencia: `fueltrack-api`.
+- Flujo: Authorization Code + PKCE S256.
+- Implicit Flow y password/direct access grants: deshabilitados.
+- La API también admite su JWT interno como esquema independiente.
+
+Keycloak autentica la identidad externa. La API la vincula con un `Usuario`
+local activo y obtiene los roles de negocio desde PostgreSQL. Los roles emitidos
+por Keycloak no conceden permisos dentro de FuelTrack.
 
 ## 4. Flujo lógico de comunicación
 
@@ -102,7 +115,7 @@ Responsabilidades:
 
                             |---- [SMTP]
                             |---- [SMS Gateway]
-                            |---- [Servicio OAuth 2.0]
+                            |---- [Keycloak 26.7.3 / OIDC]
 ```
 
 ## 5. Capas sugeridas para el backend
@@ -125,7 +138,7 @@ En la primera fase puede mantenerse una estructura simple, evitando sobrearquite
 
 - HTTPS/TLS 1.3.
 - JWT para sesiones/API.
-- OAuth 2.0 para autorización cuando corresponda.
+- OAuth2/OIDC para autenticación externa; RBAC local para autorización de negocio.
 - RBAC.
 - Contraseñas almacenadas mediante mecanismos seguros de hashing.
 - Cifrado en reposo según el requisito AES-256.
@@ -160,10 +173,17 @@ El proveedor y la estrategia concreta de infraestructura no están definidos por
 ## 9. Decisiones pendientes
 
 - Proveedor de hosting.
-- Estrategia CI/CD.
 - Proveedor de SMS.
 - Proveedor SMTP.
 - Mecanismo exacto de firma digital del QR.
 - Estrategia de almacenamiento de PDFs.
 - Estrategia de observabilidad.
 - Política de backups.
+
+## 10. Integración continua existente
+
+GitHub Actions ejecuta el workflow `Backend Security`: restaura y compila .NET
+10, aplica las migraciones sobre PostgreSQL de pruebas y valida JWT, sesiones y
+OAuth/OIDC con Keycloak real. No existe todavía despliegue automático a
+producción; proveedor, ambientes productivos y promoción de artefactos siguen
+pendientes.

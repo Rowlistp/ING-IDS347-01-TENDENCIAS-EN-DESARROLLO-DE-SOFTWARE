@@ -26,7 +26,7 @@ La implementación del proyecto utilizará:
 - `docs/SRS.md` no se modifica.
 - La documentación técnica del equipo debe referirse a .NET 10.
 - Los nuevos paquetes ASP.NET Core agregados por el equipo deben ser compatibles con .NET 10.
-- Builder 2 implementará la Fase 1 de seguridad sobre el backend existente en `main`.
+- Builder 2 implementó la Fase 1 de seguridad sobre el backend existente.
 - Cualquier cambio de versión de Entity Framework Core o Npgsql debe coordinarse con Builder 1, responsable de backend y datos.
 
 ## Alcance de Builder 2

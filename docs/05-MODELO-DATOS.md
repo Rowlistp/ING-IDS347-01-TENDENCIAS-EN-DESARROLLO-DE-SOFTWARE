@@ -4,7 +4,8 @@
 
 Proponer un modelo conceptual inicial basado en los datos explícitamente requeridos por el SRS.
 
-> Este documento no representa todavía el esquema físico definitivo de PostgreSQL.
+> Este documento conserva la vista conceptual. El esquema físico existente y su
+> evolución se consultan en `backend/FuelTrack.Api/Migrations/`.
 
 ## 2. Entidades principales propuestas
 
@@ -222,4 +223,4 @@ Usuario N --- N Rol
 - Unidad de medida única.
 - Estados exactos de solicitudes.
 - Política de borrado lógico.
-- Estructura de auditoría inalterable.
+- Política productiva de retención y archivo de auditoría.
