@@ -9,7 +9,7 @@ Definir una propuesta inicial de recursos REST. El SRS exige una API REST, pero 
 - Base sugerida: `/api/v1`.
 - JSON como formato principal.
 - HTTPS obligatorio.
-- JWT en `Authorization: Bearer <token>`.
+- JWT interno o access token OIDC de Keycloak en `Authorization: Bearer <token>`.
 - Autorización por roles.
 - Códigos HTTP estándar.
 - Identificadores de recursos en la URL.
@@ -34,6 +34,23 @@ POST   /api/v1/users
 PUT    /api/v1/users/{id}
 PATCH  /api/v1/users/{id}/status
 ```
+
+### Roles
+
+```text
+GET /api/v1/roles
+```
+
+- Solo `Administrador`.
+- Devuelve únicamente los seis roles permitidos que estén persistidos.
+- No existe CRUD arbitrario de roles.
+
+### Esquemas de autenticación
+
+- Local: login de FuelTrack, JWT firmado por la API y sesión con refresh token rotatorio.
+- Externo: Keycloak, Authorization Code + PKCE S256 en los clientes públicos `fueltrack-web` y `fueltrack-mobile`; audiencia `fueltrack-api`.
+- `401`: token ausente, inválido, issuer/audience incorrectos, o identidad externa sin usuario local activo.
+- `403`: identidad autenticada, pero sin un rol local autorizado para el endpoint.
 
 ### Auditoría
 

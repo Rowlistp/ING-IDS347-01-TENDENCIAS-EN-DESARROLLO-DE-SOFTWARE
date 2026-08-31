@@ -15,7 +15,16 @@ El SRS requiere:
 JWT con access token corto y refresh token rotatorio es el mecanismo activo de
 Fase 1.
 
-**Pendiente de implementación: no existe proveedor OAuth 2.0 configurado en Fase 1.**
+Fase 1 integra Keycloak `26.7.2` como proveedor OAuth 2.0/OIDC. El realm es
+`fueltrack`; `fueltrack-web` y `fueltrack-mobile` son clientes públicos sin
+secreto, con Authorization Code + PKCE S256 obligatorio. Implicit Flow y Direct
+Access Grants están deshabilitados. `fueltrack-api` representa la audiencia.
+
+La API mantiene dos validadores explícitos: JWT interno y Keycloak. Para Keycloak
+valida firma, issuer, audience y vigencia; luego resuelve `preferred_username`
+contra `Usuario.NombreUsuario`. Solo un usuario local activo puede entrar. Los
+roles externos se ignoran y la autorización usa exclusivamente roles locales de
+PostgreSQL. No se crean usuarios ni administradores automáticamente.
 
 **MFA pendiente: no implementado ni configurado en Fase 1.**
 
@@ -117,15 +126,15 @@ Datos mínimos:
 `Auditor`. La respuesta omite `DatosRelevantes` para no exponer accidentalmente
 hashes, tokens u otros secretos históricos.
 
-**Pendiente de implementación: la inmutabilidad exigida por RS-06 no está
-resuelta en Fase 1.** El modelo actual permite registrar y consultar eventos,
-pero requiere una estrategia de append-only, permisos de base de datos y
-retención antes de producción.
+Una migración PostgreSQL instala un trigger append-only que permite `INSERT` y
+rechaza `UPDATE`/`DELETE` sobre `Auditorias`. Las escrituras sensibles y su
+auditoría comparten transacción. La política de retención sigue siendo una
+decisión operativa posterior.
 
 ## 9. Seguridad de API
 
 - JWT.
-- OAuth 2.0 pendiente; no hay proveedor configurado en Fase 1.
+- OAuth 2.0/OIDC Keycloak con Authorization Code + PKCE S256.
 - Autorización por rol.
 - Validación estricta de entradas.
 - Protección contra exposición de errores internos.
@@ -164,7 +173,6 @@ Usar variables de entorno o un gestor de secretos.
 - Duración de tokens.
 - Política e implementación MFA.
 - Rotación de secretos.
-- Proveedor externo OAuth 2.0 e integración correspondiente.
-- Estrategia de auditoría inmutable.
+- Alta disponibilidad y endurecimiento productivo de Keycloak.
 - Retención de logs.
 - Respuesta a incidentes.

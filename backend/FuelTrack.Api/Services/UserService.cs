@@ -62,7 +62,9 @@ public sealed class UserService
         string? ip,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
         var username = request.NombreUsuario.Trim();
+        PasswordService.ValidatePolicy(request.Contrasena);
 
         if (await _db.Usuarios.AnyAsync(u => u.NombreUsuario == username, cancellationToken))
             throw new InvalidOperationException("Ya existe un usuario con ese nombre.");
@@ -90,6 +92,8 @@ public sealed class UserService
             ip,
             new { usuario.NombreUsuario, Roles = roles.Select(r => r.Nombre) },
             cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
 
         return (await GetByIdAsync(usuario.Id, cancellationToken))!;
     }
@@ -260,16 +264,19 @@ public sealed class UserService
         CancellationToken cancellationToken)
     {
         if (rolIds.Count == 0)
-            return [];
+            throw new UserValidationException("ROLE_REQUIRED", "Debe asignar al menos un rol.");
 
         var distinctIds = rolIds.Distinct().ToArray();
 
+        if (distinctIds.Length != rolIds.Count)
+            throw new UserValidationException("DUPLICATE_ROLE", "No se permiten roles duplicados.");
+
         var roles = await _db.Roles
-            .Where(r => distinctIds.Contains(r.Id))
+            .Where(r => distinctIds.Contains(r.Id) && Roles.Todos.Contains(r.Nombre))
             .ToListAsync(cancellationToken);
 
         if (roles.Count != distinctIds.Length)
-            throw new InvalidOperationException("Uno o más roles no existen.");
+            throw new UserValidationException("INVALID_ROLE", "Uno o más roles no son válidos.");
 
         return roles;
     }

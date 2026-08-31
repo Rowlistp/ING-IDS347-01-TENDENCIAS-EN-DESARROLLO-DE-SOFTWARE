@@ -9,5 +9,7 @@ public sealed class UpdateUserRequest
     [RegularExpression(@".*\S.*", ErrorMessage = "El nombre de usuario no puede contener solo espacios.")]
     public string NombreUsuario { get; set; } = string.Empty;
 
+    [Required]
+    [MinLength(1, ErrorMessage = "Debe asignar al menos un rol.")]
     public List<int> RolIds { get; set; } = [];
 }

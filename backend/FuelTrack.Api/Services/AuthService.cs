@@ -72,6 +72,8 @@ public sealed class AuthService
         var refreshHash = TokenService.HashRefreshToken(rawRefreshToken);
         var now = DateTime.UtcNow;
 
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+
         _db.RefreshTokens.Add(new RefreshToken
         {
             TokenHash = refreshHash,
@@ -91,6 +93,8 @@ public sealed class AuthService
             ip,
             null,
             cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
 
         return new AuthResponse
         {
@@ -112,6 +116,7 @@ public sealed class AuthService
             return null;
 
         var tokenHash = TokenService.HashRefreshToken(rawRefreshToken);
+
         var now = DateTime.UtcNow;
 
         await using var transaction = await _db.Database
@@ -217,6 +222,8 @@ public sealed class AuthService
 
         var tokenHash = TokenService.HashRefreshToken(rawRefreshToken);
 
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+
         var stored = await _db.RefreshTokens
             .SingleOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken);
 
@@ -238,6 +245,8 @@ public sealed class AuthService
             ip,
             null,
             cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
 
         return true;
     }

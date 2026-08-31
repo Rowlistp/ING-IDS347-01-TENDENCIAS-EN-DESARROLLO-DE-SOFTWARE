@@ -4,12 +4,19 @@ on:
   pull_request:
     paths:
       - "backend/**"
+      - "infra/keycloak/**"
+      - "docs/06-API.md"
+      - "docs/07-SEGURIDAD.md"
+      - "docs/08-ROLES-PERMISOS.md"
+      - "docs/17-PRUEBAS-FASE1-SEGURIDAD.md"
+      - "docs/18-CIERRE-FASE1.md"
       - ".github/workflows/backend-security.yml"
   push:
     branches:
       - feature/seguridad-movil
     paths:
       - "backend/**"
+      - "infra/keycloak/**"
       - ".github/workflows/backend-security.yml"
 
 jobs:
@@ -18,6 +25,7 @@ jobs:
     timeout-minutes: 15
     env:
       FUELTRACK_TEST_CONNECTION: Host=localhost;Port=5432;Database=fueltrack_security_test;Username=postgres;Pooling=false
+      FUELTRACK_KEYCLOAK_URL: http://localhost:18080
 
     services:
       postgres:
@@ -43,11 +51,36 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Start reproducible Keycloak 26.7.2
+        run: >-
+          docker run --rm -d --name fueltrack-keycloak
+          -p 127.0.0.1:18080:8080
+          -e KC_BOOTSTRAP_ADMIN_USERNAME=ci-local-admin
+          -e KC_BOOTSTRAP_ADMIN_PASSWORD=ci-local-password
+          -v "${{ github.workspace }}/infra/keycloak/fueltrack-realm.json:/opt/keycloak/data/import/fueltrack-realm.json:ro"
+          quay.io/keycloak/keycloak:26.7.2
+          start-dev --import-realm
+
+      - name: Wait for Keycloak metadata
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://localhost:18080/realms/fueltrack/.well-known/openid-configuration >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs fueltrack-keycloak
+          exit 1
+
       - name: Restore
         run: dotnet restore backend/FuelTrack.slnx
 
       - name: Build
         run: dotnet build backend/FuelTrack.slnx --no-restore --configuration Release
 
-      - name: Test including PostgreSQL
+      - name: Test including PostgreSQL and real Keycloak PKCE
         run: dotnet test backend/FuelTrack.slnx --no-build --configuration Release --logger "console;verbosity=normal"
+
+      - name: Keycloak logs on failure
+        if: failure()
+        run: docker logs fueltrack-keycloak

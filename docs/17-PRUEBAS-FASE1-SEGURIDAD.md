@@ -32,6 +32,12 @@ Las pruebas cubren:
 - invalidación inmediata del access token tras desactivar el usuario;
 - bloqueo de auto-retiro del rol Administrador y de desactivación del último administrador activo;
 - revocación de refresh tokens al desactivar un usuario.
+- catálogo `GET /api/v1/roles` filtrado y protegido para Administrador;
+- migración PostgreSQL append-only: inserta auditoría y rechaza update/delete;
+- metadata OIDC real de Keycloak;
+- Authorization Code + PKCE S256 real y audiencia `fueltrack-api`;
+- rechazo de issuer/audience incorrectos y de identidades locales desconocidas/inactivas;
+- roles locales positivos y ausencia de elevación mediante roles externos.
 
 ## Hardening de sesiones
 
@@ -78,6 +84,18 @@ Se verifican:
 - seed idempotente bajo concurrencia;
 - login, refresh, rotación y rechazo de reutilización;
 - revocación del refresh token tras desactivar al usuario.
+- trigger append-only de `Auditorias`.
+
+### Keycloak real
+
+```bash
+docker compose -f infra/keycloak/compose.yml up -d
+FUELTRACK_KEYCLOAK_URL=http://localhost:18080 dotnet test backend/FuelTrack.slnx
+```
+
+La suite navega el flujo Authorization Code, inicia sesión en el formulario real,
+intercambia el code con PKCE S256 y presenta el access token a la API. CI levanta
+la misma imagen fijada y el mismo realm importable.
 
 ## Criterio antes del PR
 
@@ -90,11 +108,5 @@ La Fase 1 no debe enviarse a `main` si:
 
 ## Decisiones pendientes
 
-**Pendiente de implementación: no existe proveedor OAuth 2.0 configurado en Fase 1.**
-
-**MFA pendiente: no implementado ni configurado en Fase 1.**
-
-**Pendiente de implementación: la inmutabilidad exigida por RS-06 no está
-resuelta en Fase 1.**
-
-JWT con access token corto y refresh token rotatorio es el mecanismo activo de Fase 1.
+MFA opcional, TLS 1.3 productivo y AES-256 en reposo dependen de infraestructura
+posterior. JWT local y Keycloak/OIDC son mecanismos activos de Fase 1.

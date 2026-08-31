@@ -1,5 +1,6 @@
 using System.Text;
 using System.Security.Claims;
+using Microsoft.IdentityModel.JsonWebTokens;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.Security;
 using FuelTrack.Api.Services;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,12 +23,23 @@ builder.Services
         "Jwt:Key debe configurarse fuera de Git y tener al menos 32 caracteres.")
     .ValidateOnStart();
 
+builder.Services
+    .AddOptions<KeycloakOptions>()
+    .Bind(builder.Configuration.GetSection(KeycloakOptions.SectionName))
+    .Validate(options =>
+        !options.Enabled ||
+        (Uri.TryCreate(options.Authority, UriKind.Absolute, out var authority) &&
+         (!options.RequireHttpsMetadata || authority.Scheme == Uri.UriSchemeHttps) &&
+         !string.IsNullOrWhiteSpace(options.Audience) &&
+         !string.IsNullOrWhiteSpace(options.IdentityClaim)),
+        "Keycloak habilitado requiere Authority absoluta (HTTPS en producción), Audience e IdentityClaim.")
+    .ValidateOnStart();
+
 var jwt = builder.Configuration
     .GetSection(JwtOptions.SectionName)
     .Get<JwtOptions>() ?? new JwtOptions();
 
 var jwtKey = builder.Configuration["Jwt:Key"];
-
 if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32)
 {
     throw new InvalidOperationException(
@@ -34,8 +47,37 @@ if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32)
 }
 
 builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    .AddAuthentication(options =>
+    {
+        options.DefaultScheme = AuthenticationSchemes.Smart;
+        options.DefaultAuthenticateScheme = AuthenticationSchemes.Smart;
+        options.DefaultChallengeScheme = AuthenticationSchemes.Smart;
+    })
+    .AddPolicyScheme(AuthenticationSchemes.Smart, AuthenticationSchemes.Smart, options =>
+    {
+        options.ForwardDefaultSelector = context =>
+        {
+            var keycloak = context.RequestServices
+                .GetRequiredService<IOptions<KeycloakOptions>>().Value;
+            if (!keycloak.Enabled)
+                return AuthenticationSchemes.InternalJwt;
+
+            var authorization = context.Request.Headers.Authorization.ToString();
+            if (!authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                return AuthenticationSchemes.InternalJwt;
+
+            var token = authorization["Bearer ".Length..].Trim();
+            var handler = new JsonWebTokenHandler();
+            if (!handler.CanReadToken(token))
+                return AuthenticationSchemes.InternalJwt;
+
+            var issuer = handler.ReadJsonWebToken(token).Issuer.TrimEnd('/');
+            return string.Equals(issuer, keycloak.Authority.TrimEnd('/'), StringComparison.Ordinal)
+                ? AuthenticationSchemes.Keycloak
+                : AuthenticationSchemes.InternalJwt;
+        };
+    })
+    .AddJwtBearer(AuthenticationSchemes.InternalJwt, options =>
     {
         options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
         options.SaveToken = false;
@@ -75,6 +117,55 @@ builder.Services
                 }
             }
         };
+    })
+    .AddJwtBearer(AuthenticationSchemes.Keycloak, options =>
+    {
+        options.MapInboundClaims = false;
+        options.SaveToken = false;
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var keycloak = context.HttpContext.RequestServices
+                    .GetRequiredService<IOptions<KeycloakOptions>>().Value;
+                var resolver = context.HttpContext.RequestServices
+                    .GetRequiredService<KeycloakIdentityService>();
+                var localPrincipal = await resolver.ResolveAsync(
+                    context.Principal!,
+                    keycloak.IdentityClaim,
+                    context.HttpContext.RequestAborted);
+
+                if (localPrincipal is null)
+                {
+                    context.Fail("La identidad externa no corresponde a un usuario local activo.");
+                    return;
+                }
+
+                context.Principal = localPrincipal;
+            }
+        };
+    });
+
+builder.Services
+    .AddOptions<JwtBearerOptions>(AuthenticationSchemes.Keycloak)
+    .Configure<IOptions<KeycloakOptions>>((options, configured) =>
+    {
+        var keycloak = configured.Value;
+        options.Authority = keycloak.Authority;
+        options.Audience = keycloak.Audience;
+        options.RequireHttpsMetadata = keycloak.RequireHttpsMetadata;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = keycloak.Authority.TrimEnd('/'),
+            ValidateAudience = true,
+            ValidAudience = keycloak.Audience,
+            ValidateIssuerSigningKey = true,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30),
+            NameClaimType = keycloak.IdentityClaim,
+            RoleClaimType = "__external_roles_ignored"
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -82,9 +173,11 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<PasswordService>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<SessionValidationService>();
+builder.Services.AddScoped<KeycloakIdentityService>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<RoleService>();
 builder.Services.AddScoped<SecuritySeedService>();
 
 var allowedOrigins = builder.Configuration

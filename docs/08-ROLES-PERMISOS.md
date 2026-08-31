@@ -20,6 +20,13 @@ conserva como rol técnico distinto porque el actor aparece en los flujos de
 solicitudes y podrá operar sobre recursos propios cuando Fase 3 defina esa
 relación. No son alias: el alcance exacto de ambos sigue pendiente de aprobación.
 
+Este catálogo es cerrado. `GET /api/v1/roles` permite al Administrador consultar
+los roles permitidos persistidos, pero no crearlos, renombrarlos ni eliminarlos.
+Todo usuario debe conservar al menos un rol válido y único. Roles vacíos,
+duplicados, desconocidos o externos a este catálogo se rechazan. En accesos OIDC,
+los roles de Keycloak nunca conceden permisos: la API carga los roles locales de
+PostgreSQL después de resolver al usuario activo.
+
 ## 3. Matriz inicial
 
 | Función | Admin | Supervisor | Despachador | Auditor | Consulta | Solicitante |

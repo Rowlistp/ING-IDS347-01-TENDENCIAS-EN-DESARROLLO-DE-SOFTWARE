@@ -14,5 +14,7 @@ public sealed class CreateUserRequest
     [StringLength(PasswordService.MaximumLength, MinimumLength = PasswordService.MinimumLength)]
     public string Contrasena { get; set; } = string.Empty;
 
+    [Required]
+    [MinLength(1, ErrorMessage = "Debe asignar al menos un rol.")]
     public List<int> RolIds { get; set; } = [];
 }

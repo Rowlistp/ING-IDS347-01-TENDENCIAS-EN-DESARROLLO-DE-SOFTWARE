@@ -78,6 +78,32 @@ public sealed class SecurityJwtPipelineTests
     }
 
     [TestMethod]
+    public async Task Roles_WithAdministrator_ReturnsOnlyPersistedOfficialRoles()
+    {
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Roles.AddRange(
+                new Rol { Nombre = Roles.Administrador },
+                new Rol { Nombre = Roles.Consulta },
+                new Rol { Nombre = "RolInventado" });
+            await db.SaveChangesAsync();
+        }
+
+        var token = await CreateTokenAsync(Roles.Administrador);
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue(JwtBearerDefaults.AuthenticationScheme, token);
+
+        var response = await _client.GetAsync("/api/v1/roles");
+        var json = await response.Content.ReadAsStringAsync();
+
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        StringAssert.Contains(json, Roles.Administrador);
+        StringAssert.Contains(json, Roles.Consulta);
+        Assert.IsFalse(json.Contains("RolInventado", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public async Task Users_WithValidWrongRoleJwt_Returns403()
     {
         var token = await CreateTokenAsync(Roles.Supervisor);

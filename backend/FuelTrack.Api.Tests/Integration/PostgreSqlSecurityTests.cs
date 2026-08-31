@@ -82,6 +82,79 @@ public sealed class PostgreSqlSecurityTests
     }
 
     [TestMethod]
+    public async Task AuditTable_AllowsInsertAndRejectsUpdateAndDelete()
+    {
+        long auditId;
+        await using (var db = CreateContext())
+        {
+            var entry = new Auditoria
+            {
+                Evento = "APPEND_ONLY_TEST",
+                EntidadAfectada = "Auditoria",
+                IdentificadorRegistro = "test",
+                FechaHora = DateTime.UtcNow
+            };
+            db.Auditorias.Add(entry);
+            await db.SaveChangesAsync();
+            auditId = entry.Id;
+        }
+
+        await using (var connection = new NpgsqlConnection(_connectionString))
+        {
+            await connection.OpenAsync();
+            await using var update = connection.CreateCommand();
+            update.CommandText = "UPDATE \"Auditorias\" SET \"Evento\" = 'ALTERADO' WHERE \"Id\" = @id";
+            update.Parameters.AddWithValue("id", auditId);
+            var exception = await Assert.ThrowsExactlyAsync<PostgresException>(() => update.ExecuteNonQueryAsync());
+            Assert.AreEqual("55000", exception.SqlState);
+        }
+
+        await using (var connection = new NpgsqlConnection(_connectionString))
+        {
+            await connection.OpenAsync();
+            await using var delete = connection.CreateCommand();
+            delete.CommandText = "DELETE FROM \"Auditorias\" WHERE \"Id\" = @id";
+            delete.Parameters.AddWithValue("id", auditId);
+            var exception = await Assert.ThrowsExactlyAsync<PostgresException>(() => delete.ExecuteNonQueryAsync());
+            Assert.AreEqual("55000", exception.SqlState);
+        }
+
+        await using var verification = CreateContext();
+        Assert.AreEqual("APPEND_ONLY_TEST", (await verification.Auditorias.SingleAsync()).Evento);
+    }
+
+    [TestMethod]
+    public async Task UserCreation_RollsBackWhenAuditInsertFails()
+    {
+        int roleId;
+        await using (var setup = CreateContext())
+        {
+            var role = new Rol { Nombre = Roles.Consulta };
+            setup.Roles.Add(role);
+            await setup.SaveChangesAsync();
+            roleId = role.Id;
+        }
+
+        await using (var db = CreateContext())
+        {
+            var users = new UserService(db, new PasswordService(), new AuditService(db));
+            await Assert.ThrowsExactlyAsync<DbUpdateException>(() => users.CreateAsync(
+                new FuelTrack.Api.DTOs.Users.CreateUserRequest
+                {
+                    NombreUsuario = "atomic-user",
+                    Contrasena = "Clave-Atomica-123!",
+                    RolIds = [roleId]
+                },
+                int.MaxValue,
+                "127.0.0.1"));
+        }
+
+        await using var verification = CreateContext();
+        Assert.IsFalse(await verification.Usuarios.AnyAsync(user => user.NombreUsuario == "atomic-user"));
+        Assert.IsFalse(await verification.Auditorias.AnyAsync());
+    }
+
+    [TestMethod]
     public async Task RoleSeed_IsIdempotentConcurrentAndUniquenessIsEnforced()
     {
         var configuration = new ConfigurationBuilder()
