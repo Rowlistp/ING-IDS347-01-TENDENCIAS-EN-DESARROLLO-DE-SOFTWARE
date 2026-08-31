@@ -18,17 +18,18 @@
 | Requisito | Estado de Fase 1 |
 |---|---|
 | RF-01 | Implementado para usuarios, autenticación y roles |
-| RS-01 | Implementado: autenticación local y OIDC |
+| RS-01 | Implementado para usuario/contraseña y gestión de sesiones. MFA es opcional según el SRS y queda diferido |
 | RS-02 | Implementado: RBAC evaluado en backend con roles locales |
-| RS-03 | Parcial / infraestructura: política de contraseña y hashing completos; MFA diferido |
-| RS-05 | Implementado en API; TLS productivo depende del despliegue |
-| RS-06 | Base implementada + append-only PostgreSQL; retención operativa diferida |
+| RS-03 | Pendiente de infraestructura/despliegue productivo: TLS 1.3 en tránsito y AES-256 en reposo |
+| RS-04 | No pertenece a Fase 1. El QR seguro se implementará en Fase 4 |
+| RS-05 | Implementado: OAuth 2.0/OIDC con Keycloak + JWT |
+| RS-06 | Implementado para la base de auditoría: transaccional, consultable y append-only en PostgreSQL. Retención operativa diferida |
 
 ## Evidencias
 
 - Tests rápidos de contraseñas, JWT, sesiones, servicios y pipeline HTTP.
 - PostgreSQL real: migraciones desde cero, restricciones, concurrencia y trigger append-only.
-- Keycloak real `26.7.2`: metadata, Authorization Code + PKCE S256 y validación API.
+- Keycloak real `26.7.3`: metadata, Authorization Code + PKCE S256 y validación API.
 - CI ejecuta restore, build y toda la suite con PostgreSQL y Keycloak.
 - Migraciones EF completas desde base vacía.
 - Endpoints: auth, users, `GET /api/v1/roles` y auditoría paginada.

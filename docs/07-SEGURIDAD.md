@@ -15,7 +15,7 @@ El SRS requiere:
 JWT con access token corto y refresh token rotatorio es el mecanismo activo de
 Fase 1.
 
-Fase 1 integra Keycloak `26.7.2` como proveedor OAuth 2.0/OIDC. El realm es
+Fase 1 integra Keycloak `26.7.3` como proveedor OAuth 2.0/OIDC. El realm es
 `fueltrack`; `fueltrack-web` y `fueltrack-mobile` son clientes públicos sin
 secreto, con Authorization Code + PKCE S256 obligatorio. Implicit Flow y Direct
 Access Grants están deshabilitados. `fueltrack-api` representa la audiencia.
@@ -145,7 +145,7 @@ decisión operativa posterior.
 
 ## 10. Gestión de secretos
 
-Nunca almacenar en Git:
+Nunca almacenar en Git credenciales, secretos o contraseñas reales/productivas:
 
 - Contraseñas.
 - Connection strings reales.
@@ -156,6 +156,10 @@ Nunca almacenar en Git:
 - Claves de firma.
 
 Usar variables de entorno o un gestor de secretos.
+
+Los valores versionados en `infra/keycloak` son fixtures reproducibles y
+exclusivos de testing; no son credenciales productivas y nunca deben reutilizarse
+fuera de esos entornos efímeros.
 
 ## 11. Riesgos prioritarios
 

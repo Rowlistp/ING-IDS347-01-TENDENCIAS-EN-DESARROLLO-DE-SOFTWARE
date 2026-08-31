@@ -93,9 +93,9 @@ docker compose -f infra/keycloak/compose.yml up -d
 FUELTRACK_KEYCLOAK_URL=http://localhost:18080 dotnet test backend/FuelTrack.slnx
 ```
 
-La suite navega el flujo Authorization Code, inicia sesión en el formulario real,
-intercambia el code con PKCE S256 y presenta el access token a la API. CI levanta
-la misma imagen fijada y el mismo realm importable.
+La suite usa Keycloak `26.7.3`, navega el flujo Authorization Code, inicia sesión
+en el formulario real, intercambia el code con PKCE S256 y presenta el access
+token a la API. CI levanta la misma imagen fijada y el mismo realm importable.
 
 ## Criterio antes del PR
 

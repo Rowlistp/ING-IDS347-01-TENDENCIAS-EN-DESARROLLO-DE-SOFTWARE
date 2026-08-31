@@ -51,14 +51,14 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Start reproducible Keycloak 26.7.2
+      - name: Start reproducible Keycloak 26.7.3
         run: >-
           docker run --rm -d --name fueltrack-keycloak
           -p 127.0.0.1:18080:8080
           -e KC_BOOTSTRAP_ADMIN_USERNAME=ci-local-admin
           -e KC_BOOTSTRAP_ADMIN_PASSWORD=ci-local-password
           -v "${{ github.workspace }}/infra/keycloak/fueltrack-realm.json:/opt/keycloak/data/import/fueltrack-realm.json:ro"
-          quay.io/keycloak/keycloak:26.7.2
+          quay.io/keycloak/keycloak:26.7.3
           start-dev --import-realm
 
       - name: Wait for Keycloak metadata
