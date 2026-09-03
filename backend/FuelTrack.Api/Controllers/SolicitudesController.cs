@@ -93,7 +93,7 @@ public sealed class SolicitudesController : ControllerBase
 
         if (solicitud is null) return NotFound();
         if (solicitud.Estado != EstadoSolicitud.Pendiente)
-            return Conflict(new { code = "SOLICITUD_YA_PROCESADA" });
+            return Conflict(new { code = "SOLICITUD_YA_PROCESADA", message = "La solicitud ya fue procesada." });
 
         solicitud.Estado = EstadoSolicitud.Aprobada;
         solicitud.CantidadAutorizada = req.CantidadAutorizada;
@@ -115,7 +115,7 @@ public sealed class SolicitudesController : ControllerBase
 
         if (solicitud is null) return NotFound();
         if (solicitud.Estado != EstadoSolicitud.Pendiente)
-            return Conflict(new { code = "SOLICITUD_YA_PROCESADA" });
+            return Conflict(new { code = "SOLICITUD_YA_PROCESADA", message = "La solicitud ya fue procesada." });
 
         solicitud.Estado = EstadoSolicitud.Rechazada;
         solicitud.MotivoRechazo = req.MotivoRechazo;
