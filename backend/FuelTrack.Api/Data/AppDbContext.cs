@@ -61,6 +61,10 @@ public class AppDbContext : DbContext
             .HasIndex(c => c.Fecha).IsUnique();
         modelBuilder.Entity<RefreshToken>()
             .HasIndex(t => t.TokenHash).IsUnique();
+        modelBuilder.Entity<TipoCombustible>()
+            .HasIndex(t => t.Nombre).IsUnique();
+        modelBuilder.Entity<Proveedor>()
+            .HasIndex(p => p.Rnc).IsUnique();
 
         modelBuilder.Entity<Vehiculo>().Property(v => v.CapacidadTanque).HasPrecision(18, 4);
         modelBuilder.Entity<Vehiculo>().Property(v => v.Odometro).HasPrecision(18, 4);

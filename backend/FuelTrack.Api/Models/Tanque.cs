@@ -7,6 +7,7 @@ public class Tanque
     public decimal Capacidad { get; set; }
     public decimal NivelActual { get; set; }
     public decimal NivelCritico { get; set; }
+    public bool Activo { get; set; } = true;
 
     public int TipoCombustibleId { get; set; }
     public TipoCombustible TipoCombustible { get; set; } = null!;
