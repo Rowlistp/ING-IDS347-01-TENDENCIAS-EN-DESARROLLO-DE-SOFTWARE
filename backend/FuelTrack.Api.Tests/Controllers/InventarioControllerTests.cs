@@ -201,4 +201,104 @@ public sealed class InventarioControllerTests
         Assert.IsNotNull(conflict);
         Assert.IsTrue(conflict.Value!.ToString()!.Contains("INVENTARIO_INSUFICIENTE"));
     }
+
+    // ── Helpers para transferencias ───────────────────────────────────────────
+
+    private async Task<int> AgregarSegundoTanqueAsync(int tipoCombustibleId, decimal existenciaActual = 0m)
+    {
+        var tanque2 = new Tanque
+        {
+            Identificacion = "T-003", Capacidad = 8000m, NivelActual = existenciaActual,
+            NivelCritico = 800m, Activo = true, TipoCombustibleId = tipoCombustibleId
+        };
+        _db.Tanques.Add(tanque2);
+        await _db.SaveChangesAsync();
+
+        _db.Inventarios.Add(new Inventario
+        {
+            TanqueId = tanque2.Id, ExistenciaActual = existenciaActual,
+            Disponibilidad = existenciaActual, UltimaActualizacion = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+        return tanque2.Id;
+    }
+
+    // ── Transferencias ────────────────────────────────────────────────────────
+
+    [TestMethod]
+    public async Task Transferir_Returns200_AndUpdatesBothInventories()
+    {
+        var (tanqueOrigenId, _, usuarioId) = await CrearDependenciasAsync(existenciaActual: 500m);
+        var tipoCombustibleId = (await _db.TiposCombustible.FirstAsync()).Id;
+        var tanqueDestinoId = await AgregarSegundoTanqueAsync(tipoCombustibleId, existenciaActual: 100m);
+        var ctrl = CrearController(usuarioId);
+
+        var req = new TransferirRequest(tanqueOrigenId, tanqueDestinoId, 200m, "Redistribución");
+        var result = await ctrl.Transferir(req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as TransferenciaResultDto;
+
+        Assert.IsNotNull(ok);
+        Assert.AreEqual(300m, dto!.Origen.ExistenciaActual);
+        Assert.AreEqual(300m, dto.Origen.Disponibilidad);
+        Assert.AreEqual(300m, dto.Destino.ExistenciaActual);
+        Assert.AreEqual(300m, dto.Destino.Disponibilidad);
+
+        var movimientos = await _db.MovimientosInventario.ToListAsync();
+        Assert.AreEqual(2, movimientos.Count);
+
+        var movOrigen = movimientos.First(m => m.TanqueId == tanqueOrigenId);
+        Assert.AreEqual(TipoMovimiento.Transferencia, movOrigen.Tipo);
+        Assert.AreEqual(-200m, movOrigen.Volumen);
+        Assert.IsTrue(movOrigen.ReferenciaOperacion!.Contains(tanqueDestinoId.ToString()));
+
+        var movDestino = movimientos.First(m => m.TanqueId == tanqueDestinoId);
+        Assert.AreEqual(TipoMovimiento.Transferencia, movDestino.Tipo);
+        Assert.AreEqual(200m, movDestino.Volumen);
+        Assert.IsTrue(movDestino.ReferenciaOperacion!.Contains(tanqueOrigenId.ToString()));
+    }
+
+    [TestMethod]
+    public async Task Transferir_Returns400_WhenOriginEqualsDest()
+    {
+        var (tanqueId, _, usuarioId) = await CrearDependenciasAsync();
+        var ctrl = CrearController(usuarioId);
+        var req = new TransferirRequest(tanqueId, tanqueId, 100m, null);
+
+        var result = await ctrl.Transferir(req, CancellationToken.None);
+        var bad = result.Result as BadRequestObjectResult;
+
+        Assert.IsNotNull(bad);
+        Assert.IsTrue(bad.Value!.ToString()!.Contains("TANQUE_ORIGEN_IGUAL_DESTINO"));
+    }
+
+    [TestMethod]
+    public async Task Transferir_Returns400_WhenOriginNotFound()
+    {
+        var (tanqueDestinoId, _, usuarioId) = await CrearDependenciasAsync();
+        var ctrl = CrearController(usuarioId);
+        var req = new TransferirRequest(999, tanqueDestinoId, 100m, null);
+
+        var result = await ctrl.Transferir(req, CancellationToken.None);
+        var bad = result.Result as BadRequestObjectResult;
+
+        Assert.IsNotNull(bad);
+        Assert.IsTrue(bad.Value!.ToString()!.Contains("TANQUE_ORIGEN_NOT_FOUND"));
+    }
+
+    [TestMethod]
+    public async Task Transferir_Returns409_WhenOriginInsufficient()
+    {
+        var (tanqueOrigenId, _, usuarioId) = await CrearDependenciasAsync(existenciaActual: 100m);
+        var tipoCombustibleId = (await _db.TiposCombustible.FirstAsync()).Id;
+        var tanqueDestinoId = await AgregarSegundoTanqueAsync(tipoCombustibleId);
+        var ctrl = CrearController(usuarioId);
+        var req = new TransferirRequest(tanqueOrigenId, tanqueDestinoId, 500m, null);
+
+        var result = await ctrl.Transferir(req, CancellationToken.None);
+        var conflict = result.Result as ConflictObjectResult;
+
+        Assert.IsNotNull(conflict);
+        Assert.IsTrue(conflict.Value!.ToString()!.Contains("INVENTARIO_INSUFICIENTE"));
+    }
 }
