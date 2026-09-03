@@ -98,6 +98,22 @@ public sealed class InventarioControllerTests
     }
 
     [TestMethod]
+    public async Task GetByTanque_ReturnsDto_CuandoExiste()
+    {
+        var (tanqueId, _, usuarioId) = await CrearDependenciasAsync(existenciaActual: 300m);
+        var ctrl = CrearController(usuarioId);
+
+        var result = await ctrl.GetByTanque(tanqueId, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as InventarioDto;
+
+        Assert.IsNotNull(dto);
+        Assert.AreEqual(tanqueId, dto.TanqueId);
+        Assert.AreEqual("T-002", dto.TanqueIdentificacion);
+        Assert.AreEqual(300m, dto.ExistenciaActual);
+    }
+
+    [TestMethod]
     public async Task GetByTanque_ReturnsNotFound_WhenMissing()
     {
         var (_, _, usuarioId) = await CrearDependenciasAsync();
