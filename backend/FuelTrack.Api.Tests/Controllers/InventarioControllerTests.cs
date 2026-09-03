@@ -317,4 +317,23 @@ public sealed class InventarioControllerTests
         Assert.IsNotNull(bad);
         Assert.IsTrue(bad.Value!.ToString()!.Contains("TANQUE_DESTINO_NOT_FOUND"));
     }
+
+    [TestMethod]
+    public async Task Transferir_Returns400_WhenDestInactive()
+    {
+        var (tanqueOrigenId, _, usuarioId) = await CrearDependenciasAsync(existenciaActual: 500m);
+        var tipoCombustibleId = (await _db.TiposCombustible.FirstAsync()).Id;
+        var tanqueDestinoId = await AgregarSegundoTanqueAsync(tipoCombustibleId);
+        var tanqueDest = await _db.Tanques.FindAsync(tanqueDestinoId);
+        tanqueDest!.Activo = false;
+        await _db.SaveChangesAsync();
+        var ctrl = CrearController(usuarioId);
+        var req = new TransferirRequest(tanqueOrigenId, tanqueDestinoId, 100m, null);
+
+        var result = await ctrl.Transferir(req, CancellationToken.None);
+        var bad = result.Result as BadRequestObjectResult;
+
+        Assert.IsNotNull(bad);
+        Assert.IsTrue(bad.Value!.ToString()!.Contains("TANQUE_DESTINO_INACTIVO"));
+    }
 }
