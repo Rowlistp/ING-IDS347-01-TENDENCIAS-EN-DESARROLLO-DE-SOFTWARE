@@ -97,6 +97,25 @@ public sealed class RecepcionesControllerTests
     }
 
     [TestMethod]
+    public async Task GetById_ReturnsDto_WhenExists()
+    {
+        var (proveedorId, tanqueId, usuarioId) = await CrearDependenciasAsync();
+        var ctrl = CrearController(usuarioId);
+        var req = new CreateRecepcionRequest(proveedorId, tanqueId, "FAC-001", 150m, DateTime.UtcNow);
+        await ctrl.Create(req, CancellationToken.None);
+
+        var recepcion = await _db.RecepcionesCombustible.FirstAsync();
+        var result = await ctrl.GetById(recepcion.Id, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as RecepcionDto;
+
+        Assert.AreEqual("FAC-001", dto!.NumeroFactura);
+        Assert.AreEqual(150m, dto.VolumenRecibido);
+        Assert.AreEqual("Petro SA", dto.ProveedorNombre);
+        Assert.AreEqual("T-001", dto.TanqueIdentificacion);
+    }
+
+    [TestMethod]
     public async Task Create_Returns201_YActualizaInventarioYCreaMovimiento()
     {
         var (proveedorId, tanqueId, usuarioId) = await CrearDependenciasAsync();
