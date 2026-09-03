@@ -146,6 +146,23 @@ public sealed class InventarioControllerTests
     }
 
     [TestMethod]
+    public async Task Ajustar_Returns400_CuandoTanqueInactivo()
+    {
+        var (tanqueId, _, usuarioId) = await CrearDependenciasAsync();
+        var tanque = await _db.Tanques.FindAsync(tanqueId);
+        tanque!.Activo = false;
+        await _db.SaveChangesAsync();
+        var ctrl = CrearController(usuarioId);
+        var req = new AjustarInventarioRequest(tanqueId, 50m, "Test inactivo");
+
+        var result = await ctrl.Ajustar(req, CancellationToken.None);
+        var bad = result.Result as BadRequestObjectResult;
+
+        Assert.IsNotNull(bad);
+        Assert.IsTrue(bad.Value!.ToString()!.Contains("TANQUE_INACTIVO"));
+    }
+
+    [TestMethod]
     public async Task Ajustar_Returns409_CuandoInventarioInsuficiente()
     {
         var (tanqueId, _, usuarioId) = await CrearDependenciasAsync(existenciaActual: 500m);
