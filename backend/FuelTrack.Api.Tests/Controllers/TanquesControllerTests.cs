@@ -164,4 +164,44 @@ public sealed class TanquesControllerTests
         var result = await _controller.Deactivate(999, CancellationToken.None);
         Assert.IsInstanceOfType<NotFoundResult>(result);
     }
+
+    [TestMethod]
+    public async Task Update_Returns200_CuandoTipoCombustibleCambia()
+    {
+        var gasolina = await CrearTipoCombustibleAsync("Gasolina");
+        var diesel = await CrearTipoCombustibleAsync("Diesel");
+        var tanque = new Tanque
+        {
+            Identificacion = "T-01", Capacidad = 5000m,
+            NivelActual = 0, NivelCritico = 500m,
+            TipoCombustibleId = gasolina.Id, Activo = true
+        };
+        _db.Tanques.Add(tanque);
+        await _db.SaveChangesAsync();
+
+        var req = new SaveTanqueRequest("T-01", 5000m, 500m, diesel.Id);
+        var result = await _controller.Update(tanque.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as TanqueDto;
+        Assert.AreEqual(diesel.Id, dto!.TipoCombustibleId);
+        Assert.AreEqual("Diesel", dto.TipoCombustibleNombre);
+    }
+
+    [TestMethod]
+    public async Task Update_Returns400_CuandoTipoCombustibleNoExiste()
+    {
+        var tipo = await CrearTipoCombustibleAsync();
+        var tanque = new Tanque
+        {
+            Identificacion = "T-01", Capacidad = 5000m,
+            NivelActual = 0, NivelCritico = 500m,
+            TipoCombustibleId = tipo.Id, Activo = true
+        };
+        _db.Tanques.Add(tanque);
+        await _db.SaveChangesAsync();
+
+        var req = new SaveTanqueRequest("T-01", 5000m, 500m, 999);
+        var result = await _controller.Update(tanque.Id, req, CancellationToken.None);
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result.Result);
+    }
 }

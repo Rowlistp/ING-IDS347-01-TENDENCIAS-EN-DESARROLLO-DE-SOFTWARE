@@ -100,13 +100,15 @@ public sealed class TanquesController : ControllerBase
             return Conflict(new { code = "IDENTIFICACION_DUPLICADA",
                 message = "Ya existe un tanque con esa identificación." });
 
+        var tipoCambio = tanque.TipoCombustibleId != req.TipoCombustibleId;
+
         tanque.Identificacion    = req.Identificacion;
         tanque.Capacidad         = req.Capacidad;
         tanque.NivelCritico      = req.NivelCritico;
         tanque.TipoCombustibleId = req.TipoCombustibleId;
         await _db.SaveChangesAsync(ct);
 
-        if (tanque.TipoCombustible.Id != req.TipoCombustibleId)
+        if (tipoCambio)
             await _db.Entry(tanque).Reference(t => t.TipoCombustible).LoadAsync(ct);
 
         return Ok(new TanqueDto(tanque.Id, tanque.Identificacion, tanque.Capacidad, tanque.NivelActual,
