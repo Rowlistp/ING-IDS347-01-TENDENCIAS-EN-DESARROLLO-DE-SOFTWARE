@@ -29,6 +29,8 @@ El modelo ya existe con todos los campos y FKs desde `InitialSchema`. Esta fase 
 
 ```csharp
 // backend/FuelTrack.Api/Models/SolicitudCombustible.cs
+using FuelTrack.Api.Models.Enums;
+
 namespace FuelTrack.Api.Models;
 
 public class SolicitudCombustible
@@ -96,7 +98,7 @@ modelBuilder.Entity<SolicitudCombustible>()
 Una sola migración que:
 1. Agrega columna `MotivoRechazo` (`text`, nullable) a `SolicitudesCombustible`
 
-> **Nota:** El campo `Estado` ya existe como `text` en BD. Al agregar `HasConversion<string>()` en `AppDbContext`, EF Core detectará el cambio en el snapshot pero no generará un `AlterColumn` porque el tipo de columna sigue siendo `text`. La migración solo tocará `MotivoRechazo`.
+> **Nota:** El campo `Estado` ya existe como `text` en BD. Al cambiar el tipo CLR de `string` a `EstadoSolicitud` con `HasConversion<string>()`, EF Core puede generar un `AlterColumn` en la migración para actualizar el snapshot. El tipo de columna en PostgreSQL sigue siendo `text`, por lo que ese `AlterColumn` es un no-op en SQL. Verificar el archivo de migración generado y confirmar que `Estado` sigue mapeando a `text` antes de aplicarla.
 
 ---
 
@@ -122,6 +124,10 @@ No hay `PUT` ni `DELETE` — el ciclo de vida se gestiona exclusivamente mediant
 
 ```csharp
 // backend/FuelTrack.Api/DTOs/Solicitudes/SolicitudDto.cs
+using FuelTrack.Api.Models.Enums;
+
+namespace FuelTrack.Api.DTOs.Solicitudes;
+
 public record SolicitudDto(
     int Id,
     decimal CantidadSolicitada,
@@ -251,11 +257,35 @@ public sealed class SolicitudesController : ControllerBase
 
 **Archivo:** `backend/FuelTrack.Api.Tests/Controllers/SolicitudesControllerTests.cs`
 
-**Setup:** SQLite in-memory idéntico al patrón establecido. Por las 4 FKs requeridas, el archivo incluye helpers privados para crear entidades de soporte:
+**Setup:** SQLite in-memory idéntico al patrón establecido. Por las 4 FKs requeridas, el archivo incluye un helper privado que crea las entidades de soporte en el orden correcto (Departamento primero, porque Empleado y Vehiculo tienen FK a Departamento):
 
 ```csharp
 private async Task<(Empleado empleado, Vehiculo vehiculo, Departamento departamento, TipoCombustible tipo)>
     CrearDependenciasAsync()
+{
+    var depto = new Departamento { Nombre = "TI", Activo = true };
+    _db.Departamentos.Add(depto);
+    await _db.SaveChangesAsync();
+
+    var tipo = new TipoCombustible { Nombre = "Gasolina", Activo = true };
+    var empleado = new Empleado
+    {
+        Codigo = "E-001", NombreCompleto = "Juan Pérez", Cedula = "001-0000001-1",
+        Cargo = "Analista", Correo = "juan@test.com", Telefono = "8091234567",
+        DepartamentoId = depto.Id, Activo = true
+    };
+    var vehiculo = new Vehiculo
+    {
+        Placa = "A123456", Ficha = "F-001", Marca = "Toyota", Modelo = "Hilux",
+        Año = 2022, Tipo = "Pickup", CapacidadTanque = 70m, Odometro = 0m,
+        DepartamentoId = depto.Id, Activo = true
+    };
+    _db.TiposCombustible.Add(tipo);
+    _db.Empleados.Add(empleado);
+    _db.Vehiculos.Add(vehiculo);
+    await _db.SaveChangesAsync();
+    return (empleado, vehiculo, depto, tipo);
+}
 ```
 
 **Casos de prueba (mínimo 13):**
