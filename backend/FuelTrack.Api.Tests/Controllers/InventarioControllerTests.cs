@@ -250,12 +250,14 @@ public sealed class InventarioControllerTests
         var movOrigen = movimientos.First(m => m.TanqueId == tanqueOrigenId);
         Assert.AreEqual(TipoMovimiento.Transferencia, movOrigen.Tipo);
         Assert.AreEqual(-200m, movOrigen.Volumen);
-        Assert.IsTrue(movOrigen.ReferenciaOperacion!.Contains(tanqueDestinoId.ToString()));
+        Assert.IsTrue(movOrigen.ReferenciaOperacion!.StartsWith("HACIA-TANQUE-"));
+        Assert.IsTrue(movOrigen.ReferenciaOperacion.Contains(tanqueDestinoId.ToString()));
 
         var movDestino = movimientos.First(m => m.TanqueId == tanqueDestinoId);
         Assert.AreEqual(TipoMovimiento.Transferencia, movDestino.Tipo);
         Assert.AreEqual(200m, movDestino.Volumen);
-        Assert.IsTrue(movDestino.ReferenciaOperacion!.Contains(tanqueOrigenId.ToString()));
+        Assert.IsTrue(movDestino.ReferenciaOperacion!.StartsWith("DESDE-TANQUE-"));
+        Assert.IsTrue(movDestino.ReferenciaOperacion.Contains(tanqueOrigenId.ToString()));
     }
 
     [TestMethod]
@@ -300,5 +302,19 @@ public sealed class InventarioControllerTests
 
         Assert.IsNotNull(conflict);
         Assert.IsTrue(conflict.Value!.ToString()!.Contains("INVENTARIO_INSUFICIENTE"));
+    }
+
+    [TestMethod]
+    public async Task Transferir_Returns400_WhenDestNotFound()
+    {
+        var (tanqueOrigenId, _, usuarioId) = await CrearDependenciasAsync();
+        var ctrl = CrearController(usuarioId);
+        var req = new TransferirRequest(tanqueOrigenId, 999, 100m, null);
+
+        var result = await ctrl.Transferir(req, CancellationToken.None);
+        var bad = result.Result as BadRequestObjectResult;
+
+        Assert.IsNotNull(bad);
+        Assert.IsTrue(bad.Value!.ToString()!.Contains("TANQUE_DESTINO_NOT_FOUND"));
     }
 }
