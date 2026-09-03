@@ -1,3 +1,5 @@
+using FuelTrack.Api.Models.Enums;
+
 namespace FuelTrack.Api.Models;
 
 public class SolicitudCombustible
@@ -6,7 +8,8 @@ public class SolicitudCombustible
     public decimal CantidadSolicitada { get; set; }
     public decimal? CantidadAutorizada { get; set; }
     public string TipoSolicitud { get; set; } = string.Empty;
-    public string Estado { get; set; } = string.Empty;
+    public EstadoSolicitud Estado { get; set; } = EstadoSolicitud.Pendiente;
+    public string? MotivoRechazo { get; set; }
     public DateTime FechaSolicitud { get; set; }
     public DateTime? FechaVencimiento { get; set; }
 
