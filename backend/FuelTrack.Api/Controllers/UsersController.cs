@@ -9,7 +9,7 @@ namespace FuelTrack.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = Roles.Administrador)]
-[Route("api/v1/users")]
+[Route("api/v1/usuarios")]
 public sealed class UsersController : ControllerBase
 {
     private readonly UserService _users;
@@ -83,7 +83,7 @@ public sealed class UsersController : ControllerBase
         }
     }
 
-    [HttpPatch("{id:int}/status")]
+    [HttpPatch("{id:int}/estado")]
     public async Task<IActionResult> UpdateStatus(
         int id,
         UpdateUserStatusRequest request,
