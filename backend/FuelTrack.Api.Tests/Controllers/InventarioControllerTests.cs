@@ -82,7 +82,17 @@ public sealed class InventarioControllerTests
     // ── GETs ──────────────────────────────────────────────────────────────────
 
     [TestMethod]
-    public async Task GetAll_ReturnsList_ConDatosTanque()
+    public async Task GetAll_ReturnsEmptyList_WhenNoData()
+    {
+        var ctrl = CrearController(1);
+        var result = await ctrl.GetAll(CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var list = ok!.Value as List<InventarioDto>;
+        Assert.AreEqual(0, list!.Count);
+    }
+
+    [TestMethod]
+    public async Task GetAll_ReturnsList_WithTankData()
     {
         var (tanqueId, _, usuarioId) = await CrearDependenciasAsync();
         var ctrl = CrearController(usuarioId);
@@ -98,7 +108,7 @@ public sealed class InventarioControllerTests
     }
 
     [TestMethod]
-    public async Task GetByTanque_ReturnsDto_CuandoExiste()
+    public async Task GetByTanque_ReturnsDto_WhenExists()
     {
         var (tanqueId, _, usuarioId) = await CrearDependenciasAsync(existenciaActual: 300m);
         var ctrl = CrearController(usuarioId);
@@ -126,7 +136,7 @@ public sealed class InventarioControllerTests
     // ── Ajuste ────────────────────────────────────────────────────────────────
 
     [TestMethod]
-    public async Task Ajustar_Returns200_YActualizaInventarioYCreaMovimiento()
+    public async Task Ajustar_Returns200_AndUpdatesInventoryAndCreatesMovement()
     {
         var (tanqueId, _, usuarioId) = await CrearDependenciasAsync(existenciaActual: 500m);
         var ctrl = CrearController(usuarioId);
@@ -148,7 +158,7 @@ public sealed class InventarioControllerTests
     }
 
     [TestMethod]
-    public async Task Ajustar_Returns400_CuandoTanqueNoExiste()
+    public async Task Ajustar_Returns400_WhenTankNotFound()
     {
         var (_, _, usuarioId) = await CrearDependenciasAsync();
         var ctrl = CrearController(usuarioId);
@@ -162,7 +172,7 @@ public sealed class InventarioControllerTests
     }
 
     [TestMethod]
-    public async Task Ajustar_Returns400_CuandoTanqueInactivo()
+    public async Task Ajustar_Returns400_WhenTankInactive()
     {
         var (tanqueId, _, usuarioId) = await CrearDependenciasAsync();
         var tanque = await _db.Tanques.FindAsync(tanqueId);
@@ -179,7 +189,7 @@ public sealed class InventarioControllerTests
     }
 
     [TestMethod]
-    public async Task Ajustar_Returns409_CuandoInventarioInsuficiente()
+    public async Task Ajustar_Returns409_WhenInventoryInsufficient()
     {
         var (tanqueId, _, usuarioId) = await CrearDependenciasAsync(existenciaActual: 500m);
         var ctrl = CrearController(usuarioId);
