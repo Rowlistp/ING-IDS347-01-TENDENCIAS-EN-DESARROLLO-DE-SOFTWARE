@@ -1,7 +1,9 @@
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Movimientos;
+using FuelTrack.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace FuelTrack.Api.Controllers;
 
@@ -14,6 +16,29 @@ public sealed class MovimientosController : ControllerBase
     public MovimientosController(AppDbContext db) => _db = db;
 
     [HttpGet]
-    public Task<ActionResult<List<MovimientoDto>>> GetAll([FromQuery] int? tanqueId, CancellationToken ct)
-        => throw new NotImplementedException();
+    public async Task<ActionResult<List<MovimientoDto>>> GetAll(
+        [FromQuery] int? tanqueId, CancellationToken ct)
+    {
+        var query = _db.MovimientosInventario
+            .AsNoTracking()
+            .Include(m => m.Tanque)
+            .Include(m => m.Usuario)
+            .AsQueryable();
+
+        if (tanqueId.HasValue)
+            query = query.Where(m => m.TanqueId == tanqueId.Value);
+
+        var list = await query.ToListAsync(ct);
+        return Ok(list.ConvertAll(ToDto));
+    }
+
+    private static MovimientoDto ToDto(MovimientoInventario m) => new(
+        m.Id,
+        m.Tipo,
+        m.Volumen,
+        m.FechaHora,
+        m.ReferenciaOperacion,
+        m.Observaciones,
+        m.TanqueId, m.Tanque.Identificacion,
+        m.UsuarioId, m.Usuario.NombreUsuario);
 }
