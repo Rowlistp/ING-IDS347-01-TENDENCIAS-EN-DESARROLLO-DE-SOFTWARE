@@ -56,12 +56,13 @@ POST /api/v1/inventario/transferencias → [Administrador, Supervisor]
 **POST /ajustes — cascade:**
 1. Validar `TanqueId` existe y `Tanque.Activo == true`
 2. Validar que `Inventario.ExistenciaActual + Volumen >= 0` (no puede quedar negativo)
-3. Crear `MovimientoInventario { Tipo=Ajuste, Volumen=abs(Volumen), ReferenciaOperacion=null, UsuarioId=usuarioActual }`
+3. Crear `MovimientoInventario { Tipo=Ajuste, Volumen=Volumen, ReferenciaOperacion=null, UsuarioId=usuarioActual }`
    - `Observaciones` es obligatorio (trazabilidad de la justificación)
+   - `Volumen` se almacena con signo: positivo = incremento, negativo = reducción
 4. Actualizar `Inventario`: `ExistenciaActual += Volumen`, `Disponibilidad += Volumen`, `UltimaActualizacion = UtcNow`
 5. `SaveChangesAsync`
 
-> `Volumen` puede ser positivo (suma) o negativo (resta). El `MovimientoInventario.Volumen` almacena el valor signed como fue recibido.
+> `Volumen` es signed en todo el sistema: positivo suma, negativo resta. Se almacena como fue recibido — nunca con `Math.Abs()`. El signo en el historial de movimientos indica la dirección del cambio.
 
 **POST /transferencias — cascade:**
 1. Validar `TanqueOrigenId != TanqueDestinoId`
@@ -161,15 +162,17 @@ record MovimientoDto(
 
 ## Errores de negocio
 
-| Código | HTTP | Cuándo |
-|---|---|---|
-| `PROVEEDOR_NOT_FOUND` | 400 | ProveedorId no existe |
-| `TANQUE_NOT_FOUND` | 400 | TanqueId no existe |
-| `TANQUE_INACTIVO` | 400 | Tanque.Activo == false |
-| `TANQUE_ORIGEN_NOT_FOUND` | 400 | TanqueOrigenId no existe o inactivo |
-| `TANQUE_DESTINO_NOT_FOUND` | 400 | TanqueDestinoId no existe o inactivo |
-| `TANQUE_ORIGEN_IGUAL_DESTINO` | 400 | TanqueOrigenId == TanqueDestinoId |
-| `INVENTARIO_INSUFICIENTE` | 409 | ExistenciaActual < Volumen (transferencia o ajuste negativo) |
+| Código | HTTP | Cuándo | Endpoint |
+|---|---|---|---|
+| `PROVEEDOR_NOT_FOUND` | 400 | ProveedorId no existe | POST /recepciones |
+| `TANQUE_NOT_FOUND` | 400 | TanqueId no existe | POST /recepciones, POST /ajustes |
+| `TANQUE_INACTIVO` | 400 | Tanque.Activo == false | POST /recepciones, POST /ajustes |
+| `TANQUE_ORIGEN_NOT_FOUND` | 400 | TanqueOrigenId no existe | POST /transferencias |
+| `TANQUE_ORIGEN_INACTIVO` | 400 | TanqueOrigen.Activo == false | POST /transferencias |
+| `TANQUE_DESTINO_NOT_FOUND` | 400 | TanqueDestinoId no existe | POST /transferencias |
+| `TANQUE_DESTINO_INACTIVO` | 400 | TanqueDestino.Activo == false | POST /transferencias |
+| `TANQUE_ORIGEN_IGUAL_DESTINO` | 400 | TanqueOrigenId == TanqueDestinoId | POST /transferencias |
+| `INVENTARIO_INSUFICIENTE` | 409 | Ajuste: `ExistenciaActual + Volumen < 0`; Transferencia: `ExistenciaActual < Volumen` | POST /ajustes, POST /transferencias |
 
 Formato: `{ "code": "...", "message": "..." }` (igual que otros controladores).
 
@@ -190,11 +193,12 @@ Extracción del usuario actual: `int.TryParse(User.FindFirstValue(ClaimTypes.Nam
 
 ## Datos técnicos
 
-- `TipoMovimiento` se almacena como `integer` en BD (schema inicial). No requiere migración nueva para este enum.
-- `MovimientoInventario.Volumen` es `decimal` con `HasPrecision(18,4)` — ya configurado en `AppDbContext`.
+- `TipoMovimiento` se almacena como `integer` en BD (schema inicial, `InitialSchema`). No requiere migración nueva para este enum.
+- `MovimientoInventario.Volumen` es `decimal` con `HasPrecision(18,4)` — soporta valores negativos en PostgreSQL `numeric(18,4)`. Ya configurado en `AppDbContext`.
 - `RecepcionCombustible.VolumenRecibido` es `decimal` con `HasPrecision(18,4)` — ya configurado.
-- No se requieren migraciones de schema (todas las tablas existen desde `InitialSchema`).
+- No se requieren migraciones de schema: todas las tablas existen desde `InitialSchema`.
 - `AppDbContext` ya tiene `DbSet` para `RecepcionesCombustible`, `Inventarios`, `MovimientosInventario`.
+- **Invariante garantizada:** Todo `Tanque` tiene exactamente un `Inventario` asociado, creado automáticamente en el POST de `TanquesController` (Bloque A). Si el `Tanque` existe, su `Inventario` existe. No se requieren null-checks adicionales para el `Inventario` después de confirmar que el `Tanque` existe.
 
 ---
 
@@ -203,12 +207,18 @@ Extracción del usuario actual: `int.TryParse(User.FindFirstValue(ClaimTypes.Nam
 Patrón MSTest + SQLite in-memory (igual que `SolicitudesControllerTests`):
 - `[TestInitialize]`: conexión SQLite abierta + `EnsureCreatedAsync`
 - `[TestCleanup]`: dispose
-- Helper `CrearDependenciasAsync()` para insertar Proveedor, TanqueId, Inventario, Usuario
+- Helper `CrearDependenciasAsync()` que inserta en este orden:
+  1. `TipoCombustible` (FK requerida por Tanque)
+  2. `Tanque` (Activo=true)
+  3. `Inventario` con TanqueId=tanque.Id, ExistenciaActual=0, Disponibilidad=0 — **creado explícitamente** porque la auto-creación ocurre en TanquesController, no en EF; en tests se inserta directo al DbContext
+  4. `Proveedor`
+  5. `Usuario` (FK requerida por MovimientoInventario)
+  6. `SaveChangesAsync`
 
 Cobertura mínima por controlador:
-- `RecepcionesController`: GetAll, GetById, Create (happy + proveedor no existe + tanque no existe + tanque inactivo)
-- `InventarioController`: GetAll, GetById, Ajustar (happy + tanque no existe + inventario insuficiente), Transferir (happy + mismo tanque + origen insuficiente)
-- `MovimientosController`: GetAll, GetAll con filtro tanqueId
+- `RecepcionesController`: GetAll, GetById, Create happy (verifica RecepcionCombustible + MovimientoInventario + Inventario actualizado), Create proveedor no existe, Create tanque no existe, Create tanque inactivo
+- `InventarioController`: GetAll, GetById, Ajustar happy (verifica Inventario actualizado + MovimientoInventario), Ajustar tanque no existe, Ajustar inventario insuficiente (Volumen negativo que deja negativo), Transferir happy (verifica ambos Inventarios + 2 MovimientosInventario), Transferir mismo tanque, Transferir origen insuficiente
+- `MovimientosController`: GetAll (sin filtro), GetAll con `?tanqueId=` que filtra correctamente
 
 ---
 
