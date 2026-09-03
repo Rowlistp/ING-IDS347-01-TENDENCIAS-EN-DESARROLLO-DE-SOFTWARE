@@ -14,7 +14,7 @@ Definir una propuesta inicial de recursos REST. El SRS exige una API REST, pero 
 - Códigos HTTP estándar.
 - Identificadores de recursos en la URL.
 
-## 3. Recursos propuestos
+## 3. Recursos
 
 ### Autenticación
 
@@ -28,52 +28,84 @@ POST /api/v1/auth/password/reset
 ### Usuarios
 
 ```text
-GET    /api/v1/users
-GET    /api/v1/users/{id}
-POST   /api/v1/users
-PUT    /api/v1/users/{id}
-PATCH  /api/v1/users/{id}/status
+GET    /api/v1/usuarios
+GET    /api/v1/usuarios/{id}
+POST   /api/v1/usuarios
+PUT    /api/v1/usuarios/{id}
+PATCH  /api/v1/usuarios/{id}/estado
 ```
 
 ### Empleados
 
 ```text
-GET    /api/v1/employees
-GET    /api/v1/employees/{id}
-POST   /api/v1/employees
-PUT    /api/v1/employees/{id}
-PATCH  /api/v1/employees/{id}/status
+GET    /api/v1/empleados
+GET    /api/v1/empleados/{id}
+POST   /api/v1/empleados
+PUT    /api/v1/empleados/{id}
+DELETE /api/v1/empleados/{id}
 ```
 
 ### Vehículos
 
 ```text
-GET    /api/v1/vehicles
-GET    /api/v1/vehicles/{id}
-POST   /api/v1/vehicles
-PUT    /api/v1/vehicles/{id}
-PATCH  /api/v1/vehicles/{id}/status
+GET    /api/v1/vehiculos
+GET    /api/v1/vehiculos/{id}
+POST   /api/v1/vehiculos
+PUT    /api/v1/vehiculos/{id}
+DELETE /api/v1/vehiculos/{id}
 ```
 
 ### Departamentos
 
 ```text
-GET    /api/v1/departments
-POST   /api/v1/departments
-PUT    /api/v1/departments/{id}
+GET    /api/v1/departamentos
+GET    /api/v1/departamentos/{id}
+POST   /api/v1/departamentos
+PUT    /api/v1/departamentos/{id}
+DELETE /api/v1/departamentos/{id}
 ```
 
-### Solicitudes
+### Tipos de Combustible
 
 ```text
-GET    /api/v1/fuel-requests
-GET    /api/v1/fuel-requests/{id}
-POST   /api/v1/fuel-requests
-POST   /api/v1/fuel-requests/{id}/approve
-POST   /api/v1/fuel-requests/{id}/reject
+GET    /api/v1/tipos-combustible
+GET    /api/v1/tipos-combustible/{id}
+POST   /api/v1/tipos-combustible
+PUT    /api/v1/tipos-combustible/{id}
+DELETE /api/v1/tipos-combustible/{id}
 ```
 
-> Aprobar/rechazar es una propuesta derivada de la responsabilidad de "Aprobaciones" del Supervisor. El SRS no define literalmente esos endpoints.
+### Tanques
+
+```text
+GET    /api/v1/tanques
+GET    /api/v1/tanques/{id}
+POST   /api/v1/tanques
+PUT    /api/v1/tanques/{id}
+DELETE /api/v1/tanques/{id}
+```
+
+> POST crea el Tanque y su registro de Inventario (existencia = 0) en una sola transacción.
+
+### Proveedores
+
+```text
+GET    /api/v1/proveedores
+GET    /api/v1/proveedores/{id}
+POST   /api/v1/proveedores
+PUT    /api/v1/proveedores/{id}
+DELETE /api/v1/proveedores/{id}
+```
+
+### Solicitudes de Combustible
+
+```text
+GET    /api/v1/solicitudes
+GET    /api/v1/solicitudes/{id}
+POST   /api/v1/solicitudes
+POST   /api/v1/solicitudes/{id}/aprobar
+POST   /api/v1/solicitudes/{id}/rechazar
+```
 
 ### Tickets
 
@@ -81,60 +113,60 @@ POST   /api/v1/fuel-requests/{id}/reject
 GET    /api/v1/tickets
 GET    /api/v1/tickets/{id}
 POST   /api/v1/tickets
-POST   /api/v1/tickets/{id}/send
-POST   /api/v1/tickets/{id}/cancel
-POST   /api/v1/tickets/validate
+POST   /api/v1/tickets/{id}/enviar
+POST   /api/v1/tickets/{id}/anular
+POST   /api/v1/tickets/validar
 ```
 
 ### Despachos
 
 ```text
-GET    /api/v1/dispatches
-GET    /api/v1/dispatches/{id}
-POST   /api/v1/dispatches
+GET    /api/v1/despachos
+GET    /api/v1/despachos/{id}
+POST   /api/v1/despachos
 ```
 
 ### Inventario
 
 ```text
-GET    /api/v1/inventory
-GET    /api/v1/inventory/movements
-POST   /api/v1/inventory/adjustments
-POST   /api/v1/inventory/transfers
+GET    /api/v1/inventario
+GET    /api/v1/inventario/movimientos
+POST   /api/v1/inventario/ajustes
+POST   /api/v1/inventario/transferencias
 ```
 
-### Recepciones
+### Recepciones de Combustible
 
 ```text
-GET    /api/v1/receipts
-POST   /api/v1/receipts
+GET    /api/v1/recepciones
+POST   /api/v1/recepciones
 ```
 
-### Cierre diario
+### Cierres Diarios
 
 ```text
-GET    /api/v1/daily-closures
-GET    /api/v1/daily-closures/{id}
-POST   /api/v1/daily-closures
+GET    /api/v1/cierres-diarios
+GET    /api/v1/cierres-diarios/{id}
+POST   /api/v1/cierres-diarios
 ```
 
 ### Reportes
 
 ```text
-GET /api/v1/reports
-GET /api/v1/reports/export
+GET /api/v1/reportes
+GET /api/v1/reportes/exportar
 ```
 
 ### Auditoría
 
 ```text
-GET /api/v1/audit
+GET /api/v1/auditoria
 ```
 
 ### Dashboard
 
 ```text
-GET /api/v1/dashboard/summary
+GET /api/v1/dashboard/resumen
 ```
 
 ## 4. Respuesta de error sugerida
