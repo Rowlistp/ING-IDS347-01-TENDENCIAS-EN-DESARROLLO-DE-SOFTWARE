@@ -70,6 +70,9 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Vehiculo>().Property(v => v.Odometro).HasPrecision(18, 4);
         modelBuilder.Entity<SolicitudCombustible>().Property(s => s.CantidadSolicitada).HasPrecision(18, 4);
         modelBuilder.Entity<SolicitudCombustible>().Property(s => s.CantidadAutorizada).HasPrecision(18, 4);
+        modelBuilder.Entity<SolicitudCombustible>()
+            .Property(s => s.Estado)
+            .HasConversion<string>();
         modelBuilder.Entity<Ticket>().Property(t => t.CantidadAutorizada).HasPrecision(18, 4);
         modelBuilder.Entity<Tanque>().Property(t => t.Capacidad).HasPrecision(18, 4);
         modelBuilder.Entity<Tanque>().Property(t => t.NivelActual).HasPrecision(18, 4);
