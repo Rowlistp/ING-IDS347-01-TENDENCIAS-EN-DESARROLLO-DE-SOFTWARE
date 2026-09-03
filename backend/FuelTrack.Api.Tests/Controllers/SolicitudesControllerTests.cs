@@ -291,4 +291,50 @@ public sealed class SolicitudesControllerTests
         Assert.IsNotNull(conflict);
         Assert.IsTrue(conflict.Value!.ToString()!.Contains("SOLICITUD_YA_PROCESADA"));
     }
+
+    [TestMethod]
+    public async Task Aprobar_Returns409_CuandoYaFueRechazada()
+    {
+        var (empleado, vehiculo, depto, tipo) = await CrearDependenciasAsync();
+        var solicitud = new SolicitudCombustible
+        {
+            CantidadSolicitada = 50m, TipoSolicitud = "Manual",
+            Estado = EstadoSolicitud.Rechazada, FechaSolicitud = DateTime.UtcNow,
+            MotivoRechazo = "Ya rechazada",
+            EmpleadoId = empleado.Id, VehiculoId = vehiculo.Id,
+            DepartamentoId = depto.Id, TipoCombustibleId = tipo.Id
+        };
+        _db.SolicitudesCombustible.Add(solicitud);
+        await _db.SaveChangesAsync();
+
+        var req = new AprobarSolicitudRequest(45m);
+        var result = await _controller.Aprobar(solicitud.Id, req, CancellationToken.None);
+        var conflict = result.Result as ConflictObjectResult;
+
+        Assert.IsNotNull(conflict);
+        Assert.IsTrue(conflict.Value!.ToString()!.Contains("SOLICITUD_YA_PROCESADA"));
+    }
+
+    [TestMethod]
+    public async Task Rechazar_Returns409_CuandoYaFueAprobada()
+    {
+        var (empleado, vehiculo, depto, tipo) = await CrearDependenciasAsync();
+        var solicitud = new SolicitudCombustible
+        {
+            CantidadSolicitada = 50m, TipoSolicitud = "Manual",
+            Estado = EstadoSolicitud.Aprobada, FechaSolicitud = DateTime.UtcNow,
+            CantidadAutorizada = 50m,
+            EmpleadoId = empleado.Id, VehiculoId = vehiculo.Id,
+            DepartamentoId = depto.Id, TipoCombustibleId = tipo.Id
+        };
+        _db.SolicitudesCombustible.Add(solicitud);
+        await _db.SaveChangesAsync();
+
+        var req = new RechazarSolicitudRequest("Intento inválido");
+        var result = await _controller.Rechazar(solicitud.Id, req, CancellationToken.None);
+        var conflict = result.Result as ConflictObjectResult;
+
+        Assert.IsNotNull(conflict);
+        Assert.IsTrue(conflict.Value!.ToString()!.Contains("SOLICITUD_YA_PROCESADA"));
+    }
 }
