@@ -49,13 +49,13 @@ public sealed class SolicitudesController : ControllerBase
     public async Task<ActionResult<SolicitudDto>> Create(CreateSolicitudRequest req, CancellationToken ct)
     {
         if (!await _db.Empleados.AnyAsync(e => e.Id == req.EmpleadoId, ct))
-            return BadRequest(new { code = "EMPLEADO_NOT_FOUND" });
+            return BadRequest(new { code = "EMPLEADO_NOT_FOUND", message = "El empleado no existe." });
         if (!await _db.Vehiculos.AnyAsync(v => v.Id == req.VehiculoId, ct))
-            return BadRequest(new { code = "VEHICULO_NOT_FOUND" });
+            return BadRequest(new { code = "VEHICULO_NOT_FOUND", message = "El vehículo no existe." });
         if (!await _db.Departamentos.AnyAsync(d => d.Id == req.DepartamentoId, ct))
-            return BadRequest(new { code = "DEPARTAMENTO_NOT_FOUND" });
+            return BadRequest(new { code = "DEPARTAMENTO_NOT_FOUND", message = "El departamento no existe." });
         if (!await _db.TiposCombustible.AnyAsync(t => t.Id == req.TipoCombustibleId, ct))
-            return BadRequest(new { code = "TIPO_COMBUSTIBLE_NOT_FOUND" });
+            return BadRequest(new { code = "TIPO_COMBUSTIBLE_NOT_FOUND", message = "El tipo de combustible no existe." });
 
         var solicitud = new SolicitudCombustible
         {
