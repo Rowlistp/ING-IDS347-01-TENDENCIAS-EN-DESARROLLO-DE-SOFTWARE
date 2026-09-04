@@ -30,12 +30,18 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        if (Database.IsNpgsql())
+            modelBuilder.HasSequence<long>("ticket_numero_seq");
+
         modelBuilder.Entity<UsuarioRol>()
             .HasKey(ur => new { ur.UsuarioId, ur.RolId });
 
         modelBuilder.Entity<Ticket>()
             .Property(t => t.Id)
             .ValueGeneratedOnAdd();
+        modelBuilder.Entity<Ticket>()
+            .Property(t => t.QrCodePng)
+            .HasColumnType("bytea");
 
         modelBuilder.Entity<Auditoria>()
             .Property(a => a.DatosRelevantes)
@@ -57,6 +63,11 @@ public class AppDbContext : DbContext
             .HasIndex(v => v.Ficha).IsUnique();
         modelBuilder.Entity<Ticket>()
             .HasIndex(t => t.NumeroSecuencial).IsUnique();
+        modelBuilder.Entity<Ticket>()
+            .HasIndex(t => t.SolicitudId)
+            .IsUnique()
+            .HasDatabaseName("UX_Tickets_Solicitud_Utilizable")
+            .HasFilter("\"SolicitudId\" IS NOT NULL AND \"Estado\" NOT IN (4, 5, 6)");
         modelBuilder.Entity<Tanque>()
             .HasIndex(t => t.Identificacion).IsUnique();
         modelBuilder.Entity<Despacho>()

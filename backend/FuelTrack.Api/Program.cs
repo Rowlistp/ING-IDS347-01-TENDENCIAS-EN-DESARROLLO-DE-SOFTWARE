@@ -9,8 +9,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Options;
+using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -34,6 +37,10 @@ builder.Services
          !string.IsNullOrWhiteSpace(options.IdentityClaim)),
         "Keycloak habilitado requiere Authority absoluta (HTTPS en producción), Audience e IdentityClaim.")
     .ValidateOnStart();
+
+builder.Services
+    .AddOptions<TicketOptions>()
+    .Bind(builder.Configuration.GetSection(TicketOptions.SectionName));
 
 var jwt = builder.Configuration
     .GetSection(JwtOptions.SectionName)
@@ -178,6 +185,10 @@ builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<RoleService>();
+builder.Services.AddScoped<TicketNumberService>();
+builder.Services.AddScoped<TicketQrService>();
+builder.Services.AddScoped<TicketPdfService>();
+builder.Services.AddScoped<TicketService>();
 builder.Services.AddScoped<SecuritySeedService>();
 
 var allowedOrigins = builder.Configuration
