@@ -163,3 +163,16 @@ El SRS no define:
 - Tiempo máximo por operación.
 
 Se requiere definir estos parámetros para pruebas de rendimiento formales.
+
+## 7. Gate ejecutado de Fase 4
+
+La suite automatizada cubre emisión desde Solicitud aprobada, rechazo de
+estados/cantidades/vencimientos inválidos, UUID, secuencia, un ticket utilizable,
+payload auténtico y manipulación de cada campo, hash, firma, token, estados
+terminales, vencimiento efectivo, anulación, PDF, cola de envío, RBAC y
+auditoría.
+
+PostgreSQL real aplica migraciones desde cero, verifica la secuencia y el índice
+parcial, crea 24 tickets concurrentes sin UUID/secuencia duplicados y permite
+solo un ganador para dos emisiones simultáneas de la misma Solicitud. Los
+resultados exactos se registran en `21-PRUEBAS-FASE4-TICKETS-QR.md`.

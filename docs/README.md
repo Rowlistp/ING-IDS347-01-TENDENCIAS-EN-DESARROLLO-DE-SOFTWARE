@@ -24,10 +24,13 @@ Esta carpeta contiene la documentación técnica y funcional generada a partir d
 18. [Cierre de Fase 1](18-CIERRE-FASE1.md)
 19. [Matriz de Trazabilidad](19-MATRIZ-TRAZABILIDAD.md)
 20. [Decisiones Técnicas](20-DECISIONES-TECNICAS.md)
+21. [Pruebas de Fase 4 — Tickets/QR](21-PRUEBAS-FASE4-TICKETS-QR.md)
+22. [Cierre de Fase 4](22-CIERRE-FASE4.md)
 
 ### Explicaciones pedagógicas
 
 - [Fase 1 — Seguridad y administración](explicaciones/fase-1-seguridad-administracion.md)
+- [Fase 4 — Tickets digitales y QR seguro](explicaciones/fase-4-tickets-qr.md)
 
 ## Fuente principal
 

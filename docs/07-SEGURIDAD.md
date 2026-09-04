@@ -103,6 +103,26 @@ El SRS requiere:
 - Debe existir protección contra alteración.
 - Debe evitarse colocar datos sensibles innecesarios dentro del QR.
 
+### Implementación de Fase 4
+
+- Firma: ECDSA sobre curva P-256 con SHA-256 y formato fijo P1363.
+- Token: 32 bytes de `RandomNumberGenerator`; PostgreSQL conserva únicamente
+  `SHA256(token)` en `TokenValidacion`.
+- Payload: serialización canónica versionada con orden fijo; cubre UUID,
+  secuencia, prefijo, Solicitud, empleado, vehículo, departamento, combustible,
+  cantidad, emisión, expiración y token.
+- Persistencia: `HashSeguridad` guarda SHA-256 del payload, `FirmaDigital` la
+  firma y `QrCodePng` la representación necesaria para el PDF. No existe una
+  columna con el token en claro.
+- Validación: la API verifica criptografía y coincidencia exacta con la base,
+  además de estado y vencimiento. La operación no consume el Ticket.
+
+La clave privada PKCS#8 se configura exclusivamente mediante
+`Tickets__SigningPrivateKeyPkcs8Base64` (variable de entorno o user-secrets).
+La clave pública SPKI usa `Tickets__SigningPublicKeySpkiBase64`. El repositorio
+solo contiene marcadores en `backend/.env.example`; las pruebas generan claves
+P-256 efímeras.
+
 ## 8. Auditoría
 
 Registrar como mínimo:

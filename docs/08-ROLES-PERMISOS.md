@@ -40,8 +40,10 @@ PostgreSQL después de resolver al usuario activo.
 | Crear solicitud | Según política | Sí | No | No | No | Sí |
 | Aprobar solicitudes | Sí/según política | Sí | No | No | No | No |
 | Emitir ticket | Sí/según política | Sí | No | No | No | No |
-| Consultar ticket | Sí | Sí | Sí | Sí | Alcance pendiente | Propios |
-| Escanear QR | No | Opcional | Sí | No | No | No |
+| Consultar ticket/PDF | Sí | Sí | Sí | Sí | Sí | No |
+| Validar QR | Sí | Sí | Sí | Sí | Sí | No |
+| Preparar envío de ticket | Sí | Sí | No | No | No | No |
+| Anular ticket | Sí | Sí | No | No | No | No |
 | Registrar despacho | No | Según política | Sí | No | No | No |
 | Registrar recepción | Sí | Sí | No | No | No | No |
 | Ajustar inventario | Sí | Sí | No | No | No | No |
@@ -80,6 +82,5 @@ El SRS no especifica estas restricciones, por lo que requieren aprobación.
 - Alcance funcional exacto de `Consulta` y alcance de recursos propios de `Solicitante`.
 - Permisos del Administrador sobre despachos.
 - Alcance departamental.
-- Permisos de anulación de tickets.
 - Permisos sobre transferencias.
 - Política de aprobación múltiple.

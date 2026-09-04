@@ -152,7 +152,50 @@ POST   /api/v1/tickets
 POST   /api/v1/tickets/{id}/enviar
 POST   /api/v1/tickets/{id}/anular
 POST   /api/v1/tickets/validar
+GET    /api/v1/tickets/{id}/pdf
 ```
+
+#### Contrato de emisión
+
+`POST /api/v1/tickets`, autorizado para `Administrador` y `Supervisor`, recibe:
+
+```json
+{
+  "solicitudId": 42,
+  "prefijo": "COM"
+}
+```
+
+`prefijo` es opcional; por defecto usa `Tickets:Prefix`. Empleado, vehículo,
+departamento, combustible, cantidad y vencimiento se leen de la Solicitud
+aprobada. No se aceptan copias editables de esos campos desde el cliente.
+
+La respuesta `201` contiene UUID, código visible `COM-2026-000001`, datos
+autorizados, estado e indicador `qrDisponible`; no expone token, hashes, firma
+ni clave privada. Una Solicitud solo puede tener un Ticket no terminal.
+
+#### Validación
+
+`POST /api/v1/tickets/validar` recibe `{ "qrPayload": "FTQR1..." }`. Requiere
+un rol operacional (`Administrador`, `Supervisor`, `Despachador`, `Auditor` o
+`Consulta`) y devuelve `200` con `valido`, `codigo`, `mensaje` y los datos del
+Ticket únicamente cuando es válido. Validar no consume el Ticket.
+
+La API comprueba versión, estructura, UUID, SHA-256, firma, token, coincidencia
+con PostgreSQL, estado y fecha de vencimiento. Los códigos operacionales
+incluyen `QR_INVALIDO`, `QR_NO_COINCIDE`, `TICKET_VENCIDO`, `TICKET_CONSUMIDO`
+y `TICKET_ANULADO`.
+
+#### Envío, anulación y PDF
+
+- `POST /{id}/enviar`: Admin/Supervisor; crea una notificación `PENDIENTE` por
+  correo/teléfono disponible. No ejecuta SMTP ni SMS.
+- `POST /{id}/anular`: Admin/Supervisor; requiere `{ "motivo": "..." }`,
+  rechaza tickets consumidos/vencidos y es idempotente si ya estaba anulado.
+- `GET /{id}/pdf`: roles operacionales; devuelve `application/pdf` con el mismo
+  QR emitido y registra auditoría.
+
+Errores de negocio de emisión usan `400`, `404` o `409` con `code` y `message`.
 
 ### Despachos
 

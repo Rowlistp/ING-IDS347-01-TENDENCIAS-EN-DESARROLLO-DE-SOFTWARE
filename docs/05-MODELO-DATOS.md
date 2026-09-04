@@ -81,7 +81,12 @@ Proponer un modelo conceptual inicial basado en los datos explícitamente requer
 - Cantidad autorizada.
 - Tipo de combustible.
 - Estado.
-- Información de seguridad QR.
+- Hash SHA-256 del payload canónico.
+- Hash SHA-256 del token de validación; el token no se guarda en claro.
+- Firma digital ECDSA P-256.
+- PNG del QR necesario para el documento, sin columna de token en claro.
+- Motivo de anulación.
+- Solicitud de origen.
 
 ### TipoCombustible
 
@@ -208,6 +213,9 @@ Usuario N --- N Rol
 
 - UUID del ticket único.
 - Secuencia de ticket sin duplicidad.
+- Solo un ticket no terminal por Solicitud mediante índice parcial único.
+- Estados terminales: Vencido, Consumido y Anulado.
+- La vigencia por fecha prevalece sobre un estado activo almacenado.
 - Placa y ficha deberían evaluarse como valores únicos.
 - Código de empleado debería evaluarse como único.
 - Una operación de despacho debe ser transaccional con el movimiento de inventario.
@@ -216,7 +224,8 @@ Usuario N --- N Rol
 
 ## 5. Pendientes antes del modelo físico
 
-- Cardinalidad exacta Solicitud-Ticket.
+- La relación física Solicitud-Ticket es 1 a N histórico, con máximo uno
+  utilizable simultáneamente.
 - Estructura de estaciones.
 - Manejo de múltiples tanques.
 - Transferencias entre tanques.

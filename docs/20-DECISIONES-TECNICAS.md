@@ -29,6 +29,14 @@ en `16-DECISION-NET10.md`.
 | Auditoría | Escritura transaccional y append-only PostgreSQL | `IntegratePhase1Security` y pruebas PostgreSQL |
 | API administrativa | Contratos en español | `/api/v1/usuarios` y `/{id}/estado` |
 | CI | GitHub Actions para backend/security | `.github/workflows/backend-security.yml` |
+| Ticket desde Solicitud | El cliente envía solo `SolicitudId`; el servidor copia los datos aprobados | `TicketService` |
+| Numeración Ticket | Secuencia global PostgreSQL y código `PREFIJO-AÑO-000001` | `ticket_numero_seq` |
+| Multiplicidad | Histórico 1:N, máximo un Ticket no terminal por Solicitud | Índice parcial único |
+| Criptografía QR | ECDSA P-256 + SHA-256 + token aleatorio de 256 bits | `TicketQrService` |
+| Persistencia QR | Hashes/firma y PNG; no columna con token en claro | Modelo `Ticket` |
+| PDF | QuestPDF 2026.8.0 bajo licencia Community para uso académico | `TicketPdfService` |
+| Generación QR | QRCoder 1.8.0, licencia MIT | `TicketQrService` |
+| Envío F4/F9 | F4 crea `Notificacion` pendiente; F9 transportará SMTP/SMS | `PrepareSendAsync` |
 
 ## 3. Decisiones pendientes
 
@@ -37,8 +45,8 @@ en `16-DECISION-NET10.md`.
 | Infraestructura | Proveedor cloud/on-premise y topología | El SRS no selecciona proveedor |
 | SMTP | Proveedor y credenciales operativas | Fase 9 |
 | SMS | Gateway, costos y SLA | Fase 9 |
-| QR | Mecanismo definitivo de firma y gestión de claves | Fase 4 |
-| PDF | Almacenamiento, retención y acceso | Requiere fases 4/7/8 |
+| Rotación de firma QR | Procedimiento productivo de rotación y confianza multiclave | Infraestructura/despliegue |
+| PDF | Retención y almacenamiento externo a largo plazo | Requiere política operativa |
 | Observabilidad | Logs centralizados, métricas, tracing y alertas | Estabilización |
 | Disponibilidad | SLA, RPO y RTO | Requiere acuerdo de infraestructura |
 | Backups | Frecuencia, retención, cifrado y restauración | Infraestructura productiva |
@@ -47,6 +55,6 @@ en `16-DECISION-NET10.md`.
 
 - MFA es opcional en el SRS y sigue diferido; no se presenta como deuda obligatoria.
 - TLS 1.3 y AES-256 en reposo requieren evidencia de infraestructura productiva.
-- Tickets/QR, Flutter/despacho y SMTP/SMS permanecen en Fases 4, 5 y 9.
+- Flutter/despacho y transporte SMTP/SMS permanecen en Fases 5 y 9.
 - Ninguna credencial productiva debe versionarse. Los valores de
   `infra/keycloak` son fixtures reproducibles de testing.

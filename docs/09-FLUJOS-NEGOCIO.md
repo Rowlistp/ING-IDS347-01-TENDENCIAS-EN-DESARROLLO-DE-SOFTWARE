@@ -21,10 +21,18 @@ Asignar UUID + secuencia
    |
 Generar QR seguro
    |
-Enviar correo/SMS
+Crear notificación pendiente
    |
 Ticket disponible
 ```
+
+Fase 4 no transporta mensajes: `POST /tickets/{id}/enviar` crea registros
+`Notificacion` con estado `PENDIENTE` para los canales disponibles. Fase 9
+implementará SMTP/SMS y actualizará el resultado de entrega.
+
+La emisión recibe únicamente `SolicitudId`, valida que la Solicitud esté
+aprobada y copia sus datos autorizados. PostgreSQL asigna la secuencia y evita
+dos tickets utilizables simultáneos para la misma Solicitud.
 
 ## 3. Flujo: Ticket → Despacho
 
@@ -55,6 +63,9 @@ Auditar operación
 ```
 
 La actualización del ticket y del inventario debe ejecutarse de forma consistente para evitar dobles consumos o desbalances.
+
+En Fase 4 solo está implementada la parte hasta la validación y visualización.
+`POST /tickets/validar` no consume; el despacho transaccional pertenece a Fase 5.
 
 ## 4. Flujo: Recepción → Inventario
 
@@ -130,9 +141,7 @@ Vencido -> Cambiar estado / impedir uso
 
 ## 8. Flujo: Anulación
 
-El SRS contempla estado "Anulado" y auditoría de anulaciones, pero no define el proceso exacto.
-
-Propuesta:
+La implementación de Fase 4 usa el siguiente proceso:
 
 ```text
 Usuario autorizado

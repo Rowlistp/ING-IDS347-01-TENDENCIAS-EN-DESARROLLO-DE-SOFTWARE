@@ -98,3 +98,16 @@ El SRS no define métricas concretas para:
 - Límites de solicitudes API.
 
 Estos puntos deben convertirse en requisitos medibles antes de producción.
+
+## 8. Estado de implementación de Fase 4
+
+Esta sección registra trazabilidad sin modificar el texto original del SRS:
+
+| Requisito | Estado al cierre de Fase 4 |
+|---|---|
+| RF-06 | Implementado: emisión desde una Solicitud aprobada y PDF con QR |
+| RF-07 | Implementado: QR firmado, verificable y resistente a manipulación |
+| RF-08 | Implementado: UUID, prefijo y secuencia PostgreSQL sin duplicidad |
+| RF-09 | Parcial: se crean notificaciones pendientes; SMTP/SMS real queda para Fase 9 |
+| RF-10 | Implementado: consulta y validación de estado efectivo |
+| RS-04 | Implementado: ECDSA P-256, SHA-256 y token aleatorio de 256 bits |

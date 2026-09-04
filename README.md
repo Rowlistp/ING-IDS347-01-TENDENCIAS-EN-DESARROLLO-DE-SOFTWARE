@@ -51,6 +51,8 @@ La documentación del proyecto se encuentra en [`docs/`](docs/).
 18. [Cierre de Fase 1](docs/18-CIERRE-FASE1.md)
 19. [Matriz de trazabilidad](docs/19-MATRIZ-TRAZABILIDAD.md)
 20. [Decisiones técnicas](docs/20-DECISIONES-TECNICAS.md)
+21. [Pruebas de Fase 4 — Tickets/QR](docs/21-PRUEBAS-FASE4-TICKETS-QR.md)
+22. [Cierre de Fase 4](docs/22-CIERRE-FASE4.md)
 
 Explicación pedagógica: [Fase 1 — Seguridad y administración](docs/explicaciones/fase-1-seguridad-administracion.md).
 
@@ -72,9 +74,12 @@ También existe un [índice interno de documentación](docs/README.md).
 
 ## Estado actual
 
-La **Fase 1 — Seguridad y Administración está implementada y validada**. Incluye
+Las **Fases 1 y 4 están implementadas y validadas en backend**. Fase 1 incluye
 autenticación local, OAuth2/OIDC con Keycloak 26.7.3, Authorization Code + PKCE
 S256, JWT interno, RBAC local, usuarios, roles, sesiones y auditoría append-only.
+Fase 4 incorpora emisión desde Solicitudes aprobadas, secuencia PostgreSQL, QR
+ECDSA P-256/SHA-256, validación, estados, PDF, anulación y preparación de
+notificaciones. Flutter/despacho y transporte SMTP/SMS siguen pendientes.
 
 El repositorio también contiene el backend base y catálogos desarrollados por
 otros builders. Esto no significa que el sistema completo ni las fases
@@ -112,4 +117,4 @@ La arquitectura contempla los requisitos establecidos en el SRS, incluyendo:
 - Auditoría de operaciones sensibles.
 
 TLS 1.3 y AES-256 en reposo requieren configuración y evidencia del despliegue
-productivo. QR seguro, SMTP/SMS y móvil pertenecen a fases posteriores.
+productivo. SMTP/SMS real y móvil pertenecen a fases posteriores.
