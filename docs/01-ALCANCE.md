@@ -88,7 +88,8 @@ El SRS propone varias alternativas. Para este proyecto el equipo ha definido:
 - Frontend web: React.
 - Estilos web: Tailwind CSS.
 - Aplicación móvil: Flutter.
-- Autenticación de APIs: JWT + OAuth 2.0.
+- Autenticación de APIs: JWT interno + OAuth2/OIDC con Keycloak 26.7.3,
+  Authorization Code y PKCE S256.
 
 Estas decisiones concretan la arquitectura sin modificar el contenido original del SRS.
 

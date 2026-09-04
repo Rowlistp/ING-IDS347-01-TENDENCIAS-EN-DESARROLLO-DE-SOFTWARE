@@ -49,7 +49,7 @@ La división es **por capa técnica**, alineada a las fortalezas de cada builder
 **Fases / Requisitos a cargo:**
 | Fase | Contenido | Requisitos |
 |---|---|---|
-| Fase 1 | Auth JWT/OAuth2, RBAC, auditoría base | RF-01 |
+| Fase 1 | Auth JWT/OAuth2, RBAC, auditoría base | RF-01; RS-01, RS-02, RS-05 y base RS-06 |
 | Fase 4 | Tickets + QR seguro (hash, firma digital) | RF-06 a RF-10 |
 | Fase 5 | Aplicación móvil Flutter | RF-12, RF-13 |
 | Fase 9 | Notificaciones e integraciones (SMTP/SMS) | RF-23, RF-24 |

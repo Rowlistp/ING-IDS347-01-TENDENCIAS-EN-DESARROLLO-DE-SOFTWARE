@@ -1,0 +1,124 @@
+{
+  "realm": "fueltrack",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "roles": {
+    "realm": [
+      { "name": "external-super-admin", "description": "Rol deliberadamente no confiable para autorización FuelTrack" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "fueltrack-api",
+      "name": "FuelTrack API",
+      "protocol": "openid-connect",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "fueltrack-web",
+      "name": "FuelTrack Web",
+      "protocol": "openid-connect",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocolMappers": [
+        {
+          "name": "fueltrack-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "fueltrack-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "fueltrack-mobile",
+      "name": "FuelTrack Mobile",
+      "protocol": "openid-connect",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["fueltrack://callback"],
+      "webOrigins": [],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocolMappers": [
+        {
+          "name": "fueltrack-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "fueltrack-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "keycloak-admin-local",
+      "firstName": "Keycloak",
+      "lastName": "Admin Local",
+      "enabled": true,
+      "email": "keycloak-admin-local@example.test",
+      "emailVerified": true,
+      "realmRoles": ["external-super-admin"],
+      "credentials": [{ "type": "password", "value": "Keycloak-Test-123!", "temporary": false }]
+    },
+    {
+      "username": "keycloak-consulta-local",
+      "firstName": "Keycloak",
+      "lastName": "Consulta Local",
+      "enabled": true,
+      "email": "keycloak-consulta-local@example.test",
+      "emailVerified": true,
+      "realmRoles": ["external-super-admin"],
+      "credentials": [{ "type": "password", "value": "Keycloak-Test-123!", "temporary": false }]
+    },
+    {
+      "username": "keycloak-inactivo-local",
+      "firstName": "Keycloak",
+      "lastName": "Inactivo Local",
+      "enabled": true,
+      "email": "keycloak-inactivo-local@example.test",
+      "emailVerified": true,
+      "realmRoles": ["external-super-admin"],
+      "credentials": [{ "type": "password", "value": "Keycloak-Test-123!", "temporary": false }]
+    },
+    {
+      "username": "keycloak-desconocido",
+      "firstName": "Keycloak",
+      "lastName": "Desconocido",
+      "enabled": true,
+      "email": "keycloak-desconocido@example.test",
+      "emailVerified": true,
+      "realmRoles": ["external-super-admin"],
+      "credentials": [{ "type": "password", "value": "Keycloak-Test-123!", "temporary": false }]
+    }
+  ]
+}

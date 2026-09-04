@@ -62,7 +62,9 @@ public sealed class UserService
         string? ip,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
         var username = request.NombreUsuario.Trim();
+        PasswordService.ValidatePolicy(request.Contrasena);
 
         if (await _db.Usuarios.AnyAsync(u => u.NombreUsuario == username, cancellationToken))
             throw new InvalidOperationException("Ya existe un usuario con ese nombre.");
@@ -91,6 +93,8 @@ public sealed class UserService
             new { usuario.NombreUsuario, Roles = roles.Select(r => r.Nombre) },
             cancellationToken);
 
+        await transaction.CommitAsync(cancellationToken);
+
         return (await GetByIdAsync(usuario.Id, cancellationToken))!;
     }
 
@@ -101,12 +105,19 @@ public sealed class UserService
         string? ip,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+        await AcquireAdministratorGuardAsync(cancellationToken);
+
         var usuario = await _db.Usuarios
             .Include(u => u.UsuarioRoles)
+            .ThenInclude(ur => ur.Rol)
             .SingleOrDefaultAsync(u => u.Id == id, cancellationToken);
 
         if (usuario is null)
+        {
+            await transaction.RollbackAsync(cancellationToken);
             return null;
+        }
 
         var username = request.NombreUsuario.Trim();
 
@@ -118,8 +129,24 @@ public sealed class UserService
         }
 
         var roles = await ResolveRolesAsync(request.RolIds, cancellationToken);
+        var isAdministrator = usuario.UsuarioRoles.Any(
+            ur => ur.Rol.Nombre == Roles.Administrador);
+        var remainsAdministrator = roles.Any(
+            rol => rol.Nombre == Roles.Administrador);
+
+        if (isAdministrator && !remainsAdministrator)
+        {
+            if (actorUsuarioId == id)
+            {
+                throw new AdministrativeLockoutException(
+                    "Un administrador no puede retirar su propio rol Administrador.");
+            }
+
+            await EnsureAnotherActiveAdministratorAsync(id, cancellationToken);
+        }
 
         usuario.NombreUsuario = username;
+        usuario.SecurityVersion++;
         _db.UsuarioRoles.RemoveRange(usuario.UsuarioRoles);
         usuario.UsuarioRoles = roles
             .Select(rol => new UsuarioRol { UsuarioId = id, RolId = rol.Id })
@@ -136,6 +163,8 @@ public sealed class UserService
             new { usuario.NombreUsuario, Roles = roles.Select(r => r.Nombre) },
             cancellationToken);
 
+        await transaction.CommitAsync(cancellationToken);
+
         return await GetByIdAsync(id, cancellationToken);
     }
 
@@ -146,13 +175,31 @@ public sealed class UserService
         string? ip,
         CancellationToken cancellationToken = default)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+        await AcquireAdministratorGuardAsync(cancellationToken);
+
         var usuario = await _db.Usuarios
+            .Include(u => u.UsuarioRoles)
+            .ThenInclude(ur => ur.Rol)
             .SingleOrDefaultAsync(u => u.Id == id, cancellationToken);
 
         if (usuario is null)
+        {
+            await transaction.RollbackAsync(cancellationToken);
             return false;
+        }
+
+        if (usuario.Activo == activo)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+
+        if (!activo && usuario.UsuarioRoles.Any(ur => ur.Rol.Nombre == Roles.Administrador))
+            await EnsureAnotherActiveAdministratorAsync(id, cancellationToken);
 
         usuario.Activo = activo;
+        usuario.SecurityVersion++;
 
         if (!activo)
         {
@@ -178,7 +225,38 @@ public sealed class UserService
             null,
             cancellationToken);
 
+        await transaction.CommitAsync(cancellationToken);
+
         return true;
+    }
+
+    private async Task EnsureAnotherActiveAdministratorAsync(
+        int excludedUserId,
+        CancellationToken cancellationToken)
+    {
+        var anotherAdministratorExists = await _db.Usuarios
+            .AsNoTracking()
+            .AnyAsync(
+                u => u.Id != excludedUserId &&
+                    u.Activo &&
+                    u.UsuarioRoles.Any(ur => ur.Rol.Nombre == Roles.Administrador),
+                cancellationToken);
+
+        if (!anotherAdministratorExists)
+        {
+            throw new AdministrativeLockoutException(
+                "La operación dejaría el sistema sin un administrador activo.");
+        }
+    }
+
+    private async Task AcquireAdministratorGuardAsync(CancellationToken cancellationToken)
+    {
+        if (_db.Database.IsNpgsql())
+        {
+            await _db.Database.ExecuteSqlRawAsync(
+                "SELECT pg_advisory_xact_lock(2026083001)",
+                cancellationToken);
+        }
     }
 
     private async Task<List<Rol>> ResolveRolesAsync(
@@ -186,16 +264,19 @@ public sealed class UserService
         CancellationToken cancellationToken)
     {
         if (rolIds.Count == 0)
-            return [];
+            throw new UserValidationException("ROLE_REQUIRED", "Debe asignar al menos un rol.");
 
         var distinctIds = rolIds.Distinct().ToArray();
 
+        if (distinctIds.Length != rolIds.Count)
+            throw new UserValidationException("DUPLICATE_ROLE", "No se permiten roles duplicados.");
+
         var roles = await _db.Roles
-            .Where(r => distinctIds.Contains(r.Id))
+            .Where(r => distinctIds.Contains(r.Id) && Roles.Todos.Contains(r.Nombre))
             .ToListAsync(cancellationToken);
 
         if (roles.Count != distinctIds.Length)
-            throw new InvalidOperationException("Uno o más roles no existen.");
+            throw new UserValidationException("INVALID_ROLE", "Uno o más roles no son válidos.");
 
         return roles;
     }

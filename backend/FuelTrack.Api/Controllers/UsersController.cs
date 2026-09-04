@@ -51,6 +51,14 @@ public sealed class UsersController : ControllerBase
 
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { code = "PASSWORD_POLICY_FAILED", message = ex.Message });
+        }
+        catch (UserValidationException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
         catch (InvalidOperationException ex)
         {
             return Conflict(new { code = "USER_CONFLICT", message = ex.Message });
@@ -77,6 +85,14 @@ public sealed class UsersController : ControllerBase
 
             return updated is null ? NotFound() : Ok(updated);
         }
+        catch (AdministrativeLockoutException ex)
+        {
+            return Conflict(new { code = "ADMIN_LOCKOUT_PREVENTED", message = ex.Message });
+        }
+        catch (UserValidationException ex)
+        {
+            return BadRequest(new { code = ex.Code, message = ex.Message });
+        }
         catch (InvalidOperationException ex)
         {
             return Conflict(new { code = "USER_CONFLICT", message = ex.Message });
@@ -101,14 +117,21 @@ public sealed class UsersController : ControllerBase
             });
         }
 
-        var updated = await _users.SetStatusAsync(
-            id,
-            request.Activo,
-            actorId,
-            GetClientIp(),
-            cancellationToken);
+        try
+        {
+            var updated = await _users.SetStatusAsync(
+                id,
+                request.Activo,
+                actorId,
+                GetClientIp(),
+                cancellationToken);
 
-        return updated ? NoContent() : NotFound();
+            return updated ? NoContent() : NotFound();
+        }
+        catch (AdministrativeLockoutException ex)
+        {
+            return Conflict(new { code = "ADMIN_LOCKOUT_PREVENTED", message = ex.Message });
+        }
     }
 
     private string? GetClientIp()
