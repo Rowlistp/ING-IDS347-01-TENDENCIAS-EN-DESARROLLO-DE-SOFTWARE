@@ -1,6 +1,9 @@
+using System.Security.Cryptography;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Auth;
+using FuelTrack.Api.DTOs.Tickets;
 using FuelTrack.Api.Models;
+using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Security;
 using FuelTrack.Api.Services;
 using Microsoft.EntityFrameworkCore;
@@ -337,6 +340,92 @@ public sealed class PostgreSqlSecurityTests
                     user.UsuarioRoles.Any(role => role.Rol.Nombre == Roles.Administrador)));
     }
 
+    [TestMethod]
+    public async Task TicketMigration_CreatesSequenceColumnsAndUsableRequestConstraint()
+    {
+        await using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        Assert.AreEqual(1L, await ScalarLongAsync(
+            connection,
+            "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_schema = 'public' AND sequence_name = 'ticket_numero_seq'"));
+        Assert.AreEqual(1L, await ScalarLongAsync(
+            connection,
+            "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'UX_Tickets_Solicitud_Utilizable'"));
+        Assert.AreEqual(3L, await ScalarLongAsync(
+            connection,
+            "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Tickets' AND column_name IN ('FirmaDigital', 'QrCodePng', 'MotivoAnulacion')"));
+    }
+
+    [TestMethod]
+    public async Task ConcurrentTicketCreation_ProducesUniqueUuidAndSequenceForTwentyFourRequests()
+    {
+        var seeded = await SeedTicketRequestsAsync(24);
+        var options = CreateTicketOptions();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        async Task<TicketCreationResult> CreateAsync(int requestId)
+        {
+            await gate.Task;
+            await using var context = CreateContext();
+            return await CreateTicketService(context, options).CreateAsync(
+                new CreateTicketRequest { SolicitudId = requestId },
+                seeded.ActorId,
+                "127.0.0.1",
+                default);
+        }
+
+        var tasks = seeded.RequestIds.Select(CreateAsync).ToArray();
+        gate.SetResult();
+        var results = await Task.WhenAll(tasks);
+
+        Assert.AreEqual(24, results.Select(item => item.Ticket.Id).Distinct().Count());
+        Assert.AreEqual(24, results.Select(item => item.Ticket.NumeroSecuencial).Distinct().Count());
+        await using var verification = CreateContext();
+        Assert.AreEqual(24, await verification.Tickets.CountAsync());
+    }
+
+    [TestMethod]
+    public async Task ConcurrentTicketCreation_ForSameRequest_LeavesOnlyOneUsableTicket()
+    {
+        var seeded = await SeedTicketRequestsAsync(1);
+        var requestId = seeded.RequestIds.Single();
+        var options = CreateTicketOptions();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        async Task<string> TryCreateAsync()
+        {
+            await gate.Task;
+            await using var context = CreateContext();
+            try
+            {
+                await CreateTicketService(context, options).CreateAsync(
+                    new CreateTicketRequest { SolicitudId = requestId },
+                    seeded.ActorId,
+                    "127.0.0.1",
+                    default);
+                return "CREATED";
+            }
+            catch (TicketDomainException exception)
+            {
+                return exception.Code;
+            }
+        }
+
+        var attempts = new[] { TryCreateAsync(), TryCreateAsync() };
+        gate.SetResult();
+        var results = await Task.WhenAll(attempts);
+
+        Assert.AreEqual(1, results.Count(result => result == "CREATED"));
+        Assert.AreEqual(1, results.Count(result => result == "TICKET_UTILIZABLE_EXISTENTE"));
+        await using var verification = CreateContext();
+        Assert.AreEqual(1, await verification.Tickets.CountAsync(ticket =>
+            ticket.SolicitudId == requestId &&
+            ticket.Estado != EstadoTicket.Vencido &&
+            ticket.Estado != EstadoTicket.Consumido &&
+            ticket.Estado != EstadoTicket.Anulado));
+    }
+
     private AppDbContext CreateContext()
         => new(new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(_connectionString)
@@ -372,4 +461,81 @@ public sealed class PostgreSqlSecurityTests
         PasswordService Passwords,
         AuditService Audit,
         AuthService Auth);
+
+    private async Task<(int ActorId, int[] RequestIds)> SeedTicketRequestsAsync(int count)
+    {
+        await using var db = CreateContext();
+        var department = new Departamento { Nombre = "PostgreSQL Tickets", Activo = true };
+        var fuel = new TipoCombustible { Nombre = "Diesel Ticket", Activo = true };
+        var employee = new Empleado
+        {
+            Codigo = "PG-TICKET",
+            NombreCompleto = "PostgreSQL Concurrente",
+            Cedula = "00100000002",
+            Cargo = "Pruebas",
+            Correo = "postgres@example.test",
+            Telefono = "+18095550102",
+            Activo = true,
+            Departamento = department
+        };
+        var vehicle = new Vehiculo
+        {
+            Placa = "PG00001",
+            Ficha = "PG-FICHA",
+            Marca = "Prueba",
+            Modelo = "Concurrente",
+            Año = 2026,
+            Tipo = "Camioneta",
+            CapacidadTanque = 30,
+            Activo = true,
+            Departamento = department
+        };
+        var actor = new Usuario
+        {
+            NombreUsuario = "postgres-ticket-actor",
+            PasswordHash = "test-only",
+            Activo = true
+        };
+        db.AddRange(department, fuel, employee, vehicle, actor);
+        await db.SaveChangesAsync();
+
+        var requests = Enumerable.Range(1, count).Select(index => new SolicitudCombustible
+        {
+            CantidadSolicitada = 10 + index,
+            CantidadAutorizada = 10 + index,
+            TipoSolicitud = "Manual",
+            Estado = EstadoSolicitud.Aprobada,
+            FechaSolicitud = DateTime.UtcNow,
+            FechaVencimiento = DateTime.UtcNow.AddDays(2),
+            EmpleadoId = employee.Id,
+            VehiculoId = vehicle.Id,
+            DepartamentoId = department.Id,
+            TipoCombustibleId = fuel.Id
+        }).ToArray();
+        db.SolicitudesCombustible.AddRange(requests);
+        await db.SaveChangesAsync();
+        return (actor.Id, requests.Select(item => item.Id).ToArray());
+    }
+
+    private static IOptions<TicketOptions> CreateTicketOptions()
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        return Options.Create(new TicketOptions
+        {
+            Prefix = "COM",
+            SigningPrivateKeyPkcs8Base64 = Convert.ToBase64String(key.ExportPkcs8PrivateKey()),
+            SigningPublicKeySpkiBase64 = Convert.ToBase64String(key.ExportSubjectPublicKeyInfo())
+        });
+    }
+
+    private static TicketService CreateTicketService(
+        AppDbContext db,
+        IOptions<TicketOptions> options)
+        => new(
+            db,
+            new TicketNumberService(db),
+            new TicketQrService(options),
+            new TicketPdfService(),
+            new AuditService(db),
+            options);
 }

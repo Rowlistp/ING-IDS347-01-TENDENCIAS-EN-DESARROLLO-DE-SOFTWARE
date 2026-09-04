@@ -10,11 +10,14 @@ on:
       - "docs/08-ROLES-PERMISOS.md"
       - "docs/17-PRUEBAS-FASE1-SEGURIDAD.md"
       - "docs/18-CIERRE-FASE1.md"
+      - "docs/21-PRUEBAS-FASE4-TICKETS-QR.md"
+      - "docs/22-CIERRE-FASE4.md"
       - ".github/workflows/backend-security.yml"
   push:
     branches:
       - feature/seguridad-movil
       - integration/builder2-fase1
+      - feature/builder2-fase4-tickets-qr
     paths:
       - "backend/**"
       - "infra/keycloak/**"
