@@ -413,8 +413,26 @@ public sealed class TicketServiceTests
         CollectionAssert.AreEquivalent(
             new[] { "EMAIL", "SMS" },
             await _db.Notificaciones.Select(item => item.Canal).ToArrayAsync());
-        Assert.AreEqual(EstadoTicket.Enviado, (await _db.Tickets.SingleAsync()).Estado);
+        Assert.AreEqual(EstadoTicket.Pendiente, (await _db.Tickets.SingleAsync()).Estado);
         Assert.AreEqual(1, await _db.Auditorias.CountAsync(item => item.Evento == "TICKET_PREPARADO_ENVIO"));
+    }
+
+    [TestMethod]
+    public async Task PrepareSend_UsesExistingQueueEvenWhenTicketIsCreated()
+    {
+        var created = await CreateAsync(await AddRequestAsync());
+        _db.Notificaciones.Add(new Notificacion
+        {
+            Tipo = "TICKET_EMITIDO", Canal = "EMAIL", Estado = "PENDIENTE",
+            Destinatario = "ada@example.test", ReferenciaEvento = created.Ticket.Id.ToString("D"), FechaHora = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+        var first = await _service.PrepareSendAsync(created.Ticket.Id, _actorId, null, default);
+        var second = await _service.PrepareSendAsync(created.Ticket.Id, _actorId, null, default);
+        Assert.AreEqual(1, first.NotificacionesPendientes);
+        Assert.AreEqual(0, second.NotificacionesPendientes);
+        Assert.AreEqual(2, await _db.Notificaciones.CountAsync());
+        Assert.AreEqual(EstadoTicket.Pendiente, second.Ticket.Estado);
     }
 
     [TestMethod]

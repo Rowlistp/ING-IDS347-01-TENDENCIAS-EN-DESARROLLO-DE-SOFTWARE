@@ -85,6 +85,16 @@ son otra operación de negocio que se implementará en Fase 5.
 No. En Fase 4 prepara registros `PENDIENTE` para los canales disponibles. El
 transporte y su confirmación pertenecen a Fase 9.
 
+El Ticket queda `Pendiente` hasta que F9 confirme el transporte y lo marque
+`Enviado`. Preparar varias veces no duplica los registros pendientes por canal;
+PostgreSQL bloquea la fila durante la preparación para evitar carreras.
+
+### ¿Puede el Solicitante consultar cualquier Ticket?
+
+Solo los asociados a su usuario a través de `Empleado.UsuarioId`, incluido su
+PDF. Un recurso ajeno devuelve `404` para no revelar su existencia. Los permisos
+de lectura no habilitan emisión, anulación, validación operacional ni envío.
+
 ### ¿Cómo se evita una doble emisión simultánea?
 
 El servicio revisa la regla para dar un error claro y PostgreSQL la refuerza

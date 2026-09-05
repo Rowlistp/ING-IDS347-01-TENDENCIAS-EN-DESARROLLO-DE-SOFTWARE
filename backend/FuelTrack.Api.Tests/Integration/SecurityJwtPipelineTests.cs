@@ -204,7 +204,7 @@ public sealed class SecurityJwtPipelineTests
     }
 
     [TestMethod]
-    public async Task Tickets_WithSolicitanteRole_Returns403()
+    public async Task Tickets_WithSolicitanteRole_ReturnsEmptyOwnedList()
     {
         var token = await CreateTokenAsync(Roles.Solicitante);
         _client.DefaultRequestHeaders.Authorization =
@@ -212,7 +212,34 @@ public sealed class SecurityJwtPipelineTests
 
         var response = await _client.GetAsync("/api/v1/tickets");
 
-        Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual(0, (await response.Content.ReadFromJsonAsync<TicketResponse[]>())!.Length);
+    }
+
+    [TestMethod]
+    public async Task Tickets_Solicitante_CanReadOnlyOwnedTicketsAndPdf()
+    {
+        var owner = await CreateTokenWithUserIdAsync(Roles.Solicitante);
+        var other = await CreateTokenWithUserIdAsync(Roles.Solicitante);
+        var ownRequest = await SeedApprovedTicketRequestAsync(owner.UserId);
+        var otherRequest = await SeedApprovedTicketRequestAsync(other.UserId);
+        var admin = await CreateTokenAsync(Roles.Administrador);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", admin);
+        var ownResponse = await _client.PostAsJsonAsync("/api/v1/tickets", new CreateTicketRequest { SolicitudId = ownRequest });
+        var foreignResponse = await _client.PostAsJsonAsync("/api/v1/tickets", new CreateTicketRequest { SolicitudId = otherRequest });
+        Assert.AreEqual(HttpStatusCode.Created, ownResponse.StatusCode);
+        Assert.AreEqual(HttpStatusCode.Created, foreignResponse.StatusCode);
+        var own = (await ownResponse.Content.ReadFromJsonAsync<TicketResponse>())!;
+        var foreign = (await foreignResponse.Content.ReadFromJsonAsync<TicketResponse>())!;
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", owner.Token);
+        var list = (await _client.GetFromJsonAsync<TicketResponse[]>("/api/v1/tickets"))!;
+        CollectionAssert.AreEqual(new[] { own.Id }, list.Select(item => item.Id).ToArray());
+        Assert.AreEqual(HttpStatusCode.OK, (await _client.GetAsync($"/api/v1/tickets/{own.Id}")).StatusCode);
+        Assert.AreEqual(HttpStatusCode.NotFound, (await _client.GetAsync($"/api/v1/tickets/{foreign.Id}")).StatusCode);
+        Assert.AreEqual(HttpStatusCode.OK, (await _client.GetAsync($"/api/v1/tickets/{own.Id}/pdf")).StatusCode);
+        Assert.AreEqual(HttpStatusCode.NotFound, (await _client.GetAsync($"/api/v1/tickets/{foreign.Id}/pdf")).StatusCode);
+        Assert.AreEqual(HttpStatusCode.Forbidden, (await _client.PostAsJsonAsync("/api/v1/tickets/validar", new ValidateTicketRequest { QrPayload = "FTQR1.test" })).StatusCode);
+        Assert.AreEqual(HttpStatusCode.Forbidden, (await _client.PostAsJsonAsync("/api/v1/tickets", new CreateTicketRequest { SolicitudId = ownRequest })).StatusCode);
     }
 
     [TestMethod]
@@ -320,7 +347,7 @@ public sealed class SecurityJwtPipelineTests
         return (token, user.Id);
     }
 
-    private async Task<int> SeedApprovedTicketRequestAsync()
+    private async Task<int> SeedApprovedTicketRequestAsync(int? ownerUserId = null)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -331,6 +358,7 @@ public sealed class SecurityJwtPipelineTests
         {
             Codigo = $"E-{suffix}",
             NombreCompleto = "API Ticket",
+            UsuarioId = ownerUserId,
             Cedula = suffix,
             Cargo = "Prueba",
             Correo = $"{suffix}@example.test",

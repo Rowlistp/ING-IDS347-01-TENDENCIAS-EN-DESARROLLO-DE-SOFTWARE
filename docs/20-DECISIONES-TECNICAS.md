@@ -36,7 +36,8 @@ en `16-DECISION-NET10.md`.
 | Persistencia QR | Hashes/firma y PNG; no columna con token en claro | Modelo `Ticket` |
 | PDF | QuestPDF 2026.8.0 bajo licencia Community para uso académico | `TicketPdfService` |
 | Generación QR | QRCoder 1.8.0, licencia MIT | `TicketQrService` |
-| Envío F4/F9 | F4 crea `Notificacion` pendiente; F9 transportará SMTP/SMS | `PrepareSendAsync` |
+| Envío F4/F9 | F4 crea cola idempotente y Ticket `Pendiente`; F9 confirma transporte y `Enviado` | `PrepareSendAsync`, bloqueo por Ticket PostgreSQL |
+| Ownership F4 | Solicitante lee solo sus Tickets/PDF; recurso ajeno responde `404` | Filtro `Empleado.UsuarioId` en SQL y tests HTTP |
 
 ## 3. Decisiones pendientes
 

@@ -17,8 +17,8 @@ Definir una matriz inicial RBAC a partir de los actores y responsabilidades del 
 
 `Consulta` es el rol mínimo de lectura definido por el SRS. `Solicitante` se
 conserva como rol técnico distinto porque el actor aparece en los flujos de
-solicitudes y podrá operar sobre recursos propios cuando Fase 3 defina esa
-relación. No son alias: el alcance exacto de ambos sigue pendiente de aprobación.
+solicitudes. En F4 consulta exclusivamente Tickets propios mediante
+`Ticket.Empleado.UsuarioId`; un Ticket/PDF ajeno responde `404`. No son alias.
 
 Este catálogo es cerrado. `GET /api/v1/roles` permite al Administrador consultar
 los roles permitidos persistidos, pero no crearlos, renombrarlos ni eliminarlos.
@@ -40,7 +40,7 @@ PostgreSQL después de resolver al usuario activo.
 | Crear solicitud | Según política | Sí | No | No | No | Sí |
 | Aprobar solicitudes | Sí/según política | Sí | No | No | No | No |
 | Emitir ticket | Sí/según política | Sí | No | No | No | No |
-| Consultar ticket/PDF | Sí | Sí | Sí | Sí | Sí | No |
+| Consultar ticket/PDF | Sí | Sí | Sí | Sí | Sí | Solo propios |
 | Validar QR | Sí | Sí | Sí | Sí | Sí | No |
 | Preparar envío de ticket | Sí | Sí | No | No | No | No |
 | Anular ticket | Sí | Sí | No | No | No | No |
@@ -79,7 +79,7 @@ El SRS no especifica estas restricciones, por lo que requieren aprobación.
 
 ## 7. Pendientes
 
-- Alcance funcional exacto de `Consulta` y alcance de recursos propios de `Solicitante`.
+- Alcance de `Consulta` y `Solicitante` fuera de los endpoints Tickets ya definidos.
 - Permisos del Administrador sobre despachos.
 - Alcance departamental.
 - Permisos sobre transferencias.

@@ -188,11 +188,22 @@ y `TICKET_ANULADO`.
 
 #### Envío, anulación y PDF
 
+`GET /tickets`, `GET /tickets/{id}` y `GET /tickets/{id}/pdf` permiten además
+`Solicitante`, filtrando por `Ticket.Empleado.UsuarioId == usuario autenticado`.
+Un recurso ajeno devuelve `404`, igual que uno inexistente. Sin empleado
+vinculado, el listado está vacío. Si el usuario posee además un rol operacional,
+conserva el alcance de ese rol. Solicitante no puede validar QR operacional,
+emitir, anular ni preparar envío.
+
 - `POST /{id}/enviar`: Admin/Supervisor; crea una notificación `PENDIENTE` por
-  correo/teléfono disponible. No ejecuta SMTP ni SMS.
+  correo/teléfono disponible y deja el Ticket en `Pendiente`. No ejecuta SMTP ni
+  SMS. No duplica una notificación pendiente del mismo tipo, Ticket y canal;
+  `notificacionesPendientes` cuenta los registros nuevos de esta invocación.
+  PostgreSQL serializa preparaciones simultáneas por Ticket. `Enviado` queda
+  reservado a F9 tras confirmar transporte real.
 - `POST /{id}/anular`: Admin/Supervisor; requiere `{ "motivo": "..." }`,
   rechaza tickets consumidos/vencidos y es idempotente si ya estaba anulado.
-- `GET /{id}/pdf`: roles operacionales; devuelve `application/pdf` con el mismo
+- `GET /{id}/pdf`: roles operacionales o Solicitante propietario; devuelve `application/pdf` con el mismo
   QR emitido y registra auditoría.
 
 Errores de negocio de emisión usan `400`, `404` o `409` con `code` y `message`.

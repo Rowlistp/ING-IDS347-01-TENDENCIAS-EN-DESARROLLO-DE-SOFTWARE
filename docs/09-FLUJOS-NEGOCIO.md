@@ -30,6 +30,12 @@ Fase 4 no transporta mensajes: `POST /tickets/{id}/enviar` crea registros
 `Notificacion` con estado `PENDIENTE` para los canales disponibles. Fase 9
 implementará SMTP/SMS y actualizará el resultado de entrega.
 
+El estado del Ticket sigue `Creado → Pendiente → Enviado`. La primera transición
+ocurre al preparar la cola lógica; la segunda pertenece a F9 tras transporte
+confirmado. Repetir la preparación no duplica EMAIL/SMS pendientes, incluso con
+peticiones concurrentes. El Solicitante consulta estado/PDF de sus Tickets;
+los recursos ajenos no son visibles.
+
 La emisión recibe únicamente `SolicitudId`, valida que la Solicitud esté
 aprobada y copia sus datos autorizados. PostgreSQL asigna la secuencia y evita
 dos tickets utilizables simultáneos para la misma Solicitud.

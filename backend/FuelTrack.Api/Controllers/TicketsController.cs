@@ -15,17 +15,24 @@ public sealed class TicketsController(TicketService tickets) : ControllerBase
     private const string OperationalRoles =
         $"{Roles.Administrador},{Roles.Supervisor},{Roles.Despachador},{Roles.Auditor},{Roles.Consulta}";
     private const string ManagementRoles = $"{Roles.Administrador},{Roles.Supervisor}";
+    private const string ReadRoles = $"{OperationalRoles},{Roles.Solicitante}";
 
     [HttpGet]
-    [Authorize(Roles = OperationalRoles)]
+    [Authorize(Roles = ReadRoles)]
     public async Task<ActionResult<IReadOnlyCollection<TicketResponse>>> GetAll(CancellationToken cancellationToken)
-        => Ok(await tickets.GetAllAsync(cancellationToken));
+    {
+        if (!TryGetCurrentUserId(out var actorId))
+            return Unauthorized();
+        return Ok(await tickets.GetAllAsync(cancellationToken, OwnerFilter(actorId)));
+    }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = OperationalRoles)]
+    [Authorize(Roles = ReadRoles)]
     public async Task<ActionResult<TicketResponse>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var ticket = await tickets.GetByIdAsync(id, cancellationToken);
+        if (!TryGetCurrentUserId(out var actorId))
+            return Unauthorized();
+        var ticket = await tickets.GetByIdAsync(id, cancellationToken, OwnerFilter(actorId));
         return ticket is null ? NotFound() : Ok(ticket);
     }
 
@@ -109,7 +116,7 @@ public sealed class TicketsController(TicketService tickets) : ControllerBase
     }
 
     [HttpGet("{id:guid}/pdf")]
-    [Authorize(Roles = OperationalRoles)]
+    [Authorize(Roles = ReadRoles)]
     public async Task<IActionResult> GetPdf(Guid id, CancellationToken cancellationToken)
     {
         if (!TryGetCurrentUserId(out var actorId))
@@ -121,7 +128,8 @@ public sealed class TicketsController(TicketService tickets) : ControllerBase
                 id,
                 actorId,
                 GetClientIp(),
-                cancellationToken);
+                cancellationToken,
+                OwnerFilter(actorId));
             return File(result.Content, "application/pdf", result.FileName);
         }
         catch (TicketDomainException exception)
@@ -135,6 +143,9 @@ public sealed class TicketsController(TicketService tickets) : ControllerBase
 
     private string? GetClientIp()
         => HttpContext.Connection.RemoteIpAddress?.ToString();
+
+    private int? OwnerFilter(int actorId)
+        => OperationalRoles.Split(',').Any(User.IsInRole) ? null : actorId;
 
     private bool TryGetCurrentUserId(out int userId)
         => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);

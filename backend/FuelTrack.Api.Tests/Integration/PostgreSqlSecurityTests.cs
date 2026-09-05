@@ -426,6 +426,31 @@ public sealed class PostgreSqlSecurityTests
             ticket.Estado != EstadoTicket.Anulado));
     }
 
+    [TestMethod]
+    public async Task ConcurrentPrepareSend_CreatesOnePendingNotificationPerChannel()
+    {
+        var seeded = await SeedTicketRequestsAsync(1);
+        var options = CreateTicketOptions();
+        Guid ticketId;
+        await using (var db = CreateContext())
+            ticketId = (await CreateTicketService(db, options).CreateAsync(
+                new CreateTicketRequest { SolicitudId = seeded.RequestIds.Single() }, seeded.ActorId, null, default)).Ticket.Id;
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        async Task<int> SendAsync()
+        {
+            await gate.Task;
+            await using var db = CreateContext();
+            return (await CreateTicketService(db, options).PrepareSendAsync(ticketId, seeded.ActorId, null, default)).NotificacionesPendientes;
+        }
+        var tasks = Enumerable.Range(0, 8).Select(_ => SendAsync()).ToArray();
+        gate.SetResult();
+        Assert.AreEqual(2, (await Task.WhenAll(tasks)).Sum());
+        await using var verification = CreateContext();
+        Assert.AreEqual(2, await verification.Notificaciones.CountAsync());
+        Assert.AreEqual(EstadoTicket.Pendiente, (await verification.Tickets.SingleAsync()).Estado);
+        Assert.AreEqual(1, await verification.Auditorias.CountAsync(item => item.Evento == "TICKET_PREPARADO_ENVIO"));
+    }
+
     private AppDbContext CreateContext()
         => new(new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(_connectionString)

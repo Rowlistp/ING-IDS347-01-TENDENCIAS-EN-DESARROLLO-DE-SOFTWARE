@@ -1,5 +1,9 @@
 # 10 - Plan de Pruebas
 
+El gate correctivo F4 verifica listado/consulta/PDF propios del Solicitante,
+`404` ajeno, prohibición de acciones operacionales, estado `Pendiente` y una sola
+notificación por canal con ocho preparaciones simultáneas en PostgreSQL real.
+
 ## 1. Objetivo
 
 Definir una estrategia inicial de pruebas alineada con el SRS y sus criterios de aceptación.

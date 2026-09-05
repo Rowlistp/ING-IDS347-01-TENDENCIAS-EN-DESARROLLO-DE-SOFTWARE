@@ -21,6 +21,8 @@ ni los módulos de Builder 1.
 | Envío | Creación idempotente de `Notificacion` pendiente sin invocar SMTP ni SMS |
 | PDF | Respuesta PDF no vacía, datos básicos, mismo QR persistido y auditoría |
 | API/RBAC | `401`, `403`, roles operativos y ciclo HTTP completo |
+| Propiedad | Solicitante lista/consulta/descarga solo propios; ajenos `404` y acciones operacionales `403` |
+| Cola lógica | Ticket `Pendiente`, reutiliza EMAIL existente y ocho preparaciones concurrentes generan una notificación por canal |
 | Persistencia | Migraciones desde cero, secuencia, columnas e índice parcial único en PostgreSQL 16 |
 | Regresión F1 | JWT, refresh, auditoría append-only, Keycloak 26.7.3 y Authorization Code + PKCE S256 |
 
@@ -59,10 +61,10 @@ firma generan claves ECDSA efímeras; ninguna clave privada real se versiona.
 |---|---|
 | Restore | Aprobado |
 | Build Release | Aprobado: 0 errores, 0 advertencias |
-| Suite sin infraestructura | 156 aprobadas, 0 fallidas; 8 omitidas porque Keycloak no estaba configurado en esa corrida local |
-| PostgreSQL 16 aislado | 10 pruebas de integración aprobadas |
-| Keycloak 26.7.3 aislado | 8 pruebas OIDC/PKCE aprobadas |
-| Gate combinado PostgreSQL + Keycloak | **174 aprobadas, 0 fallidas, 0 omitidas** |
+| Suite sin infraestructura (filtro explícito) | 158 aprobadas, 0 fallidas, 0 omitidas |
+| PostgreSQL 16 dentro del gate completo | 11 pruebas de integración aprobadas |
+| Keycloak 26.7.3 dentro del gate completo | 8 pruebas OIDC/PKCE aprobadas |
+| Gate combinado PostgreSQL + Keycloak | **177 aprobadas, 0 fallidas, 0 omitidas** |
 | Modelo frente a última migración | Sin cambios pendientes |
 | `git diff --check` | Aprobado |
 

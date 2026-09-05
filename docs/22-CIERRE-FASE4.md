@@ -12,6 +12,9 @@
 - QR firmado con ECDSA P-256, SHA-256 y token aleatorio de 256 bits.
 - Validación criptográfica y de estado sin consumir el Ticket.
 - Consulta, anulación, PDF y preparación lógica de envío.
+- Solicitante consulta exclusivamente sus Tickets y PDF; recursos ajenos `404`.
+- Preparación de envío deja Ticket `Pendiente`, con idempotencia por canal y
+  bloqueo PostgreSQL ante concurrencia; `Enviado` queda reservado a transporte F9.
 - RBAC, auditoría, migración EF Core y pruebas reales de concurrencia.
 
 ## Requisitos
@@ -22,7 +25,7 @@
 | RF-07 | Implementado: QR firmado y verificable |
 | RF-08 | Implementado: UUID, prefijo y secuencia PostgreSQL única |
 | RF-09 | Parcial deliberado: registra notificaciones pendientes; transporte real queda en Fase 9 |
-| RF-10 | Implementado en backend: consulta y estado efectivo |
+| RF-10 | Implementado en backend: consulta/estado efectivo y Tickets/PDF propios del Solicitante |
 | RS-04 | Implementado: ECDSA P-256, SHA-256 y token aleatorio de 256 bits |
 
 ## Contrato entregado
@@ -69,7 +72,7 @@ dos procesos intenten emitir simultáneamente.
 ## Evidencia de cierre
 
 - Build Release: 0 errores y 0 advertencias.
-- Suite combinada: **174 aprobadas, 0 fallidas, 0 omitidas**.
+- Suite combinada correctiva: **177 aprobadas, 0 fallidas, 0 omitidas**.
 - PostgreSQL 16 real: migraciones desde cero, constraints y concurrencia verdes.
 - Keycloak 26.7.3 real: OIDC y PKCE verdes; Fase 1 sin regresiones.
 - EF Core: modelo y snapshot sin cambios pendientes.

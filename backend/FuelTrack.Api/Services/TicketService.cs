@@ -23,9 +23,10 @@ public sealed class TicketService(
 {
     private readonly TicketOptions _options = configuredOptions.Value;
 
-    public async Task<IReadOnlyCollection<TicketResponse>> GetAllAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<TicketResponse>> GetAllAsync(CancellationToken cancellationToken, int? ownerUserId = null)
     {
         var tickets = await TicketQuery(asTracking: false)
+            .Where(ticket => ownerUserId == null || ticket.Empleado.UsuarioId == ownerUserId)
             .OrderByDescending(ticket => ticket.FechaCreacion)
             .ThenByDescending(ticket => ticket.NumeroSecuencial)
             .ToListAsync(cancellationToken);
@@ -33,10 +34,11 @@ public sealed class TicketService(
         return tickets.Select(ToResponse).ToArray();
     }
 
-    public async Task<TicketResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<TicketResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken, int? ownerUserId = null)
     {
         var ticket = await TicketQuery(asTracking: false)
-            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+            .SingleOrDefaultAsync(item => item.Id == id &&
+                (ownerUserId == null || item.Empleado.UsuarioId == ownerUserId), cancellationToken);
         return ticket is null ? null : ToResponse(ticket);
     }
 
@@ -229,6 +231,10 @@ public sealed class TicketService(
         CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        // Serializa los preparadores del mismo Ticket entre procesos antes de leer la cola.
+        if (db.Database.IsNpgsql())
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT 1 FROM \"Tickets\" WHERE \"Id\" = {id} FOR UPDATE", cancellationToken);
         var ticket = await TicketQuery(asTracking: true)
             .SingleOrDefaultAsync(item => item.Id == id, cancellationToken)
             ?? throw Error(404, "TICKET_NO_ENCONTRADO", "El ticket no existe.");
@@ -248,8 +254,20 @@ public sealed class TicketService(
         if (pending.Count == 0)
             throw Error(409, "DESTINATARIO_NO_DISPONIBLE", "El empleado no tiene correo ni teléfono disponible.");
 
+        var reference = id.ToString("D");
+        var queuedChannels = await db.Notificaciones
+            .Where(item => item.Tipo == "TICKET_EMITIDO" && item.ReferenciaEvento == reference && item.Estado == "PENDIENTE")
+            .Select(item => item.Canal)
+            .ToListAsync(cancellationToken);
+        pending.RemoveAll(item => queuedChannels.Contains(item.Canal));
+        if (pending.Count == 0 && ticket.Estado == EstadoTicket.Pendiente)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return new SendTicketResponse(ToResponse(ticket), 0);
+        }
+
         db.Notificaciones.AddRange(pending);
-        ticket.Estado = EstadoTicket.Enviado;
+        ticket.Estado = EstadoTicket.Pendiente;
         await db.SaveChangesAsync(cancellationToken);
         await audit.WriteAsync(
             "TICKET_PREPARADO_ENVIO",
@@ -267,10 +285,12 @@ public sealed class TicketService(
         Guid id,
         int actorUserId,
         string? ip,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? ownerUserId = null)
     {
         var ticket = await TicketQuery(asTracking: true)
-            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken)
+            .SingleOrDefaultAsync(item => item.Id == id &&
+                (ownerUserId == null || item.Empleado.UsuarioId == ownerUserId), cancellationToken)
             ?? throw Error(404, "TICKET_NO_ENCONTRADO", "El ticket no existe.");
         var response = ToResponse(ticket);
         var content = pdf.Generate(response, ticket.QrCodePng);

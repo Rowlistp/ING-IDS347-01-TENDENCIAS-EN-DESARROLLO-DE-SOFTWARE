@@ -19,7 +19,7 @@ existencia de una entidad o pantalla complete un requisito.
 | RF-07 | QR seguro | 4 | Builder 2 | CU-09, CU-12 | Seguridad QR | Manipulación, firma, hash y token | **Implementado/Validado** |
 | RF-08 | Numeración de tickets | 4 | Builder 2 | CU-08 | Secuencia/prefijo | PostgreSQL concurrente 24 tickets | **Implementado/Validado** |
 | RF-09 | Envío de tickets | 4 y 9 | Builder 2 | CU-10 | Notificación pendiente | Suite F4 | Parcial F4 validado; transporte SMTP/SMS pendiente F9 |
-| RF-10 | Consulta de estado | 4 | Builder 2 + Builder 3 web | CU-11 | `/api/v1/tickets` | Suite F4 estado efectivo/RBAC | **Implementado/Validado backend** |
+| RF-10 | Consulta de estado y Tickets propios por Solicitante | 4 | Builder 2 + Builder 3 web | CU-11 | `/api/v1/tickets` | Suite F4 estado efectivo/RBAC/ownership/PDF | **Implementado/Validado backend** |
 | RF-11 | Asignaciones manuales/automáticas | 3 | Builder 1 backend + Builder 3 web | CU-06, CU-07 | Solicitudes/reglas | Pendiente | Pendiente por fase |
 | RF-12 | Despacho de combustible | 5 | Builder 2 | CU-12, CU-13 | Despacho móvil/API | Pendiente | Pendiente por fase |
 | RF-13 | Aplicación móvil para despacho | 5 | Builder 2 | CU-01, CU-12, CU-13 | Flutter | Pendiente | Pendiente por fase |
