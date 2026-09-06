@@ -152,12 +152,23 @@ public sealed class KeycloakOidcTests
         Assert.AreEqual(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/roles")).StatusCode);
     }
 
-    private async Task<string> AcquirePkceTokenAsync(string username)
+    [TestMethod]
+    public async Task MobileClient_PkceCallback_UsesLocalRoles()
+    {
+        var token = await AcquirePkceTokenAsync("keycloak-consulta-local", "fueltrack-mobile");
+        _api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _api.GetAsync("/api/v1/auth/me");
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        CollectionAssert.AreEqual(new[] { Roles.Consulta }, json.RootElement.GetProperty("roles").EnumerateArray().Select(r => r.GetString()).ToArray());
+    }
+
+    private async Task<string> AcquirePkceTokenAsync(string username, string clientId = "fueltrack-web")
     {
         const string verifier = "fueltrack-pkce-verifier-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         var challenge = Convert.ToBase64String(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)))
             .TrimEnd('=').Replace('+', '-').Replace('/', '_');
-        const string redirectUri = "http://localhost:5173/callback";
+        var redirectUri = clientId == "fueltrack-mobile" ? "fueltrack://callback" : "http://localhost:5173/callback";
 
         using var handler = new HttpClientHandler
         {
@@ -166,7 +177,7 @@ public sealed class KeycloakOidcTests
         };
         using var client = new HttpClient(handler);
         var authorizationUrl = $"{_baseUrl}/realms/fueltrack/protocol/openid-connect/auth" +
-            $"?client_id=fueltrack-web&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
+            $"?client_id={clientId}&redirect_uri={Uri.EscapeDataString(redirectUri)}" +
             $"&response_type=code&scope=openid&state=fueltrack-test" +
             $"&code_challenge={challenge}&code_challenge_method=S256";
 
@@ -215,7 +226,7 @@ public sealed class KeycloakOidcTests
             new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["grant_type"] = "authorization_code",
-                ["client_id"] = "fueltrack-web",
+                ["client_id"] = clientId,
                 ["redirect_uri"] = redirectUri,
                 ["code"] = code!,
                 ["code_verifier"] = verifier

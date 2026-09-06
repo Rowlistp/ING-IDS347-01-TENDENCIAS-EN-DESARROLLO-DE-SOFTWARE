@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Tickets;
+using FuelTrack.Api.DTOs.Dispatch;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Security;
@@ -324,6 +325,70 @@ public sealed class SecurityJwtPipelineTests
 
     private async Task<string> CreateTokenAsync(string role)
         => (await CreateTokenWithUserIdAsync(role)).Token;
+
+    [TestMethod]
+    [DataRow(Roles.Administrador)]
+    [DataRow(Roles.Supervisor)]
+    [DataRow(Roles.Auditor)]
+    [DataRow(Roles.Consulta)]
+    [DataRow(Roles.Solicitante)]
+    public async Task Dispatch_PostRequiresDispatcher(string role)
+    {
+        var token = await CreateTokenAsync(role);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.PostAsJsonAsync("/api/v1/despachos", new CreateDispatchRequest { QrPayload = "test", TanqueId = 1, EstacionId = 1, GalonesServidos = 5 });
+        Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [TestMethod]
+    public async Task Dispatch_NoSession_Returns401()
+    {
+        var response = await _client.PostAsJsonAsync("/api/v1/despachos", new CreateDispatchRequest());
+        Assert.AreEqual(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [TestMethod]
+    public async Task Dispatch_HttpLifecycle_ValidatesConsumesAndReconciles()
+    {
+        var requestId = await SeedApprovedTicketRequestAsync();
+        var identity = await CreateTokenWithUserIdAsync(Roles.Despachador);
+        string payload;
+        Guid ticketId;
+        int tankId, stationId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            (await db.UsuarioRoles.Include(r => r.Rol).SingleAsync(r => r.UsuarioId == identity.UserId)).Rol.Nombre = Roles.Despachador;
+            var request = await db.SolicitudesCombustible.SingleAsync(r => r.Id == requestId);
+            var tank = new Tanque { Identificacion = "HTTP-TANK", TipoCombustibleId = request.TipoCombustibleId, Capacidad = 100 };
+            var station = new Estacion { Nombre = "HTTP-STATION" };
+            db.AddRange(tank, station);
+            db.Inventarios.Add(new Inventario { Tanque = tank, ExistenciaActual = 50, Disponibilidad = 50, UltimaActualizacion = DateTime.UtcNow });
+            await db.SaveChangesAsync();
+            var created = await scope.ServiceProvider.GetRequiredService<FuelTrack.Api.Services.TicketService>().CreateAsync(
+                new CreateTicketRequest { SolicitudId = requestId }, identity.UserId, null, default);
+            payload = created.QrPayload; ticketId = created.Ticket.Id; tankId = tank.Id; stationId = station.Id;
+        }
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", identity.Token);
+        Assert.AreEqual(HttpStatusCode.OK, (await _client.GetAsync("/api/v1/auth/me")).StatusCode);
+        Assert.AreEqual(HttpStatusCode.OK, (await _client.GetAsync("/api/v1/estaciones")).StatusCode);
+        var validation = await _client.PostAsJsonAsync("/api/v1/tickets/validar", new ValidateTicketRequest { QrPayload = payload });
+        Assert.IsTrue((await validation.Content.ReadFromJsonAsync<TicketValidationResponse>())!.Valido);
+        var dispatchRequest = new CreateDispatchRequest { TicketId = ticketId, QrPayload = payload, TanqueId = tankId, EstacionId = stationId, GalonesServidos = 5 };
+        var response = await _client.PostAsJsonAsync("/api/v1/despachos", dispatchRequest);
+        Assert.AreEqual(HttpStatusCode.Created, response.StatusCode);
+        var result = (await response.Content.ReadFromJsonAsync<DispatchResponse>())!;
+        Assert.AreEqual(45m, result.InventarioRestante);
+        Assert.AreEqual(EstadoTicket.Consumido, result.EstadoTicket);
+        var query = await _client.GetFromJsonAsync<DispatchResponse[]>($"/api/v1/despachos?ticketId={ticketId}");
+        Assert.AreEqual(result.DespachoId, query!.Single().DespachoId);
+        Assert.AreEqual(HttpStatusCode.OK, (await _client.GetAsync($"/api/v1/despachos/{result.DespachoId}")).StatusCode);
+        Assert.AreEqual(HttpStatusCode.Conflict, (await _client.PostAsJsonAsync("/api/v1/despachos", dispatchRequest)).StatusCode);
+        var other = await CreateTokenAsync(Roles.Despachador);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", other);
+        Assert.AreEqual(HttpStatusCode.NotFound, (await _client.GetAsync($"/api/v1/despachos/{result.DespachoId}")).StatusCode);
+        Assert.AreEqual(0, (await _client.GetFromJsonAsync<DispatchResponse[]>("/api/v1/despachos"))!.Length);
+    }
 
     private async Task<(string Token, int UserId)> CreateTokenWithUserIdAsync(string role)
     {

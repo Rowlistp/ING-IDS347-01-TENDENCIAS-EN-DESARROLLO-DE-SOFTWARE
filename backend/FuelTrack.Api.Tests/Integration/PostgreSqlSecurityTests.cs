@@ -15,7 +15,7 @@ namespace FuelTrack.Api.Tests.Integration;
 
 [TestClass]
 [TestCategory("PostgreSQL")]
-public sealed class PostgreSqlSecurityTests
+public sealed partial class PostgreSqlSecurityTests
 {
     private string _connectionString = null!;
     private bool _canDestroyDatabase;

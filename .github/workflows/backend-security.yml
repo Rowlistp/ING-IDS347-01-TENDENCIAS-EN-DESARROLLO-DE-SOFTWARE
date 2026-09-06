@@ -18,6 +18,7 @@ on:
       - feature/seguridad-movil
       - integration/builder2-fase1
       - feature/builder2-fase4-tickets-qr
+      - feature/builder2-fase5-mobile-despacho
     paths:
       - "backend/**"
       - "infra/keycloak/**"
