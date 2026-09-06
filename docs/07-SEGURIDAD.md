@@ -1,5 +1,23 @@
 # 07 - Estrategia de Seguridad
 
+## Seguridad de despacho móvil — Fase 5
+
+- Cliente público `fueltrack-mobile`, Authorization Code + PKCE S256, callback
+  `fueltrack://callback`; sin secreto ni password grant en Flutter.
+- Tokens en Flutter Secure Storage, nunca logs, preferencias planas ni Git.
+  Refresh antes de expiración, single-flight; tras 401 un solo refresh/replay,
+  segundo 401 o fallo de renovación borra sesión y pantallas privadas.
+- Configuración HTTPS obligatoria. Solo debug/development admite HTTP local;
+  el manifiesto principal bloquea cleartext y backups Android.
+- `auth/me` transmite identidad y roles locales resueltos por F1;
+  ocultar botones no reemplaza el RBAC del servidor. POST despacho solo Despachador.
+- Operador derivado del token, nunca del JSON. QR ECDSA/hash/token y datos
+  persistidos revalidados en la transacción; UNIQUE TicketId y locks evitan replay.
+- Errores móviles seguros; timeout de POST exige reconciliación,
+  no reintento automático. Auditoría sin QR ni tokens en claro.
+- TLS productivo, firma Android de distribución y cámara física
+  requieren su entorno/gate; un APK debug no los acredita.
+
 ## 1. Objetivo
 
 Traducir los requisitos RS-01 a RS-06 del SRS en una estrategia técnica inicial.

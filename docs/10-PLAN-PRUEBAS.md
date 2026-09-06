@@ -1,5 +1,13 @@
 # 10 - Plan de Pruebas
 
+## Gate de Fase 5
+
+Backend completo: 216/216 sin omisiones, con PostgreSQL 16 y Keycloak 26.7.3.
+Incluye 42 pruebas PostgreSQL, 9 OIDC y 165 locales/HTTP. F5 cubre despacho
+parcial, QR, permisos, doble consumo, stock compartido, rollback y restricciones
+de migración. Flutter añade unitarios/widgets, E2E API/BD, analyze y APK.
+Evidencia y gate humano: [23 — Pruebas F5](23-PRUEBAS-FASE5-MOVIL-DESPACHO.md).
+
 El gate correctivo F4 verifica listado/consulta/PDF propios del Solicitante,
 `404` ajeno, prohibición de acciones operacionales, estado `Pendiente` y una sola
 notificación por canal con ocho preparaciones simultáneas en PostgreSQL real.

@@ -41,6 +41,22 @@ en `16-DECISION-NET10.md`.
 
 ## 3. Decisiones pendientes
 
+### Decisiones adicionales F5
+
+- Flutter 3.47.2 / Dart 3.13.2 fijados en CI; paquetes exactos en pubspec.lock.
+- Dio, Riverpod, AppAuth, Secure Storage, mobile_scanner; Android como plataforma F5.
+- Secure Storage 10.3.1: versión11 exigía android-37 incompatible con el target
+  disponible local. APK verificado con 10.3.1 y compile SDK de Flutter.
+- TanqueId obligatorio RESTRICT, Estación independiente, sin inventar asignación
+  histórica. La migración aborta sin alterar datos si existen despachos previos:
+  exige mapeo de tanques revisado explícitamente.
+- Movimiento Salida negativo; ExistenciaActual/Disponibilidad son fuente de saldo,
+  NivelActual no se toca. Despacho conserva instantáneas de ambos saldos.
+- Locks PostgreSQL y UNIQUE TicketId; xmin protege inventario/anulaciones obsoletos
+  sin reescribir controladores de Builder1.
+- Refresh single-flight y un replay tras401. Timeout POST exige reconciliación;
+  no hay cola offline. Auth/me expone roles locales para RBAC visual.
+
 | Área | Decisión pendiente | Motivo |
 |---|---|---|
 | Infraestructura | Proveedor cloud/on-premise y topología | El SRS no selecciona proveedor |
@@ -56,6 +72,6 @@ en `16-DECISION-NET10.md`.
 
 - MFA es opcional en el SRS y sigue diferido; no se presenta como deuda obligatoria.
 - TLS 1.3 y AES-256 en reposo requieren evidencia de infraestructura productiva.
-- Flutter/despacho y transporte SMTP/SMS permanecen en Fases 5 y 9.
+- Flutter/despacho entregado en F5 con gate físico pendiente; SMTP/SMS permanece en F9.
 - Ninguna credencial productiva debe versionarse. Los valores de
   `infra/keycloak` son fixtures reproducibles de testing.

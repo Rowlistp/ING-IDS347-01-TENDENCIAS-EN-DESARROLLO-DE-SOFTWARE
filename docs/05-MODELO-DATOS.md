@@ -147,7 +147,16 @@ Proponer un modelo conceptual inicial basado en los datos explícitamente requer
 - Galones servidos.
 - Operador.
 - Estación.
+- TanqueId obligatorio (`int`), FK a Tanques con borrado RESTRICT.
+- InventarioRestante y DisponibilidadRestante (`numeric(18,4)`): instantánea al confirmar.
 - Observaciones.
+
+F5 conserva UNIQUE TicketId (0..1 Despacho por Ticket) y EstacionId; no existe
+relación Estación → Tanque para inferir el origen. Inventario es la fuente del
+saldo: se reducen ExistenciaActual y Disponibilidad, no Tanque.NivelActual.
+Ticket e Inventario usan `xmin` PostgreSQL como token de concurrencia.
+La migración F5 no inventa asignaciones históricas: si ya hay Despachos, aborta
+antes de escribir y requiere una migración de mapeo explícitamente revisada.
 
 ### Estacion
 

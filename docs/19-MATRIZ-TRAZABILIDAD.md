@@ -21,8 +21,8 @@ existencia de una entidad o pantalla complete un requisito.
 | RF-09 | Envío de tickets | 4 y 9 | Builder 2 | CU-10 | Notificación pendiente | Suite F4 | Parcial F4 validado; transporte SMTP/SMS pendiente F9 |
 | RF-10 | Consulta de estado y Tickets propios por Solicitante | 4 | Builder 2 + Builder 3 web | CU-11 | `/api/v1/tickets` | Suite F4 estado efectivo/RBAC/ownership/PDF | **Implementado/Validado backend** |
 | RF-11 | Asignaciones manuales/automáticas | 3 | Builder 1 backend + Builder 3 web | CU-06, CU-07 | Solicitudes/reglas | Pendiente | Pendiente por fase |
-| RF-12 | Despacho de combustible | 5 | Builder 2 | CU-12, CU-13 | Despacho móvil/API | Pendiente | Pendiente por fase |
-| RF-13 | Aplicación móvil para despacho | 5 | Builder 2 | CU-01, CU-12, CU-13 | Flutter | Pendiente | Pendiente por fase |
+| RF-12 | Despacho de combustible | 5 | Builder 2 | CU-12, CU-13 | DispatchService, `/api/v1/despachos` | HTTP/PostgreSQL: concurrencia, rollback, FK/UNIQUE | Implementado; evidencia en doc. 23 |
+| RF-13 | Aplicación móvil para despacho | 5 | Builder 2 | CU-01, CU-12, CU-13 | Flutter Android OIDC/scanner/formulario | Unit/widget, E2E API/BD, analyze, APK | Implementado; cámara/login nativo pendientes tester antes de merge |
 | RF-14 | Control de inventario | 6 | Builder 1 | CU-14 a CU-16 | Inventario | Suite actual de Inventario | Backend implementado/validado |
 | RF-15 | Inventario en tiempo real | 6 | Builder 1 | CU-16 | Inventario/consultas | Suite actual de Inventario | Backend implementado/validado |
 | RF-16 | Recepción de combustible | 6 | Builder 1 | CU-14 | Recepciones | Suite actual de Recepciones | Backend implementado/validado |

@@ -53,6 +53,8 @@ La documentación del proyecto se encuentra en [`docs/`](docs/).
 20. [Decisiones técnicas](docs/20-DECISIONES-TECNICAS.md)
 21. [Pruebas de Fase 4 — Tickets/QR](docs/21-PRUEBAS-FASE4-TICKETS-QR.md)
 22. [Cierre de Fase 4](docs/22-CIERRE-FASE4.md)
+23. [Pruebas Fase 5 — Móvil y despacho](docs/23-PRUEBAS-FASE5-MOVIL-DESPACHO.md)
+24. [Cierre de Fase 5](docs/24-CIERRE-FASE5.md)
 
 Explicación pedagógica: [Fase 1 — Seguridad y administración](docs/explicaciones/fase-1-seguridad-administracion.md).
 
@@ -79,7 +81,9 @@ autenticación local, OAuth2/OIDC con Keycloak 26.7.3, Authorization Code + PKCE
 S256, JWT interno, RBAC local, usuarios, roles, sesiones y auditoría append-only.
 Fase 4 incorpora emisión desde Solicitudes aprobadas, secuencia PostgreSQL, QR
 ECDSA P-256/SHA-256, validación, estados, PDF, anulación y preparación de
-notificaciones. Flutter/despacho y transporte SMTP/SMS siguen pendientes.
+notificaciones. F5 añade [Flutter Android](mobile/README.md) y despacho atómico
+con inventario, movimiento y auditoría. Cámara/login nativo requieren gate físico
+del tester previo al merge. SMTP/SMS sigue pendiente F9.
 
 El repositorio también contiene el backend base y catálogos desarrollados por
 otros builders. Esto no significa que el sistema completo ni las fases

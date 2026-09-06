@@ -4,6 +4,15 @@
 
 Organizar los requisitos del SRS para facilitar trazabilidad, diseño, implementación y pruebas.
 
+### Entrega de Fase 5
+
+RF-12: despacho atómico con QR revalidado, actor autenticado, tanque compatible,
+stock suficiente, consumo único, movimiento y auditoría. RF-13: Flutter Android
+con OIDC/PKCE, almacenamiento seguro, scanner, confirmación y consulta online.
+Evidencia y gate humano previo al merge:
+[23 — Pruebas F5](23-PRUEBAS-FASE5-MOVIL-DESPACHO.md) y
+[24 — Cierre F5](24-CIERRE-FASE5.md). No incluye transporte SMTP/SMS ni cierre diario.
+
 ## 2. Requisitos funcionales
 
 | ID | Requisito | Actor principal | Prioridad |

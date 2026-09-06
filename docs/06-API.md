@@ -210,6 +210,47 @@ Errores de negocio de emisión usan `400`, `404` o `409` con `code` y `message`.
 
 ### Despachos
 
+Contrato F5: `POST /despachos` requiere exclusivamente rol `Despachador` activo.
+Recibe `ticketId` (UUID), `qrPayload`, `tanqueId`, `estacionId`,
+`galonesServidos` (positivo, máximo autorizado, hasta cuatro decimales) y
+`observaciones` opcionales (máximo 500 caracteres). Un despacho parcial consume
+el Ticket completo y no permite un segundo despacho por el saldo.
+
+Devuelve `201` con `despachoId`, `ticketId`, `codigoTicket`, `fecha`, `hora` (UTC),
+`galonesServidos`, `operadorId`, `operador`, `tanqueId`, `tanqueIdentificacion`,
+`estacionId`, `estacionNombre`, `inventarioRestante`, `disponibilidadRestante`,
+`estadoTicket` (enum numérico; Consumido = 5) y `observaciones`. El inventario restante
+es el valor registrado al confirmar, no una lectura posterior del tanque.
+
+En una sola transacción se revalida QR/estado/fecha, se crea Despacho, se consume
+Ticket, se descuentan ExistenciaActual y Disponibilidad, se crea Movimiento de
+tipo Salida con volumen negativo y se audita. PostgreSQL bloquea Ticket e Inventario; UNIQUE TicketId
+impide doble consumo. La concurrencia de Inventario usa además `xmin` para que
+escrituras antiguas de otros módulos fallen sin sobrescribir stock.
+
+`GET /despachos` y `GET /despachos/{id}`: Admin/Supervisor/Auditor/Consulta leen;
+Despachador consulta solo sus operaciones. Recursos fuera de alcance: `404`.
+Listado paginado mediante `pagina` (1 por defecto) y `tamanoPagina` (20, máximo
+100); `ticketId` opcional permite reconciliar una confirmación cuya respuesta
+se perdió. No se reintenta automáticamente un POST tras error de red.
+
+`GET /api/v1/estaciones`: lectura de estaciones activas para Despachador y los
+roles de consulta de despachos. Es el único catálogo de lectura añadido;
+`GET /api/v1/tanques` ya existe y se reutiliza filtrando activos/combustible.
+`GET /api/v1/auth/me`: usuario local y roles de negocio resueltos por F1,
+necesarios porque los roles externos de Keycloak no autorizan operaciones.
+
+Errores `{code,message}`: `400` cantidad/formato inválido; `401` sesión/operador
+inactivo; `403` rol no autorizado; `404` Ticket/tanque/estación/inventario
+inexistente; `409` QR_INVALIDO, QR_NO_COINCIDE, TICKET_VENCIDO,
+TICKET_ANULADO, TICKET_CONSUMIDO, TANQUE_INACTIVO, ESTACION_INACTIVA,
+COMBUSTIBLE_INCORRECTO, INVENTARIO_INSUFICIENTE o CONCURRENCIA_CONFLICTO.
+La validación de QR anterior a la confirmación no consume el Ticket.
+
+Cantidad inválida: `GALONES_INVALIDOS` o `GALONES_EXCEDEN_AUTORIZACION` (`400`).
+Operador inválido: `OPERADOR_INVALIDO` (`401`); sin rol: `OPERADOR_NO_AUTORIZADO` (`403`).
+El operador, fechas, estado, movimiento e inventario se calculan en el servidor.
+
 ```text
 GET    /api/v1/despachos
 GET    /api/v1/despachos/{id}

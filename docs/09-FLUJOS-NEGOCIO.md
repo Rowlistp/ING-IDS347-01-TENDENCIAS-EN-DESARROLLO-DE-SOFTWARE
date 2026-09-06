@@ -70,8 +70,21 @@ Auditar operación
 
 La actualización del ticket y del inventario debe ejecutarse de forma consistente para evitar dobles consumos o desbalances.
 
-En Fase 4 solo está implementada la parte hasta la validación y visualización.
-`POST /tickets/validar` no consume; el despacho transaccional pertenece a Fase 5.
+F5 implementa el recorrido completo: validación visual, Continuar al despacho,
+selección explícita de estación/tanque compatible, galones y confirmación de
+identidad/vehículo. `POST /tickets/validar` no consume. `POST /despachos` vuelve
+a validar dentro de la transacción y consume incluso si la cantidad es parcial.
+
+Orden de bloqueo: Ticket FOR UPDATE → Tanque/Estación FOR SHARE → Inventario
+FOR UPDATE. Bajo el bloqueo se comprueban vigencia y ambos saldos. Despacho,
+Ticket Consumido, inventario, movimiento Salida negativo y auditoría hacen un
+solo commit; cualquier fallo revierte todo. Dos tickets sobre un mismo tanque
+se serializan y no pueden servir por encima del stock disponible.
+
+Sin conexión no se confirma. Una respuesta perdida no dispara otro POST:
+se consulta el despacho por TicketId y se revalida antes de habilitar una
+confirmación explícita. Un 401 permite un refresh y un único replay;
+un segundo 401 elimina la sesión.
 
 ## 4. Flujo: Recepción → Inventario
 

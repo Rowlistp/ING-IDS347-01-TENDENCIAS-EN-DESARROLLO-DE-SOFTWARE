@@ -96,6 +96,10 @@ Requisitos:
 
 ### Fase 5 - Aplicación móvil y despacho
 
+Implementada en `feature/builder2-fase5-mobile-despacho` desde F4 `4681fd1`.
+Automatización y CI en [cierre F5](24-CIERRE-FASE5.md). Cámara física y login
+nativo real requieren firma del tester antes del merge, no pruebas mock.
+
 Incluye:
 
 - Login.
@@ -103,7 +107,7 @@ Incluye:
 - Validación.
 - Confirmación.
 - Registro de despacho.
-- Sincronización.
+- Operación online-first y reconciliación de respuestas inciertas; sin cola offline.
 
 Requisitos:
 

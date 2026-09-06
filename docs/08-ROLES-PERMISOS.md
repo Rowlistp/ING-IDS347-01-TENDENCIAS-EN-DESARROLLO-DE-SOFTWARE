@@ -44,7 +44,9 @@ PostgreSQL después de resolver al usuario activo.
 | Validar QR | Sí | Sí | Sí | Sí | Sí | No |
 | Preparar envío de ticket | Sí | Sí | No | No | No | No |
 | Anular ticket | Sí | Sí | No | No | No | No |
-| Registrar despacho | No | Según política | Sí | No | No | No |
+| Registrar despacho | No | No | Sí | No | No | No |
+| Consultar despachos | Sí | Sí | Solo propios | Sí | Sí | No |
+| Consultar estaciones activas | Sí | Sí | Sí | Sí | Sí | No |
 | Registrar recepción | Sí | Sí | No | No | No | No |
 | Ajustar inventario | Sí | Sí | No | No | No | No |
 | Consultar inventario | Sí | Sí | Según necesidad | Sí | Alcance pendiente | No |
@@ -80,7 +82,7 @@ El SRS no especifica estas restricciones, por lo que requieren aprobación.
 ## 7. Pendientes
 
 - Alcance de `Consulta` y `Solicitante` fuera de los endpoints Tickets ya definidos.
-- Permisos del Administrador sobre despachos.
+- F5 fija Administrador como lector de despachos, no emisor, salvo que tenga además rol Despachador.
 - Alcance departamental.
 - Permisos sobre transferencias.
 - Política de aprobación múltiple.
