@@ -21,6 +21,19 @@ Esta carpeta contiene la documentación técnica y funcional generada a partir d
 15. [Plantilla de Prompt para el Equipo](15-PLANTILLA-PROMPT.md)
 16. [Decisión de Plataforma Backend: .NET 10](16-DECISION-NET10.md)
 17. [Pruebas de Fase 1 - Seguridad](17-PRUEBAS-FASE1-SEGURIDAD.md)
+18. [Cierre de Fase 1](18-CIERRE-FASE1.md)
+19. [Matriz de Trazabilidad](19-MATRIZ-TRAZABILIDAD.md)
+20. [Decisiones Técnicas](20-DECISIONES-TECNICAS.md)
+21. [Pruebas de Fase 4 — Tickets/QR](21-PRUEBAS-FASE4-TICKETS-QR.md)
+22. [Cierre de Fase 4](22-CIERRE-FASE4.md)
+23. [Pruebas Fase 5 — Móvil y despacho](23-PRUEBAS-FASE5-MOVIL-DESPACHO.md)
+24. [Cierre de Fase 5](24-CIERRE-FASE5.md)
+
+### Explicaciones pedagógicas
+
+- [Fase 1 — Seguridad y administración](explicaciones/fase-1-seguridad-administracion.md)
+- [Fase 4 — Tickets digitales y QR seguro](explicaciones/fase-4-tickets-qr.md)
+- [Fase 5 — Móvil y despacho](explicaciones/fase-5-movil-despacho.md)
 
 ## Fuente principal
 
@@ -35,4 +48,7 @@ Estos documentos amplían y organizan el SRS; cuando incluyen una propuesta téc
 - React.
 - Tailwind CSS.
 - Flutter.
-- JWT + OAuth 2.0.
+- JWT interno como mecanismo independiente.
+- OAuth2/OIDC con Keycloak 26.7.3.
+- Authorization Code + PKCE S256 para clientes públicos web y móvil.
+- RBAC de negocio resuelto exclusivamente con usuarios y roles locales de PostgreSQL.

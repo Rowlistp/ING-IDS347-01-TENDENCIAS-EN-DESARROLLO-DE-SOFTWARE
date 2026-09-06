@@ -30,12 +30,22 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        if (Database.IsNpgsql())
+        {
+            modelBuilder.HasSequence<long>("ticket_numero_seq");
+            modelBuilder.Entity<Inventario>().Property<uint>("xmin").IsRowVersion();
+            modelBuilder.Entity<Ticket>().Property<uint>("xmin").IsRowVersion();
+        }
+
         modelBuilder.Entity<UsuarioRol>()
             .HasKey(ur => new { ur.UsuarioId, ur.RolId });
 
         modelBuilder.Entity<Ticket>()
             .Property(t => t.Id)
             .ValueGeneratedOnAdd();
+        modelBuilder.Entity<Ticket>()
+            .Property(t => t.QrCodePng)
+            .HasColumnType("bytea");
 
         modelBuilder.Entity<Auditoria>()
             .Property(a => a.DatosRelevantes)
@@ -43,6 +53,10 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Usuario>()
             .HasIndex(u => u.NombreUsuario).IsUnique();
+        modelBuilder.Entity<Usuario>()
+            .Property(u => u.SecurityVersion).HasDefaultValue(1);
+        modelBuilder.Entity<Rol>()
+            .HasIndex(r => r.Nombre).IsUnique();
         modelBuilder.Entity<Empleado>()
             .HasIndex(e => e.Codigo).IsUnique();
         modelBuilder.Entity<Empleado>()
@@ -53,6 +67,11 @@ public class AppDbContext : DbContext
             .HasIndex(v => v.Ficha).IsUnique();
         modelBuilder.Entity<Ticket>()
             .HasIndex(t => t.NumeroSecuencial).IsUnique();
+        modelBuilder.Entity<Ticket>()
+            .HasIndex(t => t.SolicitudId)
+            .IsUnique()
+            .HasDatabaseName("UX_Tickets_Solicitud_Utilizable")
+            .HasFilter("\"SolicitudId\" IS NOT NULL AND \"Estado\" NOT IN (4, 5, 6)");
         modelBuilder.Entity<Tanque>()
             .HasIndex(t => t.Identificacion).IsUnique();
         modelBuilder.Entity<Despacho>()
@@ -82,6 +101,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<MovimientoInventario>().Property(m => m.Volumen).HasPrecision(18, 4);
         modelBuilder.Entity<RecepcionCombustible>().Property(r => r.VolumenRecibido).HasPrecision(18, 4);
         modelBuilder.Entity<Despacho>().Property(d => d.GalonesServidos).HasPrecision(18, 4);
+        modelBuilder.Entity<Despacho>().Property(d => d.InventarioRestante).HasPrecision(18, 4);
+        modelBuilder.Entity<Despacho>().Property(d => d.DisponibilidadRestante).HasPrecision(18, 4);
+        modelBuilder.Entity<Despacho>().HasOne(d => d.Tanque).WithMany()
+            .HasForeignKey(d => d.TanqueId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<CierreDiario>().Property(c => c.VolumenDespachado).HasPrecision(18, 4);
         modelBuilder.Entity<CierreDiario>().Property(c => c.InventarioFinal).HasPrecision(18, 4);
         modelBuilder.Entity<CierreDiario>().Property(c => c.Diferencias).HasPrecision(18, 4);

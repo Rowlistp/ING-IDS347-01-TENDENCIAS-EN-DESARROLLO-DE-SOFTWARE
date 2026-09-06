@@ -1,5 +1,17 @@
 # 10 - Plan de Pruebas
 
+## Gate de Fase 5
+
+Backend completo: 216/216 sin omisiones, con PostgreSQL 16 y Keycloak 26.7.3.
+Incluye 42 pruebas PostgreSQL, 9 OIDC y 165 locales/HTTP. F5 cubre despacho
+parcial, QR, permisos, doble consumo, stock compartido, rollback y restricciones
+de migración. Flutter añade unitarios/widgets, E2E API/BD, analyze y APK.
+Evidencia y gate humano: [23 — Pruebas F5](23-PRUEBAS-FASE5-MOVIL-DESPACHO.md).
+
+El gate correctivo F4 verifica listado/consulta/PDF propios del Solicitante,
+`404` ajeno, prohibición de acciones operacionales, estado `Pendiente` y una sola
+notificación por canal con ocho preparaciones simultáneas en PostgreSQL real.
+
 ## 1. Objetivo
 
 Definir una estrategia inicial de pruebas alineada con el SRS y sus criterios de aceptación.
@@ -163,3 +175,16 @@ El SRS no define:
 - Tiempo máximo por operación.
 
 Se requiere definir estos parámetros para pruebas de rendimiento formales.
+
+## 7. Gate ejecutado de Fase 4
+
+La suite automatizada cubre emisión desde Solicitud aprobada, rechazo de
+estados/cantidades/vencimientos inválidos, UUID, secuencia, un ticket utilizable,
+payload auténtico y manipulación de cada campo, hash, firma, token, estados
+terminales, vencimiento efectivo, anulación, PDF, cola de envío, RBAC y
+auditoría.
+
+PostgreSQL real aplica migraciones desde cero, verifica la secuencia y el índice
+parcial, crea 24 tickets concurrentes sin UUID/secuencia duplicados y permite
+solo un ganador para dos emisiones simultáneas de la misma Solicitud. Los
+resultados exactos se registran en `21-PRUEBAS-FASE4-TICKETS-QR.md`.

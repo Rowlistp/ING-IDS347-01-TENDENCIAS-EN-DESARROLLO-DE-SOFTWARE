@@ -12,7 +12,11 @@ public class Ticket
     public EstadoTicket Estado { get; set; }
     public decimal CantidadAutorizada { get; set; }
     public string HashSeguridad { get; set; } = string.Empty;
+    // Contiene exclusivamente SHA-256(token QR), nunca el token en claro.
     public string TokenValidacion { get; set; } = string.Empty;
+    public string FirmaDigital { get; set; } = string.Empty;
+    public byte[] QrCodePng { get; set; } = [];
+    public string? MotivoAnulacion { get; set; }
 
     public int TipoCombustibleId { get; set; }
     public TipoCombustible TipoCombustible { get; set; } = null!;

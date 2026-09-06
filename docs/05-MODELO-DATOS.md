@@ -4,7 +4,8 @@
 
 Proponer un modelo conceptual inicial basado en los datos explícitamente requeridos por el SRS.
 
-> Este documento no representa todavía el esquema físico definitivo de PostgreSQL.
+> Este documento conserva la vista conceptual. El esquema físico existente y su
+> evolución se consultan en `backend/FuelTrack.Api/Migrations/`.
 
 ## 2. Entidades principales propuestas
 
@@ -80,7 +81,12 @@ Proponer un modelo conceptual inicial basado en los datos explícitamente requer
 - Cantidad autorizada.
 - Tipo de combustible.
 - Estado.
-- Información de seguridad QR.
+- Hash SHA-256 del payload canónico.
+- Hash SHA-256 del token de validación; el token no se guarda en claro.
+- Firma digital ECDSA P-256.
+- PNG del QR necesario para el documento, sin columna de token en claro.
+- Motivo de anulación.
+- Solicitud de origen.
 
 ### TipoCombustible
 
@@ -141,7 +147,16 @@ Proponer un modelo conceptual inicial basado en los datos explícitamente requer
 - Galones servidos.
 - Operador.
 - Estación.
+- TanqueId obligatorio (`int`), FK a Tanques con borrado RESTRICT.
+- InventarioRestante y DisponibilidadRestante (`numeric(18,4)`): instantánea al confirmar.
 - Observaciones.
+
+F5 conserva UNIQUE TicketId (0..1 Despacho por Ticket) y EstacionId; no existe
+relación Estación → Tanque para inferir el origen. Inventario es la fuente del
+saldo: se reducen ExistenciaActual y Disponibilidad, no Tanque.NivelActual.
+Ticket e Inventario usan `xmin` PostgreSQL como token de concurrencia.
+La migración F5 no inventa asignaciones históricas: si ya hay Despachos, aborta
+antes de escribir y requiere una migración de mapeo explícitamente revisada.
 
 ### Estacion
 
@@ -207,6 +222,9 @@ Usuario N --- N Rol
 
 - UUID del ticket único.
 - Secuencia de ticket sin duplicidad.
+- Solo un ticket no terminal por Solicitud mediante índice parcial único.
+- Estados terminales: Vencido, Consumido y Anulado.
+- La vigencia por fecha prevalece sobre un estado activo almacenado.
 - Placa y ficha deberían evaluarse como valores únicos.
 - Código de empleado debería evaluarse como único.
 - Una operación de despacho debe ser transaccional con el movimiento de inventario.
@@ -215,11 +233,12 @@ Usuario N --- N Rol
 
 ## 5. Pendientes antes del modelo físico
 
-- Cardinalidad exacta Solicitud-Ticket.
+- La relación física Solicitud-Ticket es 1 a N histórico, con máximo uno
+  utilizable simultáneamente.
 - Estructura de estaciones.
 - Manejo de múltiples tanques.
 - Transferencias entre tanques.
 - Unidad de medida única.
 - Estados exactos de solicitudes.
 - Política de borrado lógico.
-- Estructura de auditoría inalterable.
+- Política productiva de retención y archivo de auditoría.

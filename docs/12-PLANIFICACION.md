@@ -28,7 +28,7 @@ Entregables:
 - Repositorio base.
 - Convenciones.
 
-### Fase 1 - Seguridad y administración
+### Fase 1 - Seguridad y administración — implementada y validada
 
 Incluye:
 
@@ -42,7 +42,10 @@ Incluye:
 Requisitos relacionados:
 
 - RF-01.
-- RS-01 a RS-06 parcialmente.
+- RS-01 y RS-02 implementados según alcance.
+- RS-05 implementado con Keycloak/OIDC + JWT.
+- RS-06 con base transaccional y append-only; cobertura transversal continúa en fases posteriores.
+- RS-03 depende del despliegue productivo y RS-04 pertenece a Fase 4.
 
 ### Fase 2 - Catálogos
 
@@ -93,6 +96,10 @@ Requisitos:
 
 ### Fase 5 - Aplicación móvil y despacho
 
+Implementada en `feature/builder2-fase5-mobile-despacho` desde F4 `4681fd1`.
+Automatización y CI en [cierre F5](24-CIERRE-FASE5.md). Cámara física y login
+nativo real requieren firma del tester antes del merge, no pruebas mock.
+
 Incluye:
 
 - Login.
@@ -100,7 +107,7 @@ Incluye:
 - Validación.
 - Confirmación.
 - Registro de despacho.
-- Sincronización.
+- Operación online-first y reconciliación de respuestas inciertas; sin cola offline.
 
 Requisitos:
 
@@ -211,14 +218,14 @@ Reportes
 | Descuadre de inventario | Alto |
 | Integraciones SMS/SMTP | Medio |
 | Requisito 24/7 sin SLA definido | Alto |
-| Auditoría "inalterable" sin mecanismo definido | Alto |
+| Cobertura de auditoría aún pendiente en módulos de fases posteriores | Alto |
 | Seguridad QR insuficientemente especificada | Alto |
 | Cambios tardíos en modelo de datos | Alto |
 
 ## 6. Hitos sugeridos
 
 1. Documentación base aprobada.
-2. Autenticación + RBAC.
+2. Autenticación + RBAC. **Completado y validado en Fase 1.**
 3. Catálogos listos.
 4. Solicitud funcional.
 5. Ticket + QR seguro.
@@ -242,11 +249,12 @@ Un módulo no se considera terminado hasta que:
 
 ## 8. Pendientes antes de estimar calendario definitivo
 
-- Número de desarrolladores.
 - Disponibilidad semanal.
-- Nivel de experiencia.
 - Proveedor de infraestructura.
 - Definición de reglas automáticas.
 - Nivel de calidad esperado.
 - Métricas de rendimiento.
 - Proceso de aprobación del cliente.
+
+La composición ya está definida: 6 integrantes, distribuidos en 3 builders y 3
+testers, con responsabilidades registradas en `13-DIVISION-EQUIPO.md`.

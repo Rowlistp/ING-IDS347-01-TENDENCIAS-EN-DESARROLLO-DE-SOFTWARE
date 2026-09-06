@@ -7,6 +7,10 @@ public class Despacho
     public TimeOnly Hora { get; set; }
     public decimal GalonesServidos { get; set; }
     public string? Observaciones { get; set; }
+    public int TanqueId { get; set; }
+    public Tanque Tanque { get; set; } = null!;
+    public decimal InventarioRestante { get; set; }
+    public decimal DisponibilidadRestante { get; set; }
 
     public Guid TicketId { get; set; }
     public Ticket Ticket { get; set; } = null!;

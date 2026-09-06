@@ -27,7 +27,8 @@ public sealed class TokenServiceTests
         {
             Id = 42,
             NombreUsuario = "admin",
-            Activo = true
+            Activo = true,
+            SecurityVersion = 7
         };
 
         var result = sut.CreateAccessToken(
@@ -38,6 +39,7 @@ public sealed class TokenServiceTests
 
         Assert.AreEqual("42", jwt.Subject);
         Assert.AreEqual("admin", jwt.Claims.Single(c => c.Type == JwtRegisteredClaimNames.UniqueName).Value);
+        Assert.AreEqual("7", jwt.Claims.Single(c => c.Type == TokenService.SecurityVersionClaim).Value);
 
         var roles = jwt.Claims
             .Where(c => c.Type == ClaimTypes.Role)

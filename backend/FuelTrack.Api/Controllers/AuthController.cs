@@ -57,6 +57,16 @@ public sealed class AuthController : ControllerBase
         return NoContent();
     }
 
+    [Authorize]
+    [HttpGet("me")]
+    public IActionResult Me()
+        => Ok(new
+        {
+            id = User.FindFirstValue(ClaimTypes.NameIdentifier),
+            nombreUsuario = User.Identity?.Name,
+            roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).Distinct().ToArray()
+        });
+
     // Fase 1: reset administrativo. El flujo de recuperación por correo queda para
     // la fase de integraciones, cuando exista SMTP.
     [Authorize(Roles = Roles.Administrador)]
@@ -68,12 +78,21 @@ public sealed class AuthController : ControllerBase
         if (!TryGetCurrentUserId(out var adminId))
             return Unauthorized();
 
-        var updated = await _auth.ResetPasswordAsync(
-            request.UsuarioId,
-            request.NuevaContrasena,
-            adminId,
-            GetClientIp(),
-            cancellationToken);
+        bool updated;
+
+        try
+        {
+            updated = await _auth.ResetPasswordAsync(
+                request.UsuarioId,
+                request.NuevaContrasena,
+                adminId,
+                GetClientIp(),
+                cancellationToken);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { code = "PASSWORD_POLICY_FAILED", message = ex.Message });
+        }
 
         return updated ? NoContent() : NotFound();
     }

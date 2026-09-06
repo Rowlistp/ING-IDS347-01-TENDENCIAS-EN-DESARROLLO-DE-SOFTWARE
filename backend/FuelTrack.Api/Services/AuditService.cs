@@ -1,6 +1,8 @@
 using System.Text.Json;
 using FuelTrack.Api.Data;
+using FuelTrack.Api.DTOs.Audit;
 using FuelTrack.Api.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace FuelTrack.Api.Services;
 
@@ -11,6 +13,39 @@ public sealed class AuditService
     public AuditService(AppDbContext db)
     {
         _db = db;
+    }
+
+    public async Task<AuditPageResponse> GetPageAsync(
+        int pagina,
+        int tamanoPagina,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _db.Auditorias.AsNoTracking();
+        var total = await query.CountAsync(cancellationToken);
+        var elementos = await query
+            .OrderByDescending(a => a.FechaHora)
+            .ThenByDescending(a => a.Id)
+            .Skip((pagina - 1) * tamanoPagina)
+            .Take(tamanoPagina)
+            .Select(a => new AuditEntryResponse
+            {
+                Id = a.Id,
+                Evento = a.Evento,
+                EntidadAfectada = a.EntidadAfectada,
+                IdentificadorRegistro = a.IdentificadorRegistro,
+                FechaHoraUtc = a.FechaHora,
+                DireccionIp = a.DireccionIp,
+                UsuarioId = a.UsuarioId
+            })
+            .ToListAsync(cancellationToken);
+
+        return new AuditPageResponse
+        {
+            Pagina = pagina,
+            TamanoPagina = tamanoPagina,
+            Total = total,
+            Elementos = elementos
+        };
     }
 
     public async Task WriteAsync(

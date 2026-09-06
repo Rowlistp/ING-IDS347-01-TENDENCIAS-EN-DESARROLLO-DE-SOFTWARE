@@ -1,5 +1,23 @@
 # 07 - Estrategia de Seguridad
 
+## Seguridad de despacho móvil — Fase 5
+
+- Cliente público `fueltrack-mobile`, Authorization Code + PKCE S256, callback
+  `fueltrack://callback`; sin secreto ni password grant en Flutter.
+- Tokens en Flutter Secure Storage, nunca logs, preferencias planas ni Git.
+  Refresh antes de expiración, single-flight; tras 401 un solo refresh/replay,
+  segundo 401 o fallo de renovación borra sesión y pantallas privadas.
+- Configuración HTTPS obligatoria. Solo debug/development admite HTTP local;
+  el manifiesto principal bloquea cleartext y backups Android.
+- `auth/me` transmite identidad y roles locales resueltos por F1;
+  ocultar botones no reemplaza el RBAC del servidor. POST despacho solo Despachador.
+- Operador derivado del token, nunca del JSON. QR ECDSA/hash/token y datos
+  persistidos revalidados en la transacción; UNIQUE TicketId y locks evitan replay.
+- Errores móviles seguros; timeout de POST exige reconciliación,
+  no reintento automático. Auditoría sin QR ni tokens en claro.
+- TLS productivo, firma Android de distribución y cámara física
+  requieren su entorno/gate; un APK debug no los acredita.
+
 ## 1. Objetivo
 
 Traducir los requisitos RS-01 a RS-06 del SRS en una estrategia técnica inicial.
@@ -12,7 +30,21 @@ El SRS requiere:
 - MFA opcional.
 - Gestión de sesiones.
 
-El equipo ha definido JWT + OAuth 2.0 para la API.
+JWT con access token corto y refresh token rotatorio es el mecanismo activo de
+Fase 1.
+
+Fase 1 integra Keycloak `26.7.3` como proveedor OAuth 2.0/OIDC. El realm es
+`fueltrack`; `fueltrack-web` y `fueltrack-mobile` son clientes públicos sin
+secreto, con Authorization Code + PKCE S256 obligatorio. Implicit Flow y Direct
+Access Grants están deshabilitados. `fueltrack-api` representa la audiencia.
+
+La API mantiene dos validadores explícitos: JWT interno y Keycloak. Para Keycloak
+valida firma, issuer, audience y vigencia; luego resuelve `preferred_username`
+contra `Usuario.NombreUsuario`. Solo un usuario local activo puede entrar. Los
+roles externos se ignoran y la autorización usa exclusivamente roles locales de
+PostgreSQL. No se crean usuarios ni administradores automáticamente.
+
+**MFA pendiente: no implementado ni configurado en Fase 1.**
 
 ### Propuesta
 
@@ -20,7 +52,13 @@ El equipo ha definido JWT + OAuth 2.0 para la API.
 - Refresh token protegido.
 - Revocación de sesiones.
 - Bloqueo/desactivación de usuarios.
-- MFA configurable para roles sensibles.
+- MFA configurable para roles sensibles cuando se apruebe su política.
+
+Los JWT incluyen una versión de seguridad del usuario. Cada petición autenticada
+comprueba en base de datos que el usuario siga activo y que la versión coincida.
+Desactivar, restablecer contraseña o cambiar roles incrementa esta versión e
+invalida inmediatamente los access tokens anteriores, además de revocar refresh
+tokens cuando corresponde.
 
 ## 3. Autorización
 
@@ -51,6 +89,19 @@ Aunque el SRS no define el algoritmo de password hashing, las contraseñas no de
 
 La selección del algoritmo y parámetros debe formalizarse durante implementación.
 
+### Decisión de Fase 1
+
+- PBKDF2-HMAC-SHA-512 con salt aleatorio de 128 bits.
+- 210,000 iteraciones y hash de 256 bits.
+- Comparación en tiempo constante.
+- Entre 12 y 128 caracteres, sin espacios, con mayúscula, minúscula, número y carácter especial.
+- La política se aplica en el servicio al crear usuarios, restablecer contraseñas y crear el administrador inicial.
+
+La verificación solo acepta el formato versionado `PBKDF2-SHA512`, entre
+100,000 y 1,000,000 iteraciones, salt de 16 bytes y hash de 32 bytes. Los hashes
+corruptos, sobredimensionados o con parámetros fuera de rango se rechazan sin
+propagar errores internos.
+
 ## 7. Seguridad del QR
 
 El SRS requiere:
@@ -69,6 +120,26 @@ El SRS requiere:
 - Un ticket consumido debe fallar en validaciones posteriores.
 - Debe existir protección contra alteración.
 - Debe evitarse colocar datos sensibles innecesarios dentro del QR.
+
+### Implementación de Fase 4
+
+- Firma: ECDSA sobre curva P-256 con SHA-256 y formato fijo P1363.
+- Token: 32 bytes de `RandomNumberGenerator`; PostgreSQL conserva únicamente
+  `SHA256(token)` en `TokenValidacion`.
+- Payload: serialización canónica versionada con orden fijo; cubre UUID,
+  secuencia, prefijo, Solicitud, empleado, vehículo, departamento, combustible,
+  cantidad, emisión, expiración y token.
+- Persistencia: `HashSeguridad` guarda SHA-256 del payload, `FirmaDigital` la
+  firma y `QrCodePng` la representación necesaria para el PDF. No existe una
+  columna con el token en claro.
+- Validación: la API verifica criptografía y coincidencia exacta con la base,
+  además de estado y vencimiento. La operación no consume el Ticket.
+
+La clave privada PKCS#8 se configura exclusivamente mediante
+`Tickets__SigningPrivateKeyPkcs8Base64` (variable de entorno o user-secrets).
+La clave pública SPKI usa `Tickets__SigningPublicKeySpkiBase64`. El repositorio
+solo contiene marcadores en `backend/.env.example`; las pruebas generan claves
+P-256 efímeras.
 
 ## 8. Auditoría
 
@@ -89,12 +160,19 @@ Datos mínimos:
 - Hora.
 - IP.
 
-La condición de "registro inalterable" del SRS requiere una estrategia específica que debe definirse antes de producción.
+`GET /api/v1/audit` permite consulta paginada únicamente a `Administrador` y
+`Auditor`. La respuesta omite `DatosRelevantes` para no exponer accidentalmente
+hashes, tokens u otros secretos históricos.
+
+Una migración PostgreSQL instala un trigger append-only que permite `INSERT` y
+rechaza `UPDATE`/`DELETE` sobre `Auditorias`. Las escrituras sensibles y su
+auditoría comparten transacción. La política de retención sigue siendo una
+decisión operativa posterior.
 
 ## 9. Seguridad de API
 
 - JWT.
-- OAuth 2.0.
+- OAuth 2.0/OIDC Keycloak con Authorization Code + PKCE S256.
 - Autorización por rol.
 - Validación estricta de entradas.
 - Protección contra exposición de errores internos.
@@ -105,7 +183,7 @@ La condición de "registro inalterable" del SRS requiere una estrategia específ
 
 ## 10. Gestión de secretos
 
-Nunca almacenar en Git:
+Nunca almacenar en Git credenciales, secretos o contraseñas reales/productivas:
 
 - Contraseñas.
 - Connection strings reales.
@@ -116,6 +194,10 @@ Nunca almacenar en Git:
 - Claves de firma.
 
 Usar variables de entorno o un gestor de secretos.
+
+Los valores versionados en `infra/keycloak` son fixtures reproducibles y
+exclusivos de testing; no son credenciales productivas y nunca deben reutilizarse
+fuera de esos entornos efímeros.
 
 ## 11. Riesgos prioritarios
 
@@ -131,10 +213,8 @@ Usar variables de entorno o un gestor de secretos.
 ## 12. Pendientes de definición
 
 - Duración de tokens.
-- Política MFA.
-- Política de contraseñas.
+- Política e implementación MFA.
 - Rotación de secretos.
-- Estrategia de firma digital.
-- Estrategia de auditoría inmutable.
+- Alta disponibilidad y endurecimiento productivo de Keycloak.
 - Retención de logs.
 - Respuesta a incidentes.

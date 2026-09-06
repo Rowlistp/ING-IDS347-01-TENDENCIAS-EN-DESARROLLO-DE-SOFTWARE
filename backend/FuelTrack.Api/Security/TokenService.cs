@@ -11,6 +11,7 @@ namespace FuelTrack.Api.Security;
 
 public sealed class TokenService
 {
+    public const string SecurityVersionClaim = "security_version";
     private readonly JwtOptions _options;
 
     public TokenService(IOptions<JwtOptions> options)
@@ -31,7 +32,8 @@ public sealed class TokenService
             new(JwtRegisteredClaimNames.UniqueName, usuario.NombreUsuario),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
-            new(ClaimTypes.Name, usuario.NombreUsuario)
+            new(ClaimTypes.Name, usuario.NombreUsuario),
+            new(SecurityVersionClaim, usuario.SecurityVersion.ToString())
         };
 
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));

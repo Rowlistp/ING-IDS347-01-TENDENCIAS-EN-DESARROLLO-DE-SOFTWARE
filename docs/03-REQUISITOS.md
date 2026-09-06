@@ -4,6 +4,15 @@
 
 Organizar los requisitos del SRS para facilitar trazabilidad, diseño, implementación y pruebas.
 
+### Entrega de Fase 5
+
+RF-12: despacho atómico con QR revalidado, actor autenticado, tanque compatible,
+stock suficiente, consumo único, movimiento y auditoría. RF-13: Flutter Android
+con OIDC/PKCE, almacenamiento seguro, scanner, confirmación y consulta online.
+Evidencia y gate humano previo al merge:
+[23 — Pruebas F5](23-PRUEBAS-FASE5-MOVIL-DESPACHO.md) y
+[24 — Cierre F5](24-CIERRE-FASE5.md). No incluye transporte SMTP/SMS ni cierre diario.
+
 ## 2. Requisitos funcionales
 
 | ID | Requisito | Actor principal | Prioridad |
@@ -98,3 +107,16 @@ El SRS no define métricas concretas para:
 - Límites de solicitudes API.
 
 Estos puntos deben convertirse en requisitos medibles antes de producción.
+
+## 8. Estado de implementación de Fase 4
+
+Esta sección registra trazabilidad sin modificar el texto original del SRS:
+
+| Requisito | Estado al cierre de Fase 4 |
+|---|---|
+| RF-06 | Implementado: emisión desde una Solicitud aprobada y PDF con QR |
+| RF-07 | Implementado: QR firmado, verificable y resistente a manipulación |
+| RF-08 | Implementado: UUID, prefijo y secuencia PostgreSQL sin duplicidad |
+| RF-09 | Parcial: se crean notificaciones pendientes; SMTP/SMS real queda para Fase 9 |
+| RF-10 | Implementado: consulta y validación de estado efectivo |
+| RS-04 | Implementado: ECDSA P-256, SHA-256 y token aleatorio de 256 bits |

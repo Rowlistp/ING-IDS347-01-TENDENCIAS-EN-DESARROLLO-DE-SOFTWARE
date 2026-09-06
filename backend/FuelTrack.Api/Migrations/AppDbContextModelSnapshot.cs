@@ -22,6 +22,8 @@ namespace FuelTrack.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence("ticket_numero_seq");
+
             modelBuilder.Entity("FuelTrack.Api.Models.Auditoria", b =>
                 {
                     b.Property<long>("Id")
@@ -126,6 +128,10 @@ namespace FuelTrack.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<decimal>("DisponibilidadRestante")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
                     b.Property<int>("EstacionId")
                         .HasColumnType("integer");
 
@@ -139,10 +145,17 @@ namespace FuelTrack.Api.Migrations
                     b.Property<TimeOnly>("Hora")
                         .HasColumnType("time without time zone");
 
+                    b.Property<decimal>("InventarioRestante")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
                     b.Property<string>("Observaciones")
                         .HasColumnType("text");
 
                     b.Property<int>("OperadorId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TanqueId")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("TicketId")
@@ -153,6 +166,8 @@ namespace FuelTrack.Api.Migrations
                     b.HasIndex("EstacionId");
 
                     b.HasIndex("OperadorId");
+
+                    b.HasIndex("TanqueId");
 
                     b.HasIndex("TicketId")
                         .IsUnique();
@@ -258,6 +273,12 @@ namespace FuelTrack.Api.Migrations
 
                     b.Property<DateTime>("UltimaActualizacion")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -459,6 +480,9 @@ namespace FuelTrack.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
                     b.ToTable("Roles");
                 });
 
@@ -585,8 +609,15 @@ namespace FuelTrack.Api.Migrations
                     b.Property<DateTime>("FechaVencimiento")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("FirmaDigital")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("HashSeguridad")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("MotivoAnulacion")
                         .HasColumnType("text");
 
                     b.Property<int>("NumeroSecuencial")
@@ -595,6 +626,10 @@ namespace FuelTrack.Api.Migrations
                     b.Property<string>("Prefijo")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<byte[]>("QrCodePng")
+                        .IsRequired()
+                        .HasColumnType("bytea");
 
                     b.Property<int?>("SolicitudId")
                         .HasColumnType("integer");
@@ -609,6 +644,12 @@ namespace FuelTrack.Api.Migrations
                     b.Property<int>("VehiculoId")
                         .HasColumnType("integer");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DepartamentoId");
@@ -618,7 +659,10 @@ namespace FuelTrack.Api.Migrations
                     b.HasIndex("NumeroSecuencial")
                         .IsUnique();
 
-                    b.HasIndex("SolicitudId");
+                    b.HasIndex("SolicitudId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Tickets_Solicitud_Utilizable")
+                        .HasFilter("\"SolicitudId\" IS NOT NULL AND \"Estado\" NOT IN (4, 5, 6)");
 
                     b.HasIndex("TipoCombustibleId");
 
@@ -668,6 +712,11 @@ namespace FuelTrack.Api.Migrations
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("SecurityVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.HasKey("Id");
 
@@ -774,6 +823,12 @@ namespace FuelTrack.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("FuelTrack.Api.Models.Tanque", "Tanque")
+                        .WithMany()
+                        .HasForeignKey("TanqueId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("FuelTrack.Api.Models.Ticket", "Ticket")
                         .WithOne("Despacho")
                         .HasForeignKey("FuelTrack.Api.Models.Despacho", "TicketId")
@@ -783,6 +838,8 @@ namespace FuelTrack.Api.Migrations
                     b.Navigation("Estacion");
 
                     b.Navigation("Operador");
+
+                    b.Navigation("Tanque");
 
                     b.Navigation("Ticket");
                 });
