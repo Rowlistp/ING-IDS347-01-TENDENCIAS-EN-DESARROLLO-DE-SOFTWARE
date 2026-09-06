@@ -31,7 +31,11 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         if (Database.IsNpgsql())
+        {
             modelBuilder.HasSequence<long>("ticket_numero_seq");
+            modelBuilder.Entity<Inventario>().Property<uint>("xmin").IsRowVersion();
+            modelBuilder.Entity<Ticket>().Property<uint>("xmin").IsRowVersion();
+        }
 
         modelBuilder.Entity<UsuarioRol>()
             .HasKey(ur => new { ur.UsuarioId, ur.RolId });
@@ -97,6 +101,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<MovimientoInventario>().Property(m => m.Volumen).HasPrecision(18, 4);
         modelBuilder.Entity<RecepcionCombustible>().Property(r => r.VolumenRecibido).HasPrecision(18, 4);
         modelBuilder.Entity<Despacho>().Property(d => d.GalonesServidos).HasPrecision(18, 4);
+        modelBuilder.Entity<Despacho>().Property(d => d.InventarioRestante).HasPrecision(18, 4);
+        modelBuilder.Entity<Despacho>().Property(d => d.DisponibilidadRestante).HasPrecision(18, 4);
+        modelBuilder.Entity<Despacho>().HasOne(d => d.Tanque).WithMany()
+            .HasForeignKey(d => d.TanqueId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<CierreDiario>().Property(c => c.VolumenDespachado).HasPrecision(18, 4);
         modelBuilder.Entity<CierreDiario>().Property(c => c.InventarioFinal).HasPrecision(18, 4);
         modelBuilder.Entity<CierreDiario>().Property(c => c.Diferencias).HasPrecision(18, 4);

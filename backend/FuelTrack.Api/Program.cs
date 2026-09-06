@@ -189,6 +189,7 @@ builder.Services.AddScoped<TicketNumberService>();
 builder.Services.AddScoped<TicketQrService>();
 builder.Services.AddScoped<TicketPdfService>();
 builder.Services.AddScoped<TicketService>();
+builder.Services.AddScoped<DispatchService>();
 builder.Services.AddScoped<SecuritySeedService>();
 
 var allowedOrigins = builder.Configuration
@@ -242,6 +243,15 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.Use(async (context, next) =>
+{
+    try { await next(context); }
+    catch (DbUpdateConcurrencyException) when (!context.Response.HasStarted)
+    {
+        context.Response.StatusCode = StatusCodes.Status409Conflict;
+        await context.Response.WriteAsJsonAsync(new { code = "CONCURRENCIA_CONFLICTO", message = "Los datos cambiaron; actualice la consulta antes de repetir la operación." });
+    }
+});
 app.UseCors("WebClient");
 app.UseAuthentication();
 app.UseAuthorization();
