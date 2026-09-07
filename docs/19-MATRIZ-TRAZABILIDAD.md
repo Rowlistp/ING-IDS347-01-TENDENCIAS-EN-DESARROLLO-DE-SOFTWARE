@@ -20,18 +20,18 @@ existencia de una entidad o pantalla complete un requisito.
 | RF-08 | Numeración de tickets | 4 | Builder 2 | CU-08 | Secuencia/prefijo | PostgreSQL concurrente 24 tickets | **Implementado/Validado** |
 | RF-09 | Envío de tickets | 4 y 9 | Builder 2 | CU-10 | Notificación pendiente | Suite F4 | Parcial F4 validado; transporte SMTP/SMS pendiente F9 |
 | RF-10 | Consulta de estado y Tickets propios por Solicitante | 4 | Builder 2 + Builder 3 web | CU-11 | `/api/v1/tickets` | Suite F4 estado efectivo/RBAC/ownership/PDF | **Implementado/Validado backend** |
-| RF-11 | Asignaciones manuales/automáticas | 3 | Builder 1 backend + Builder 3 web | CU-06, CU-07 | Solicitudes/reglas | Pendiente | Pendiente por fase |
+| RF-11 | Asignaciones manuales/automáticas | 3 | Builder 1 backend + Builder 3 web | CU-06, CU-07 | `POST /solicitudes/{id}/aprobar`, `POST /solicitudes/{id}/rechazar` | Suite de Solicitudes (PR #5) | **Implementado/Validado backend**; web según Builder 3 |
 | RF-12 | Despacho de combustible | 5 | Builder 2 | CU-12, CU-13 | DispatchService, `/api/v1/despachos` | HTTP/PostgreSQL: concurrencia, rollback, FK/UNIQUE | Implementado; evidencia en doc. 23 |
 | RF-13 | Aplicación móvil para despacho | 5 | Builder 2 | CU-01, CU-12, CU-13 | Flutter Android OIDC/scanner/formulario | Unit/widget, E2E API/BD, analyze, APK | Implementado; cámara/login nativo pendientes tester antes de merge |
 | RF-14 | Control de inventario | 6 | Builder 1 | CU-14 a CU-16 | Inventario | Suite actual de Inventario | Backend implementado/validado |
 | RF-15 | Inventario en tiempo real | 6 | Builder 1 | CU-16 | Inventario/consultas | Suite actual de Inventario | Backend implementado/validado |
 | RF-16 | Recepción de combustible | 6 | Builder 1 | CU-14 | Recepciones | Suite actual de Recepciones | Backend implementado/validado |
 | RF-17 | Movimientos de inventario | 6 | Builder 1 | CU-14, CU-15 | Movimientos | Suite actual de Movimientos | Backend implementado/validado |
-| RF-18 | Cierre diario | 7 | Builder 1 | CU-17 | Cierres/PDF | Pendiente | Pendiente por fase |
-| RF-19 | Reportes | 8 | Builder 1 + Builder 3 web | CU-18 | Reportes | Pendiente | Pendiente por fase |
-| RF-20 | Exportación de reportes | 8 | Builder 1 + Builder 3 web | CU-19 | Excel/CSV/PDF | Pendiente | Pendiente por fase |
+| RF-18 | Cierre diario | 7 | Builder 1 | CU-17 | `POST /cierres-diarios`, `GET /cierres-diarios`, `GET /cierres-diarios/{id}`, `GET /cierres-diarios/{id}/pdf` | 8 tests unitarios MSTest + SQLite (PR #10) | **Implementado/Validado backend** |
+| RF-19 | Reportes | 8 | Builder 1 + Builder 3 web | CU-18 | `GET /reportes?tipo={solicitudes\|despachos\|inventario\|cierres}` | 9 tests unitarios MSTest + SQLite (PR #10) | **Implementado/Validado backend**; web según Builder 3 |
+| RF-20 | Exportación de reportes | 8 | Builder 1 + Builder 3 web | CU-19 | `GET /reportes/exportar?tipo=...&formato={csv\|excel\|pdf}` | Incluido en suite de Reportes (PR #10) | **Implementado/Validado backend**; web según Builder 3 |
 | RF-21 | Trazabilidad | 1 y transversal | Builder 2 base; todos por módulo | CU-20 | `/api/v1/audit` + eventos | Suite Fase 1/append-only | Base implementada; cobertura futura por fase |
-| RF-22 | Dashboard ejecutivo | 8 | Builder 3 | CU-21 | Dashboard web | Pendiente | Pendiente por fase |
+| RF-22 | Dashboard ejecutivo | 8 | Builder 1 API + Builder 3 web | CU-21 | `GET /dashboard/resumen` | 2 tests unitarios MSTest + SQLite (PR #10) | **API implementada/validada**; visualización web según Builder 3 |
 | RF-23 | Notificaciones | 9 | Builder 2 | CU-22 | Notificaciones | Pendiente | Pendiente por fase |
 | RF-24 | API REST | Transversal | Todos; integración Builder 2 en Fase 9 | Todos | API .NET 10 | Seguridad API validada; resto pendiente | Parcial por fases |
 
