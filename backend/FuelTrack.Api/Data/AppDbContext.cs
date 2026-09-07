@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<RecepcionCombustible> RecepcionesCombustible => Set<RecepcionCombustible>();
     public DbSet<Despacho> Despachos => Set<Despacho>();
     public DbSet<CierreDiario> CierresDiarios => Set<CierreDiario>();
+    public DbSet<CierreDiarioDetalle> CierresDiariosDetalle => Set<CierreDiarioDetalle>();
     public DbSet<Auditoria> Auditorias => Set<Auditoria>();
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
 
@@ -132,6 +133,33 @@ public class AppDbContext : DbContext
             .WithMany(u => u.RefreshTokens)
             .HasForeignKey(t => t.UsuarioId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // CierreDiario — nuevas propiedades
+        modelBuilder.Entity<CierreDiario>()
+            .HasOne(c => c.CreadoPor)
+            .WithMany()
+            .HasForeignKey(c => c.CreadoPorId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CierreDiario>().Property(c => c.TotalDespachos).HasDefaultValue(0);
+
+        // CierreDiarioDetalle
+        modelBuilder.Entity<CierreDiarioDetalle>()
+            .HasOne(d => d.CierreDiario)
+            .WithMany(c => c.Detalles)
+            .HasForeignKey(d => d.CierreDiarioId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CierreDiarioDetalle>()
+            .HasOne(d => d.Tanque)
+            .WithMany()
+            .HasForeignKey(d => d.TanqueId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CierreDiarioDetalle>()
+            .HasIndex(d => new { d.CierreDiarioId, d.TanqueId }).IsUnique();
+        modelBuilder.Entity<CierreDiarioDetalle>().Property(d => d.VolumenDespachado).HasPrecision(18, 4);
+        modelBuilder.Entity<CierreDiarioDetalle>().Property(d => d.VolumenRecibido).HasPrecision(18, 4);
+        modelBuilder.Entity<CierreDiarioDetalle>().Property(d => d.InventarioInicial).HasPrecision(18, 4);
+        modelBuilder.Entity<CierreDiarioDetalle>().Property(d => d.InventarioFinal).HasPrecision(18, 4);
+        modelBuilder.Entity<CierreDiarioDetalle>().Property(d => d.Diferencias).HasPrecision(18, 4);
 
         base.OnModelCreating(modelBuilder);
     }
