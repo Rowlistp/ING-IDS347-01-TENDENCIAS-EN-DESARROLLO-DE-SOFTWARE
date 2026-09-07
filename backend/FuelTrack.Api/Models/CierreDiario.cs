@@ -7,6 +7,10 @@ public class CierreDiario
     public decimal VolumenDespachado { get; set; }
     public decimal InventarioFinal { get; set; }
     public decimal Diferencias { get; set; }
-    public string? ActaDigital { get; set; }
-    public string? ReporteUrl { get; set; }
+    public int TotalDespachos { get; set; }
+    public byte[]? PdfActa { get; set; }
+    public int CreadoPorId { get; set; }
+    public Usuario CreadoPor { get; set; } = null!;
+    public DateTime CreadoEn { get; set; }
+    public ICollection<CierreDiarioDetalle> Detalles { get; set; } = [];
 }
