@@ -256,7 +256,7 @@ public sealed class TicketService(
 
         var reference = id.ToString("D");
         var queuedChannels = await db.Notificaciones
-            .Where(item => item.Tipo == "TICKET_EMITIDO" && item.ReferenciaEvento == reference && item.Estado == "PENDIENTE")
+            .Where(item => item.Tipo == "TICKET_EMITIDO" && item.ReferenciaEvento == reference)
             .Select(item => item.Canal)
             .ToListAsync(cancellationToken);
         pending.RemoveAll(item => queuedChannels.Contains(item.Canal));
@@ -351,6 +351,7 @@ public sealed class TicketService(
             Estado = "PENDIENTE",
             Destinatario = recipient.Trim(),
             ReferenciaEvento = ticket.Id.ToString("D"),
+            ClaveIdempotencia = $"TICKET_EMITIDO:{ticket.Id:D}:{channel}:{recipient.Trim()}",
             FechaHora = DateTime.UtcNow
         };
 
@@ -389,7 +390,7 @@ public sealed class TicketService(
         }
     }
 
-    private static TicketResponse ToResponse(Ticket ticket)
+    internal static TicketResponse ToResponse(Ticket ticket)
     {
         var effectiveState = NormalizeUtc(DateTime.UtcNow) >= ticket.FechaVencimiento &&
             ticket.Estado is not (EstadoTicket.Consumido or EstadoTicket.Anulado)
