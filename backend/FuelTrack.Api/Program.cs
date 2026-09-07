@@ -191,6 +191,7 @@ builder.Services.AddScoped<TicketPdfService>();
 builder.Services.AddScoped<TicketService>();
 builder.Services.AddScoped<DispatchService>();
 builder.Services.AddScoped<CierreDiarioService>();
+builder.Services.AddScoped<ReporteService>();
 builder.Services.AddScoped<SecuritySeedService>();
 
 var allowedOrigins = builder.Configuration
