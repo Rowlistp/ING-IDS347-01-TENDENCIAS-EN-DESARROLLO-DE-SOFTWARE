@@ -49,7 +49,7 @@ reintento, refresh concurrente/fallido, logout concurrente y un solo replay401.
 E2E usa API/BD reales; identidad y entrada cámara sustituidas explícitamente.
 Esto no sustituye login nativo ni hardware.
 
-## Gate humano previo al merge — PENDIENTE TESTER
+## Gate humano físico — PENDIENTE TESTER, incluso tras merge PR #9
 
 No hay dispositivo físico conectado. No se declara cámara/login nativo reales
 realizados. Adjuntar evidencia sin tokens ni QR reutilizables:
@@ -65,5 +65,5 @@ realizados. Adjuntar evidencia sin tokens ni QR reutilizables:
 7. Cortar red durante POST: no repetir; consultar resultado.
 8. Sesión expirada/refresh, logout y botón Atrás sin datos privados.
 
-Firma tester: pendiente. Estado antes de merge, sujeto a CI verde del SHA final:
-`AUTOMATED READY — MANUAL CAMERA GATE PENDING`.
+Firma tester: pendiente. F5 ya integrada en main por PR #9; el merge no acredita
+la prueba física: `MERGED — MANUAL CAMERA GATE PENDING`.

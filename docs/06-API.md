@@ -1,5 +1,27 @@
 # 06 - Diseño Inicial de API REST
 
+## F9 — Notificaciones y descarga segura
+
+GET `/api/v1/notificaciones`: Admin/Supervisor/Auditor. Filtros estado,canal,tipo,
+fechaDesde/fechaHasta (ISO8601 con offset), pagina=1,tamanoPagina=20 (máximo100).
+Respuesta `{total,pagina,tamanoPagina,elementos}` con estado/destino/intentos,
+fechas/referencia/mensaje y error sanitizado, nunca tokens o credenciales.
+GET `/api/v1/notificaciones/{id}`: mismos roles.
+POST `/api/v1/notificaciones/{id}/reintentar`: Admin/Supervisor, sin body, solo
+FALLIDA externa.200 reprograma,404 inexistente,409 no permitido; reinicia Intentos,
+conserva IntentosTotales y audita NOTIFICACION_REPROGRAMADA.
+
+GET `/api/v1/tickets/descargar/{token}`: anónimo por capacidad bearer; PDF F4 con
+QR persistido.404 LINK_INVALIDO;410 LINK_EXPIRADO/LINK_REVOCADO; tickets
+Consumido/Anulado no descargables por enlace. No-store/private, no-referrer,
+nosniff. No sirve para autenticarse/despachar y no debe aparecer en logs.
+
+Cola PENDIENTE→PROCESANDO→ENVIADA; temporal vuelve PENDIENTE/backoff;
+permanente/límite→FALLIDA. Ticket Enviado solo tras todos sus TICKET_EMITIDO
+aceptados y si sigue Pendiente/vigente. Externo at-least-once, no exactamente-once.
+[Contrato SMS/configuración](../infra/notifications/README.md).
+RF24 integra tickets/consulta/inventario/despachos/reportes, sin segunda API.
+
 ## 1. Objetivo
 
 Registrar rutas implementadas y propuestas de recursos REST. El SRS exige una
@@ -197,7 +219,7 @@ emitir, anular ni preparar envío.
 
 - `POST /{id}/enviar`: Admin/Supervisor; crea una notificación `PENDIENTE` por
   correo/teléfono disponible y deja el Ticket en `Pendiente`. No ejecuta SMTP ni
-  SMS. No duplica una notificación pendiente del mismo tipo, Ticket y canal;
+  SMS. No duplica notificación del mismo tipo, Ticket y canal en ningún estado;
   `notificacionesPendientes` cuenta los registros nuevos de esta invocación.
   PostgreSQL serializa preparaciones simultáneas por Ticket. `Enviado` queda
   reservado a F9 tras confirmar transporte real.

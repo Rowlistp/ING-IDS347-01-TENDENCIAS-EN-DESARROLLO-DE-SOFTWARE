@@ -52,7 +52,11 @@ La división es **por capa técnica**, alineada a las fortalezas de cada builder
 | Fase 1 | Auth JWT/OAuth2, RBAC, auditoría base | RF-01; RS-01, RS-02, RS-05 y base RS-06 |
 | Fase 4 | Tickets + QR seguro, consulta propia Solicitante y cola lógica idempotente; transporte real en F9 | RF-06 a RF-10 (RF-09 parcial) |
 | Fase 5 | Aplicación móvil Flutter | RF-12, RF-13 |
-| Fase 9 | Notificaciones e integraciones (SMTP/SMS) | RF-23, RF-24 |
+| Fase 9 | Outbox, SMTP/SMS, links seguros, alertas y REST transversal | RF-09, RF-23, RF-24 |
+
+F9 entrega backend y pruebas locales de red. Tester valida proveedor real al
+contar con credenciales. Builder1 conserva RF-11/reportes/dashboard/roles de
+cierre; Builder3 frontend. Sus gaps se coordinan en doc.26, no se reescriben en F9.
 
 ---
 

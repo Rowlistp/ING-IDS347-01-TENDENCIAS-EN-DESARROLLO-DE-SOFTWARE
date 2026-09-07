@@ -1,5 +1,14 @@
 # 10 - Plan de Pruebas
 
+## Gate F9
+
+Baseline main F7/F8:235 aprobadas. F9:285 aprobadas,0 fallidas,0 omitidas;
+71 PostgreSQL (incluye SMTP/REST),9 Keycloak y205 locales/protocolos/RBAC.
+SMTP TCP/Mailpit1.30.0 y SMS HTTP loopback reales, no proveedores productivos.
+Ejecutar `bash backend/scripts/run-full-integration-tests.sh`.
+[Evidencia](25-PRUEBAS-FASE9-NOTIFICACIONES.md). F5 ya fusionada por PR#9;
+gate físico Android sigue pendiente.
+
 ## Gate de Fase 5
 
 Backend completo: 216/216 sin omisiones, con PostgreSQL 16 y Keycloak 26.7.3.

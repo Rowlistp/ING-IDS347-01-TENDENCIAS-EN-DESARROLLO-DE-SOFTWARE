@@ -1,5 +1,15 @@
 # 20 - Índice de Decisiones Técnicas
 
+## Decisiones F9
+
+MailKit4.17.0 SMTP/Mailpit1.30.0 local; SMS sin proveedor elegido, adapter HTTP
+configurable y gate de credenciales. Cola existente, UNIQUE determinista,
+SKIP LOCKED, lease/ReservaId, timeout y transacciones cortas. Externo at-least-once;
+Message-Id/Idempotency-Key mitigan, no garantizan exactamente-once. Reglas separadas,
+fallo→alerta interna sin recursión. Link independiente256 bits, solo hash,
+expira con Ticket; migración aborta duplicados históricos sin borrar.
+Guía PostgreSQL aplicada a índices y bloqueos. [Operación](../infra/notifications/README.md).
+
 ## 1. Propósito
 
 Resumir decisiones vigentes y pendientes sin reemplazar el SRS ni duplicar el
@@ -72,6 +82,7 @@ en `16-DECISION-NET10.md`.
 
 - MFA es opcional en el SRS y sigue diferido; no se presenta como deuda obligatoria.
 - TLS 1.3 y AES-256 en reposo requieren evidencia de infraestructura productiva.
-- Flutter/despacho entregado en F5 con gate físico pendiente; SMTP/SMS permanece en F9.
+- F5 fusionada PR#9 con gate físico pendiente; F9 implementa SMTP/SMS,
+  proveedor/credenciales productivos siguen como gate de despliegue.
 - Ninguna credencial productiva debe versionarse. Los valores de
   `infra/keycloak` son fixtures reproducibles de testing.

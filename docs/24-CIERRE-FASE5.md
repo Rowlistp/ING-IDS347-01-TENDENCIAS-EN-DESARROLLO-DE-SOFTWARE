@@ -4,8 +4,9 @@
 
 RF-12: API de despacho sobre entidad existente. RF-13: Flutter Android con login
 institucional, scanner, validación visual, confirmación, resultado y consulta.
-Rama feature/builder2-fase5-mobile-despacho desde F4 corregida4681fd1;
-sin merge a main, PR abierto ni reescritura de F4.
+Rama original feature/builder2-fase5-mobile-despacho desde F4 corregida4681fd1.
+F1/F4/F5 ya integradas en main mediante PR #9. F7/F8 se integraron mediante
+PR #10 y su cierre documental mediante PR #11. Esta actualización F9 no reescribe F4/F5.
 
 ## Arquitectura, transacción e inventario
 
@@ -57,7 +58,9 @@ trabajo ajeno ni migraciones anteriores.
 
 ## Pendientes deliberados
 
-Cámara/login nativo/QR en dispositivo: **PENDIENTE TESTER antes de merge**.
-Firma Android productiva/TLS/operación IdP requieren despliegue. SMTP/SMS:F9;
-cierre diario:Builder1/F7; reportes:F8. No se simulan como hechos.
-Estado sujeto a CI verde: `AUTOMATED READY — MANUAL CAMERA GATE PENDING`.
+Cámara/login nativo/QR en dispositivo: **PENDIENTE TESTER físico**, aun con F5
+ya integrada. Firma Android productiva/TLS/operación IdP requieren despliegue.
+SMTP/SMS están implementados y probados en F9, con credenciales productivas
+pendientes (doc. 26). Cierre diario/reportes base F7/F8 ya están en main;
+sus gaps funcionales constan en la matriz, sin corregirse en F9.
+Estado: `MERGED — MANUAL CAMERA GATE PENDING`.

@@ -1,5 +1,10 @@
 # 09 - Flujos de Negocio
 
+F9 separa reglas y transporte. Detecta próximos vencimientos, vencidos, stock bajo
+y Ajustes. Reserva con lease/SKIP LOCKED, confirma transacción corta, envía fuera
+de BD y registra resultado. Temporal reintenta; permanente/límite→FALLIDA más
+auditoría y alerta INTERNO visible, sin recursión. Ningún worker revive terminales.
+
 ## 1. Objetivo
 
 Documentar los flujos principales derivados de los requisitos funcionales.
@@ -28,11 +33,12 @@ Ticket disponible
 
 Fase 4 no transporta mensajes: `POST /tickets/{id}/enviar` crea registros
 `Notificacion` con estado `PENDIENTE` para los canales disponibles. Fase 9
-implementará SMTP/SMS y actualizará el resultado de entrega.
+implementa SMTP/SMS y actualiza el resultado de entrega.
 
 El estado del Ticket sigue `Creado → Pendiente → Enviado`. La primera transición
 ocurre al preparar la cola lógica; la segunda pertenece a F9 tras transporte
-confirmado. Repetir la preparación no duplica EMAIL/SMS pendientes, incluso con
+confirmado para todos los canales. Preparar no duplica EMAIL/SMS en ningún estado
+(fallidos usan retry manual), incluso con
 peticiones concurrentes. El Solicitante consulta estado/PDF de sus Tickets;
 los recursos ajenos no son visibles.
 

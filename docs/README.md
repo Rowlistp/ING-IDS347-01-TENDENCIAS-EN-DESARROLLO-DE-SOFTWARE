@@ -28,12 +28,15 @@ Esta carpeta contiene la documentación técnica y funcional generada a partir d
 22. [Cierre de Fase 4](22-CIERRE-FASE4.md)
 23. [Pruebas Fase 5 — Móvil y despacho](23-PRUEBAS-FASE5-MOVIL-DESPACHO.md)
 24. [Cierre de Fase 5](24-CIERRE-FASE5.md)
+25. [Pruebas Fase 9 — Notificaciones](25-PRUEBAS-FASE9-NOTIFICACIONES.md)
+26. [Cierre de Fase 9](26-CIERRE-FASE9.md)
 
 ### Explicaciones pedagógicas
 
 - [Fase 1 — Seguridad y administración](explicaciones/fase-1-seguridad-administracion.md)
 - [Fase 4 — Tickets digitales y QR seguro](explicaciones/fase-4-tickets-qr.md)
 - [Fase 5 — Móvil y despacho](explicaciones/fase-5-movil-despacho.md)
+- [Fase 9 — Notificaciones e integraciones](explicaciones/fase-9-notificaciones-integraciones.md)
 
 ## Fuente principal
 

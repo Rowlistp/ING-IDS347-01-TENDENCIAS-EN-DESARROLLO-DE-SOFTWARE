@@ -55,6 +55,8 @@ La documentación del proyecto se encuentra en [`docs/`](docs/).
 22. [Cierre de Fase 4](docs/22-CIERRE-FASE4.md)
 23. [Pruebas Fase 5 — Móvil y despacho](docs/23-PRUEBAS-FASE5-MOVIL-DESPACHO.md)
 24. [Cierre de Fase 5](docs/24-CIERRE-FASE5.md)
+25. [Pruebas Fase 9 — Notificaciones](docs/25-PRUEBAS-FASE9-NOTIFICACIONES.md)
+26. [Cierre de Fase 9](docs/26-CIERRE-FASE9.md)
 
 Explicación pedagógica: [Fase 1 — Seguridad y administración](docs/explicaciones/fase-1-seguridad-administracion.md).
 
@@ -70,8 +72,8 @@ También existe un [índice interno de documentación](docs/README.md).
 [Flutter Mobile] ---/
 
                             |---- [Keycloak 26.7.3]
-                            |---- [SMTP, pendiente]
-                            |---- [SMS Gateway, pendiente]
+                            |---- [SMTP MailKit / Mailpit local]
+                            |---- [SMS HTTP Gateway configurable]
 ```
 
 ## Estado actual
@@ -83,7 +85,10 @@ Fase 4 incorpora emisión desde Solicitudes aprobadas, secuencia PostgreSQL, QR
 ECDSA P-256/SHA-256, validación, estados, PDF, anulación y preparación de
 notificaciones. F5 añade [Flutter Android](mobile/README.md) y despacho atómico
 con inventario, movimiento y auditoría. Cámara/login nativo requieren gate físico
-del tester previo al merge. SMTP/SMS sigue pendiente F9.
+del tester físico, aunque F1/F4/F5 ya estén en main (PR #9). F7/F8 base también
+están integradas (PR #10/#11). F9 implementa SMTP/PDF, SMS/link seguro, cola con
+reintentos, cinco alertas y API REST: 285 pruebas aprobadas. Proveedor SMS y
+credenciales productivas siguen pendientes; [operación local](infra/notifications/README.md).
 
 El repositorio también contiene el backend base y catálogos desarrollados por
 otros builders. Esto no significa que el sistema completo ni las fases
@@ -121,4 +126,5 @@ La arquitectura contempla los requisitos establecidos en el SRS, incluyendo:
 - Auditoría de operaciones sensibles.
 
 TLS 1.3 y AES-256 en reposo requieren configuración y evidencia del despliegue
-productivo. SMTP/SMS real y móvil pertenecen a fases posteriores.
+productivo. Los transportes SMTP/SMS están probados contra servidores locales
+reales; esto no acredita entrega productiva ni la prueba física del móvil.
