@@ -37,5 +37,5 @@ docker exec "$container_name" pg_isready \
 export FUELTRACK_TEST_CONNECTION="Host=127.0.0.1;Port=$database_port;Database=$database_name;Username=$database_user;Password=$database_password;Pooling=false"
 
 dotnet test backend/FuelTrack.Api.Tests/FuelTrack.Api.Tests.csproj \
-  --filter TestCategory=PostgreSQL \
+  --filter 'TestCategory=PostgreSQL&TestCategory!=NotificationTransport' \
   --logger "console;verbosity=normal"

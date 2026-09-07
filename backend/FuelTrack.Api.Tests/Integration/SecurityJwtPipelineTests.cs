@@ -62,6 +62,17 @@ public sealed class SecurityJwtPipelineTests
     }
 
     [TestMethod]
+    [DataRow(Roles.Administrador, true, true)] [DataRow(Roles.Supervisor, true, true)] [DataRow(Roles.Auditor, true, false)]
+    [DataRow(Roles.Despachador, false, false)] [DataRow(Roles.Consulta, false, false)] [DataRow(Roles.Solicitante, false, false)]
+    public async Task Notifications_RbacReadAndRetry(string role, bool canRead, bool canRetry)
+    {
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", await CreateTokenAsync(role));
+        Assert.AreEqual(canRead ? HttpStatusCode.OK : HttpStatusCode.Forbidden, (await _client.GetAsync("/api/v1/notificaciones")).StatusCode);
+        Assert.AreEqual(canRead ? HttpStatusCode.NotFound : HttpStatusCode.Forbidden, (await _client.GetAsync("/api/v1/notificaciones/12345")).StatusCode);
+        Assert.AreEqual(canRetry ? HttpStatusCode.NotFound : HttpStatusCode.Forbidden, (await _client.PostAsync("/api/v1/notificaciones/12345/reintentar", null)).StatusCode);
+    }
+
+    [TestMethod]
     public async Task Audit_WithoutJwt_Returns401()
     {
         var response = await _client.GetAsync("/api/v1/audit");
