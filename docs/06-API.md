@@ -278,8 +278,13 @@ POST   /api/v1/recepciones
 ```text
 GET    /api/v1/cierres-diarios
 GET    /api/v1/cierres-diarios/{id}
+GET    /api/v1/cierres-diarios/{id}/pdf
 POST   /api/v1/cierres-diarios
 ```
+
+- `POST`: genera el cierre del día especificado en `{ "fecha": "YYYY-MM-DD" }`. Calcula inventario inicial/final por tanque a partir de `MovimientosInventario`, genera el PDF acta y lo persiste. Roles: `Administrador`, `Supervisor`.
+- `GET /{id}/pdf`: devuelve el PDF acta en `application/pdf`. Roles: `Administrador`, `Supervisor`, `Auditor`.
+- Errores de negocio: `400 FECHA_FUTURA`, `400 SIN_DESPACHOS`, `409 CIERRE_YA_EXISTE`.
 
 ### Reportes
 
