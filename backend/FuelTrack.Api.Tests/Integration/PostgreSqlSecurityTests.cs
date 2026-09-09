@@ -1,6 +1,9 @@
+using System.Security.Cryptography;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Auth;
+using FuelTrack.Api.DTOs.Tickets;
 using FuelTrack.Api.Models;
+using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Security;
 using FuelTrack.Api.Services;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +15,7 @@ namespace FuelTrack.Api.Tests.Integration;
 
 [TestClass]
 [TestCategory("PostgreSQL")]
-public sealed class PostgreSqlSecurityTests
+public sealed partial class PostgreSqlSecurityTests
 {
     private string _connectionString = null!;
     private bool _canDestroyDatabase;
@@ -372,4 +375,81 @@ public sealed class PostgreSqlSecurityTests
         PasswordService Passwords,
         AuditService Audit,
         AuthService Auth);
+
+    private async Task<(int ActorId, int[] RequestIds)> SeedTicketRequestsAsync(int count)
+    {
+        await using var db = CreateContext();
+        var department = new Departamento { Nombre = "PostgreSQL Tickets", Activo = true };
+        var fuel = new TipoCombustible { Nombre = "Diesel Ticket", Activo = true };
+        var employee = new Empleado
+        {
+            Codigo = "PG-TICKET",
+            NombreCompleto = "PostgreSQL Concurrente",
+            Cedula = "00100000002",
+            Cargo = "Pruebas",
+            Correo = "postgres@example.test",
+            Telefono = "+18095550102",
+            Activo = true,
+            Departamento = department
+        };
+        var vehicle = new Vehiculo
+        {
+            Placa = "PG00001",
+            Ficha = "PG-FICHA",
+            Marca = "Prueba",
+            Modelo = "Concurrente",
+            Año = 2026,
+            Tipo = "Camioneta",
+            CapacidadTanque = 30,
+            Activo = true,
+            Departamento = department
+        };
+        var actor = new Usuario
+        {
+            NombreUsuario = "postgres-ticket-actor",
+            PasswordHash = "test-only",
+            Activo = true
+        };
+        db.AddRange(department, fuel, employee, vehicle, actor);
+        await db.SaveChangesAsync();
+
+        var requests = Enumerable.Range(1, count).Select(index => new SolicitudCombustible
+        {
+            CantidadSolicitada = 10 + index,
+            CantidadAutorizada = 10 + index,
+            TipoSolicitud = "Manual",
+            Estado = EstadoSolicitud.Aprobada,
+            FechaSolicitud = DateTime.UtcNow,
+            FechaVencimiento = DateTime.UtcNow.AddDays(2),
+            EmpleadoId = employee.Id,
+            VehiculoId = vehicle.Id,
+            DepartamentoId = department.Id,
+            TipoCombustibleId = fuel.Id
+        }).ToArray();
+        db.SolicitudesCombustible.AddRange(requests);
+        await db.SaveChangesAsync();
+        return (actor.Id, requests.Select(item => item.Id).ToArray());
+    }
+
+    private static IOptions<TicketOptions> CreateTicketOptions()
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        return Options.Create(new TicketOptions
+        {
+            Prefix = "COM",
+            SigningPrivateKeyPkcs8Base64 = Convert.ToBase64String(key.ExportPkcs8PrivateKey()),
+            SigningPublicKeySpkiBase64 = Convert.ToBase64String(key.ExportSubjectPublicKeyInfo())
+        });
+    }
+
+    private static TicketService CreateTicketService(
+        AppDbContext db,
+        IOptions<TicketOptions> options)
+        => new(
+            db,
+            new TicketNumberService(db),
+            new TicketQrService(options),
+            new TicketPdfService(),
+            new AuditService(db),
+            options);
 }
