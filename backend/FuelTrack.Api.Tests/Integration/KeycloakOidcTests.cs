@@ -52,8 +52,8 @@ public sealed class KeycloakOidcTests
     [TestCleanup]
     public async Task Cleanup()
     {
-        _api.Dispose();
-        await _factory.DisposeAsync();
+        _api?.Dispose();
+        if (_factory is not null) await _factory.DisposeAsync();
         Environment.SetEnvironmentVariable("Jwt__Key", null);
     }
 

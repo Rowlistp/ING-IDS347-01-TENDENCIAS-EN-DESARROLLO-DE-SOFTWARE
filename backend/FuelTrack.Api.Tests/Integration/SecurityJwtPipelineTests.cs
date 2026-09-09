@@ -52,7 +52,7 @@ public sealed class SecurityJwtPipelineTests
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(JwtBearerDefaults.AuthenticationScheme, "not-a-jwt");
 
-        var response = await _client.GetAsync("/api/v1/users");
+        var response = await _client.GetAsync("/api/v1/usuarios");
 
         Assert.AreEqual(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -60,7 +60,7 @@ public sealed class SecurityJwtPipelineTests
     [TestMethod]
     public async Task Audit_WithoutJwt_Returns401()
     {
-        var response = await _client.GetAsync("/api/v1/audit");
+        var response = await _client.GetAsync("/api/v1/auditoria");
 
         Assert.AreEqual(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -72,7 +72,7 @@ public sealed class SecurityJwtPipelineTests
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(JwtBearerDefaults.AuthenticationScheme, token);
 
-        var response = await _client.GetAsync("/api/v1/users");
+        var response = await _client.GetAsync("/api/v1/usuarios");
 
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
     }
@@ -110,7 +110,7 @@ public sealed class SecurityJwtPipelineTests
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(JwtBearerDefaults.AuthenticationScheme, token);
 
-        var response = await _client.GetAsync("/api/v1/users");
+        var response = await _client.GetAsync("/api/v1/usuarios");
 
         Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -122,7 +122,7 @@ public sealed class SecurityJwtPipelineTests
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(JwtBearerDefaults.AuthenticationScheme, token);
 
-        var response = await _client.GetAsync("/api/v1/audit");
+        var response = await _client.GetAsync("/api/v1/auditoria");
 
         Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -150,7 +150,7 @@ public sealed class SecurityJwtPipelineTests
         var token = await CreateTokenAsync(role);
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(JwtBearerDefaults.AuthenticationScheme, token);
-        var response = await _client.GetAsync("/api/v1/audit");
+        var response = await _client.GetAsync("/api/v1/auditoria");
         var json = await response.Content.ReadAsStringAsync();
 
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
@@ -167,7 +167,7 @@ public sealed class SecurityJwtPipelineTests
             new AuthenticationHeaderValue(JwtBearerDefaults.AuthenticationScheme, token);
 
         var response = await _client.PatchAsJsonAsync(
-            $"/api/v1/users/{userId}/status",
+            $"/api/v1/usuarios/{userId}/estado",
             new { activo = false });
 
         Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
@@ -188,7 +188,7 @@ public sealed class SecurityJwtPipelineTests
 
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(JwtBearerDefaults.AuthenticationScheme, token);
-        var response = await _client.GetAsync("/api/v1/users");
+        var response = await _client.GetAsync("/api/v1/usuarios");
 
         Assert.AreEqual(HttpStatusCode.Unauthorized, response.StatusCode);
     }

@@ -357,6 +357,7 @@ public sealed class AuthServiceRefreshTests
         }
         finally
         {
+            SqliteConnection.ClearAllPools();
             if (File.Exists(databasePath))
                 File.Delete(databasePath);
         }
