@@ -17,6 +17,19 @@ siendo propuestas hasta su implementación.
 - Códigos HTTP estándar.
 - Identificadores de recursos en la URL.
 
+### Idioma de las rutas — decisión definitiva (2026-09-09)
+
+**Las rutas de la API usan español.** Ejemplos: `/solicitudes`, `/empleados`,
+`/tipos-combustible`, `/cierres-diarios`.
+
+**Rationale:** las rutas en español ya están en `main`, el frontend las consume
+directamente y el dominio del negocio es hispanohablante. Cambiarlas ahora
+implicaría romper el frontend y todas las pruebas de integración.
+
+**Regla de equipo:** cualquier renombre de ruta requiere consenso explícito de
+los tres Builders antes de ejecutarse. Un PR que renombre rutas sin ese consenso
+**debe rechazarse en code review**.
+
 ## 3. Recursos
 
 ### Autenticación
@@ -340,4 +353,3 @@ GET /api/v1/dashboard/resumen
 - Idempotencia.
 - Rate limiting.
 - OpenAPI/Swagger final.
-- Convención definitiva español/inglés para las rutas de catálogos de Builder 1.
