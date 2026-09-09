@@ -9,7 +9,7 @@ namespace FuelTrack.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = $"{Roles.Administrador},{Roles.Auditor}")]
-[Route("api/v1/audit")]
+[Route("api/v1/auditoria")]
 public sealed class AuditController : ControllerBase
 {
     private readonly AuditService _audit;

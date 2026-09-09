@@ -17,7 +17,20 @@ siendo propuestas hasta su implementación.
 - Códigos HTTP estándar.
 - Identificadores de recursos en la URL.
 
-## 3. Recursos propuestos
+### Idioma de las rutas — decisión definitiva (2026-09-09)
+
+**Las rutas de la API usan español.** Ejemplos: `/solicitudes`, `/empleados`,
+`/tipos-combustible`, `/cierres-diarios`.
+
+**Rationale:** las rutas en español ya están en `main`, el frontend las consume
+directamente y el dominio del negocio es hispanohablante. Cambiarlas ahora
+implicaría romper el frontend y todas las pruebas de integración.
+
+**Regla de equipo:** cualquier renombre de ruta requiere consenso explícito de
+los tres Builders antes de ejecutarse. Un PR que renombre rutas sin ese consenso
+**debe rechazarse en code review**.
+
+## 3. Recursos
 
 ### Autenticación
 
@@ -31,11 +44,11 @@ POST /api/v1/auth/password/reset
 ### Usuarios
 
 ```text
-GET    /api/v1/users
-GET    /api/v1/users/{id}
-POST   /api/v1/users
-PUT    /api/v1/users/{id}
-PATCH  /api/v1/users/{id}/status
+GET    /api/v1/usuarios
+GET    /api/v1/usuarios/{id}
+POST   /api/v1/usuarios
+PUT    /api/v1/usuarios/{id}
+PATCH  /api/v1/usuarios/{id}/estado
 ```
 
 ### Roles
@@ -101,23 +114,47 @@ PUT    /api/v1/departamentos/{id}
 DELETE /api/v1/departamentos/{id}  # desactivación lógica
 ```
 
-> **Bloqueo de integración:** el contrato inicial proponía `/employees`,
-> `/vehicles` y `/departments`, pero el backend existente expone las rutas en
-> español mostradas arriba. No hay una decisión registrada que autorice renombrar
-> el backend. Builder 1 y los consumidores web/móvil deben acordar la convención
-> definitiva antes de integrar estos catálogos; no deben asumir alias inexistentes.
-
-### Solicitudes
+### Tipos de Combustible
 
 ```text
-GET    /api/v1/fuel-requests
-GET    /api/v1/fuel-requests/{id}
-POST   /api/v1/fuel-requests
-POST   /api/v1/fuel-requests/{id}/approve
-POST   /api/v1/fuel-requests/{id}/reject
+GET    /api/v1/tipos-combustible
+GET    /api/v1/tipos-combustible/{id}
+POST   /api/v1/tipos-combustible
+PUT    /api/v1/tipos-combustible/{id}
+DELETE /api/v1/tipos-combustible/{id}
 ```
 
-> Aprobar/rechazar es una propuesta derivada de la responsabilidad de "Aprobaciones" del Supervisor. El SRS no define literalmente esos endpoints.
+### Tanques
+
+```text
+GET    /api/v1/tanques
+GET    /api/v1/tanques/{id}
+POST   /api/v1/tanques
+PUT    /api/v1/tanques/{id}
+DELETE /api/v1/tanques/{id}
+```
+
+> POST crea el Tanque y su registro de Inventario (existencia = 0) en una sola transacción.
+
+### Proveedores
+
+```text
+GET    /api/v1/proveedores
+GET    /api/v1/proveedores/{id}
+POST   /api/v1/proveedores
+PUT    /api/v1/proveedores/{id}
+DELETE /api/v1/proveedores/{id}
+```
+
+### Solicitudes de Combustible
+
+```text
+GET    /api/v1/solicitudes
+GET    /api/v1/solicitudes/{id}
+POST   /api/v1/solicitudes
+POST   /api/v1/solicitudes/{id}/aprobar
+POST   /api/v1/solicitudes/{id}/rechazar
+```
 
 ### Tickets
 
@@ -125,54 +162,154 @@ POST   /api/v1/fuel-requests/{id}/reject
 GET    /api/v1/tickets
 GET    /api/v1/tickets/{id}
 POST   /api/v1/tickets
-POST   /api/v1/tickets/{id}/send
-POST   /api/v1/tickets/{id}/cancel
-POST   /api/v1/tickets/validate
+POST   /api/v1/tickets/{id}/enviar
+POST   /api/v1/tickets/{id}/anular
+POST   /api/v1/tickets/validar
+GET    /api/v1/tickets/{id}/pdf
 ```
+
+#### Contrato de emisión
+
+`POST /api/v1/tickets`, autorizado para `Administrador` y `Supervisor`, recibe:
+
+```json
+{
+  "solicitudId": 42,
+  "prefijo": "COM"
+}
+```
+
+`prefijo` es opcional; por defecto usa `Tickets:Prefix`. Empleado, vehículo,
+departamento, combustible, cantidad y vencimiento se leen de la Solicitud
+aprobada. No se aceptan copias editables de esos campos desde el cliente.
+
+La respuesta `201` contiene UUID, código visible `COM-2026-000001`, datos
+autorizados, estado e indicador `qrDisponible`; no expone token, hashes, firma
+ni clave privada. Una Solicitud solo puede tener un Ticket no terminal.
+
+#### Validación
+
+`POST /api/v1/tickets/validar` recibe `{ "qrPayload": "FTQR1..." }`. Requiere
+un rol operacional (`Administrador`, `Supervisor`, `Despachador`, `Auditor` o
+`Consulta`) y devuelve `200` con `valido`, `codigo`, `mensaje` y los datos del
+Ticket únicamente cuando es válido. Validar no consume el Ticket.
+
+La API comprueba versión, estructura, UUID, SHA-256, firma, token, coincidencia
+con PostgreSQL, estado y fecha de vencimiento. Los códigos operacionales
+incluyen `QR_INVALIDO`, `QR_NO_COINCIDE`, `TICKET_VENCIDO`, `TICKET_CONSUMIDO`
+y `TICKET_ANULADO`.
+
+#### Envío, anulación y PDF
+
+`GET /tickets`, `GET /tickets/{id}` y `GET /tickets/{id}/pdf` permiten además
+`Solicitante`, filtrando por `Ticket.Empleado.UsuarioId == usuario autenticado`.
+Un recurso ajeno devuelve `404`, igual que uno inexistente. Sin empleado
+vinculado, el listado está vacío. Si el usuario posee además un rol operacional,
+conserva el alcance de ese rol. Solicitante no puede validar QR operacional,
+emitir, anular ni preparar envío.
+
+- `POST /{id}/enviar`: Admin/Supervisor; crea una notificación `PENDIENTE` por
+  correo/teléfono disponible y deja el Ticket en `Pendiente`. No ejecuta SMTP ni
+  SMS. No duplica una notificación pendiente del mismo tipo, Ticket y canal;
+  `notificacionesPendientes` cuenta los registros nuevos de esta invocación.
+  PostgreSQL serializa preparaciones simultáneas por Ticket. `Enviado` queda
+  reservado a F9 tras confirmar transporte real.
+- `POST /{id}/anular`: Admin/Supervisor; requiere `{ "motivo": "..." }`,
+  rechaza tickets consumidos/vencidos y es idempotente si ya estaba anulado.
+- `GET /{id}/pdf`: roles operacionales o Solicitante propietario; devuelve `application/pdf` con el mismo
+  QR emitido y registra auditoría.
+
+Errores de negocio de emisión usan `400`, `404` o `409` con `code` y `message`.
 
 ### Despachos
 
+Contrato F5: `POST /despachos` requiere exclusivamente rol `Despachador` activo.
+Recibe `ticketId` (UUID), `qrPayload`, `tanqueId`, `estacionId`,
+`galonesServidos` (positivo, máximo autorizado, hasta cuatro decimales) y
+`observaciones` opcionales (máximo 500 caracteres). Un despacho parcial consume
+el Ticket completo y no permite un segundo despacho por el saldo.
+
+Devuelve `201` con `despachoId`, `ticketId`, `codigoTicket`, `fecha`, `hora` (UTC),
+`galonesServidos`, `operadorId`, `operador`, `tanqueId`, `tanqueIdentificacion`,
+`estacionId`, `estacionNombre`, `inventarioRestante`, `disponibilidadRestante`,
+`estadoTicket` (enum numérico; Consumido = 5) y `observaciones`. El inventario restante
+es el valor registrado al confirmar, no una lectura posterior del tanque.
+
+En una sola transacción se revalida QR/estado/fecha, se crea Despacho, se consume
+Ticket, se descuentan ExistenciaActual y Disponibilidad, se crea Movimiento de
+tipo Salida con volumen negativo y se audita. PostgreSQL bloquea Ticket e Inventario; UNIQUE TicketId
+impide doble consumo. La concurrencia de Inventario usa además `xmin` para que
+escrituras antiguas de otros módulos fallen sin sobrescribir stock.
+
+`GET /despachos` y `GET /despachos/{id}`: Admin/Supervisor/Auditor/Consulta leen;
+Despachador consulta solo sus operaciones. Recursos fuera de alcance: `404`.
+Listado paginado mediante `pagina` (1 por defecto) y `tamanoPagina` (20, máximo
+100); `ticketId` opcional permite reconciliar una confirmación cuya respuesta
+se perdió. No se reintenta automáticamente un POST tras error de red.
+
+`GET /api/v1/estaciones`: lectura de estaciones activas para Despachador y los
+roles de consulta de despachos. Es el único catálogo de lectura añadido;
+`GET /api/v1/tanques` ya existe y se reutiliza filtrando activos/combustible.
+`GET /api/v1/auth/me`: usuario local y roles de negocio resueltos por F1,
+necesarios porque los roles externos de Keycloak no autorizan operaciones.
+
+Errores `{code,message}`: `400` cantidad/formato inválido; `401` sesión/operador
+inactivo; `403` rol no autorizado; `404` Ticket/tanque/estación/inventario
+inexistente; `409` QR_INVALIDO, QR_NO_COINCIDE, TICKET_VENCIDO,
+TICKET_ANULADO, TICKET_CONSUMIDO, TANQUE_INACTIVO, ESTACION_INACTIVA,
+COMBUSTIBLE_INCORRECTO, INVENTARIO_INSUFICIENTE o CONCURRENCIA_CONFLICTO.
+La validación de QR anterior a la confirmación no consume el Ticket.
+
+Cantidad inválida: `GALONES_INVALIDOS` o `GALONES_EXCEDEN_AUTORIZACION` (`400`).
+Operador inválido: `OPERADOR_INVALIDO` (`401`); sin rol: `OPERADOR_NO_AUTORIZADO` (`403`).
+El operador, fechas, estado, movimiento e inventario se calculan en el servidor.
+
 ```text
-GET    /api/v1/dispatches
-GET    /api/v1/dispatches/{id}
-POST   /api/v1/dispatches
+GET    /api/v1/despachos
+GET    /api/v1/despachos/{id}
+POST   /api/v1/despachos
 ```
 
 ### Inventario
 
 ```text
-GET    /api/v1/inventory
-GET    /api/v1/inventory/movements
-POST   /api/v1/inventory/adjustments
-POST   /api/v1/inventory/transfers
+GET    /api/v1/inventario
+GET    /api/v1/inventario/movimientos
+POST   /api/v1/inventario/ajustes
+POST   /api/v1/inventario/transferencias
 ```
 
-### Recepciones
+### Recepciones de Combustible
 
 ```text
-GET    /api/v1/receipts
-POST   /api/v1/receipts
+GET    /api/v1/recepciones
+POST   /api/v1/recepciones
 ```
 
-### Cierre diario
+### Cierres Diarios
 
 ```text
-GET    /api/v1/daily-closures
-GET    /api/v1/daily-closures/{id}
-POST   /api/v1/daily-closures
+GET    /api/v1/cierres-diarios
+GET    /api/v1/cierres-diarios/{id}
+GET    /api/v1/cierres-diarios/{id}/pdf
+POST   /api/v1/cierres-diarios
 ```
+
+- `POST`: genera el cierre del día especificado en `{ "fecha": "YYYY-MM-DD" }`. Calcula inventario inicial/final por tanque a partir de `MovimientosInventario`, genera el PDF acta y lo persiste. Roles: `Administrador`, `Supervisor`.
+- `GET /{id}/pdf`: devuelve el PDF acta en `application/pdf`. Roles: `Administrador`, `Supervisor`, `Auditor`.
+- Errores de negocio: `400 FECHA_FUTURA`, `400 SIN_DESPACHOS`, `409 CIERRE_YA_EXISTE`.
 
 ### Reportes
 
 ```text
-GET /api/v1/reports
-GET /api/v1/reports/export
+GET /api/v1/reportes
+GET /api/v1/reportes/exportar
 ```
 
 ### Dashboard
 
 ```text
-GET /api/v1/dashboard/summary
+GET /api/v1/dashboard/resumen
 ```
 
 ## 4. Respuesta de error sugerida
@@ -216,4 +353,3 @@ GET /api/v1/dashboard/summary
 - Idempotencia.
 - Rate limiting.
 - OpenAPI/Swagger final.
-- Convención definitiva español/inglés para las rutas de catálogos de Builder 1.
