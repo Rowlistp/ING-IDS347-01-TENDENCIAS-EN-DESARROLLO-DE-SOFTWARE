@@ -342,10 +342,13 @@ public sealed class ReporteService(AppDbContext db)
             foreach (var peso in pesos) c.RelativeColumn(peso);
         });
 
-        // Encabezados
-        foreach (var h in headers)
-            t.Header(hdr => hdr.Cell().Background(Colors.Blue.Darken2)
-                .Padding(4).Text(h).FontColor(Colors.White).Bold().FontSize(8));
+        // Encabezados — una sola llamada a Header con todas las celdas dentro
+        t.Header(hdr =>
+        {
+            foreach (var h in headers)
+                hdr.Cell().Background(Colors.Blue.Darken2)
+                    .Padding(4).Text(h).FontColor(Colors.White).Bold().FontSize(8);
+        });
 
         // Filas
         var rowIndex = 0;
