@@ -53,14 +53,12 @@ Tickets/QR, despacho móvil ni notificaciones de fases posteriores.
 - Auditoría transaccional, consulta segura y bloqueo PostgreSQL de update/delete.
 - CI `Backend Security` ejecuta restore, build y la suite con PostgreSQL y Keycloak.
 - Migraciones EF completas desde base vacía.
-- Endpoints: auth, `/api/v1/usuarios`, `GET /api/v1/roles` y auditoría paginada.
-- Migración consolidada `20260904133655_IntegratePhase1Security`, generada sobre
-  el snapshot vigente que ya contiene Solicitudes e Inventario.
+- Endpoints: auth, users, `GET /api/v1/roles` y auditoría paginada.
 
 ## Resultado final
 
 - Build: 0 errores y 0 warnings en el gate de cierre.
-- Tests: 130 aprobados, 0 fallidos y 0 omitidos en el gate completo.
+- Tests: 59 aprobados, 0 fallidos y 0 omitidos en el gate completo.
 - PostgreSQL y Keycloak/OIDC reales: aprobados.
 - Alcance diferido documentado sin marcar requisitos futuros como terminados.
 
