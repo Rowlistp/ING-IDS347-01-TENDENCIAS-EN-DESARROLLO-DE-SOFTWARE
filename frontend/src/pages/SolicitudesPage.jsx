@@ -62,7 +62,7 @@ export default function SolicitudesPage() {
 
   async function cargarSolicitudes() {
     try {
-      const data = await apiRequest('/api/v1/solicitudes')
+      const data = await apiRequest('/solicitudes')
       setSolicitudes(data)
     } catch (e) {
       setError(e.message)
@@ -74,10 +74,10 @@ export default function SolicitudesPage() {
   useEffect(() => {
     cargarSolicitudes()
     Promise.all([
-      apiRequest('/api/v1/empleados'),
-      apiRequest('/api/v1/vehiculos'),
-      apiRequest('/api/v1/departamentos'),
-      apiRequest('/api/v1/tipos-combustible'),
+      apiRequest('/empleados'),
+      apiRequest('/vehiculos'),
+      apiRequest('/departamentos'),
+      apiRequest('/tipos-combustible'),
     ]).then(([empleados, vehiculos, departamentos, tipos]) =>
       setCatalogos({ empleados, vehiculos, departamentos, tipos })
     ).catch(() => {})
@@ -92,7 +92,7 @@ export default function SolicitudesPage() {
     setSubmitting(true)
     setFormError(null)
     try {
-      await apiRequest('/api/v1/solicitudes', {
+      await apiRequest('/solicitudes', {
         method: 'POST',
         body: JSON.stringify({
           empleadoId: Number(form.empleadoId),
@@ -117,7 +117,7 @@ export default function SolicitudesPage() {
     e.preventDefault()
     setActionError(null)
     try {
-      await apiRequest(`/api/v1/solicitudes/${aprobarModal.id}/aprobar`, {
+      await apiRequest(`/solicitudes/${aprobarModal.id}/aprobar`, {
         method: 'POST',
         body: JSON.stringify({ cantidadAutorizada: Number(cantidadAutorizada) }),
       })
@@ -132,7 +132,7 @@ export default function SolicitudesPage() {
     e.preventDefault()
     setActionError(null)
     try {
-      await apiRequest(`/api/v1/solicitudes/${rechazarModal.id}/rechazar`, {
+      await apiRequest(`/solicitudes/${rechazarModal.id}/rechazar`, {
         method: 'POST',
         body: JSON.stringify({ motivoRechazo }),
       })
