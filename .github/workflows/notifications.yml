@@ -1,0 +1,26 @@
+name: Notifications Phase 9
+on:
+  push:
+    branches: [main, feature/builder2-fase9-notificaciones]
+    paths: ["backend/**", "infra/**", ".github/workflows/notifications.yml"]
+  pull_request:
+    paths: ["backend/**", "infra/**", ".github/workflows/notifications.yml"]
+permissions:
+  contents: read
+jobs:
+  notifications:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Full regression PostgreSQL Keycloak SMTP and SMS HTTP
+        run: bash backend/scripts/run-full-integration-tests.sh --logger 'trx;LogFileName=phase9.trx' --results-directory /tmp/fueltrack-f9-results
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase9-test-results
+          path: /tmp/fueltrack-f9-results/*.trx

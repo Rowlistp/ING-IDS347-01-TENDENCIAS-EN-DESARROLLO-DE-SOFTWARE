@@ -96,9 +96,8 @@ Requisitos:
 
 ### Fase 5 - Aplicación móvil y despacho
 
-Implementada en `feature/builder2-fase5-mobile-despacho` desde F4 `4681fd1`.
-Automatización y CI en [cierre F5](24-CIERRE-FASE5.md). Cámara física y login
-nativo real requieren firma del tester antes del merge, no pruebas mock.
+F1/F4/F5 fusionadas mediante PR#9. Automatización en [cierre F5](24-CIERRE-FASE5.md).
+Cámara física/login nativo siguen pendientes del tester; merge no acredita hardware.
 
 Incluye:
 
@@ -161,6 +160,10 @@ Requisitos:
 - RF-22.
 
 ### Fase 9 - Notificaciones e integraciones
+
+Implementada en rama F9 desde main db248b6 (incluye F7/F8 PR#10 y docs PR#11).
+Gates y límites productivos en [cierre F9](26-CIERRE-FASE9.md).
+Proveedor/credenciales reales y gates físicos no se sustituyen por CI.
 
 Incluye:
 

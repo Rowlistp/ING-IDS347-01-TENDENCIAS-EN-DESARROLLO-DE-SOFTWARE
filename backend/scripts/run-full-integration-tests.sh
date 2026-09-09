@@ -2,8 +2,13 @@
 set -euo pipefail
 test_pg="fueltrack-full-pg-$$"
 test_kc="fueltrack-full-kc-$$"
-cleanup() { docker rm -f "$test_pg" "$test_kc" >/dev/null 2>&1 || true; }
+test_mail="fueltrack-full-mail-$$"
+cleanup() { docker rm -f "$test_pg" "$test_kc" "$test_mail" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
+docker run --rm -d --name "$test_mail" -p 127.0.0.1::1025 -p 127.0.0.1::8025 axllent/mailpit:v1.30.0 >/dev/null
+export FUELTRACK_SMTP_PORT=$(docker port "$test_mail" 1025/tcp | awk -F: '{print $NF}')
+test_mail_port=$(docker port "$test_mail" 8025/tcp | awk -F: '{print $NF}')
+export FUELTRACK_MAILPIT_URL="http://127.0.0.1:$test_mail_port"
 docker run --rm -d --name "$test_pg" -p 127.0.0.1::5432 \
   -e POSTGRES_DB=fueltrack_security_test -e POSTGRES_USER=fueltrack_test \
   -e POSTGRES_PASSWORD=integration-test-only-password postgres:16-alpine >/dev/null

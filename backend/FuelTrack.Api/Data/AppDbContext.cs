@@ -29,9 +29,21 @@ public class AppDbContext : DbContext
     public DbSet<CierreDiarioDetalle> CierresDiariosDetalle => Set<CierreDiarioDetalle>();
     public DbSet<Auditoria> Auditorias => Set<Auditoria>();
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
+    public DbSet<TicketDeliveryLink> TicketDeliveryLinks => Set<TicketDeliveryLink>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Notificacion>().Property(n => n.ClaveIdempotencia).HasMaxLength(1000);
+        modelBuilder.Entity<Notificacion>().Property(n => n.UltimoError).HasMaxLength(300);
+        modelBuilder.Entity<Notificacion>().Property(n => n.ProveedorMensajeId).HasMaxLength(200);
+        modelBuilder.Entity<Notificacion>().Property(n => n.Mensaje).HasMaxLength(2000);
+        modelBuilder.Entity<Notificacion>().HasIndex(n => n.ClaveIdempotencia).IsUnique();
+        modelBuilder.Entity<Notificacion>().HasIndex(n => new { n.ProximoIntentoUtc, n.Id }).HasFilter("\"Estado\" = 'PENDIENTE'");
+        modelBuilder.Entity<Notificacion>().HasIndex(n => n.BloqueadaHastaUtc).HasFilter("\"Estado\" = 'PROCESANDO'");
+        modelBuilder.Entity<Notificacion>().HasIndex(n => new { n.Tipo, n.ReferenciaEvento });
+        modelBuilder.Entity<TicketDeliveryLink>().Property(l => l.TokenHash).HasMaxLength(64);
+        modelBuilder.Entity<TicketDeliveryLink>().HasIndex(l => l.TokenHash).IsUnique();
+        modelBuilder.Entity<TicketDeliveryLink>().HasOne(l => l.Ticket).WithMany().HasForeignKey(l => l.TicketId).OnDelete(DeleteBehavior.Restrict);
         if (Database.IsNpgsql())
         {
             modelBuilder.HasSequence<long>("ticket_numero_seq");

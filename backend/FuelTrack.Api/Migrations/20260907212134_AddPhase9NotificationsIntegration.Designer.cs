@@ -3,6 +3,7 @@ using System;
 using FuelTrack.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FuelTrack.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260907212134_AddPhase9NotificationsIntegration")]
+    partial class AddPhase9NotificationsIntegration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -649,59 +652,6 @@ namespace FuelTrack.Api.Migrations
                     b.ToTable("SolicitudesCombustible");
                 });
 
-            modelBuilder.Entity("FuelTrack.Api.Models.SolicitudRecurrente", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Activa")
-                        .HasColumnType("boolean");
-
-                    b.Property<decimal>("CantidadSolicitada")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)");
-
-                    b.Property<int>("DepartamentoId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("EmpleadoId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateOnly?>("FechaFin")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly>("FechaInicio")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Periodicidad")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("TipoCombustibleId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateOnly?>("UltimaEjecucion")
-                        .HasColumnType("date");
-
-                    b.Property<int>("VehiculoId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DepartamentoId");
-
-                    b.HasIndex("EmpleadoId");
-
-                    b.HasIndex("TipoCombustibleId");
-
-                    b.HasIndex("VehiculoId");
-
-                    b.ToTable("SolicitudesRecurrentes");
-                });
-
             modelBuilder.Entity("FuelTrack.Api.Models.Tanque", b =>
                 {
                     b.Property<int>("Id")
@@ -1167,41 +1117,6 @@ namespace FuelTrack.Api.Migrations
 
                     b.HasOne("FuelTrack.Api.Models.Vehiculo", "Vehiculo")
                         .WithMany("Solicitudes")
-                        .HasForeignKey("VehiculoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Departamento");
-
-                    b.Navigation("Empleado");
-
-                    b.Navigation("TipoCombustible");
-
-                    b.Navigation("Vehiculo");
-                });
-
-            modelBuilder.Entity("FuelTrack.Api.Models.SolicitudRecurrente", b =>
-                {
-                    b.HasOne("FuelTrack.Api.Models.Departamento", "Departamento")
-                        .WithMany()
-                        .HasForeignKey("DepartamentoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("FuelTrack.Api.Models.Empleado", "Empleado")
-                        .WithMany()
-                        .HasForeignKey("EmpleadoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("FuelTrack.Api.Models.TipoCombustible", "TipoCombustible")
-                        .WithMany()
-                        .HasForeignKey("TipoCombustibleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("FuelTrack.Api.Models.Vehiculo", "Vehiculo")
-                        .WithMany()
                         .HasForeignKey("VehiculoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

@@ -13,6 +13,8 @@ on:
       - ".github/workflows/backend-security.yml"
   push:
     branches:
+      - main
+      - feature/builder2-fase9-notificaciones
       - feature/seguridad-movil
     paths:
       - "backend/**"
@@ -26,8 +28,15 @@ jobs:
     env:
       FUELTRACK_TEST_CONNECTION: Host=localhost;Port=5432;Database=fueltrack_security_test;Username=postgres;Pooling=false
       FUELTRACK_KEYCLOAK_URL: http://localhost:18080
+      FUELTRACK_SMTP_PORT: 1025
+      FUELTRACK_MAILPIT_URL: http://localhost:8025
 
     services:
+      mailpit:
+        image: axllent/mailpit:v1.30.0
+        ports:
+          - 1025:1025
+          - 8025:8025
       postgres:
         image: postgres:16-alpine
         env:

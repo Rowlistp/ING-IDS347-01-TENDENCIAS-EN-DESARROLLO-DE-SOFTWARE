@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.JsonWebTokens;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.Security;
 using FuelTrack.Api.Services;
+using FuelTrack.Api.Notifications;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -12,6 +13,8 @@ using Microsoft.Extensions.Options;
 using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+// Capability URLs must never reach framework request/binding logs, even with Debug enabled.
+builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
 
 QuestPDF.Settings.License = LicenseType.Community;
 
@@ -195,6 +198,19 @@ builder.Services.AddScoped<ReporteService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<SecuritySeedService>();
 builder.Services.AddHostedService<SolicitudRecurrenteService>();
+builder.Services.AddOptions<NotificationOptions>().Bind(builder.Configuration.GetSection("Notifications"))
+    .Validate(o => o.IsValid(builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")), "Configuración Notifications inválida; revisar límites, TLS y credenciales externas.")
+    .ValidateOnStart();
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddHttpClient<ISmsSender, HttpSmsGatewaySender>((sp, client) =>
+    client.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<IOptions<NotificationOptions>>().Value.TransportTimeoutSeconds))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+builder.Services.AddScoped<TicketDeliveryLinkService>();
+builder.Services.AddScoped<NotificationContentService>();
+builder.Services.AddScoped<NotificationDeliveryService>();
+builder.Services.AddScoped<NotificationRuleService>();
+builder.Services.AddHostedService<NotificationDeliveryWorker>();
+builder.Services.AddHostedService<NotificationRuleWorker>();
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")

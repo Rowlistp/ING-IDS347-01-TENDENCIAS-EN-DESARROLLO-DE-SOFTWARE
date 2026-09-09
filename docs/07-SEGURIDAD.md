@@ -1,5 +1,18 @@
 # 07 - Estrategia de Seguridad
 
+## Seguridad F9
+
+SMTP MailKit/TLS y SMS HTTPS sin redirects; secretos únicamente env/user-secrets/
+secret manager. ValidateOnStart al habilitar, integraciones apagadas por defecto.
+Sin protocol logger, headers/cuerpos de error de proveedor ni destinos reales en Git.
+Errores persistidos: códigos controlados. Framework logging limitado a Warning
+para no registrar rutas/bindings con tokens; proxy/trazas deben redactar también.
+Link independiente de JWT/refresh/QR,256 bits aleatorios, solo SHA-256 en BD,
+expiración limitada al Ticket, revocación, no-store/no-referrer. Auditoría incluye
+TicketId/DeliveryLinkId/resultado/IP/fecha, nunca token/URL. Notificaciones: lectura
+Admin/Supervisor/Auditor, retry Admin/Supervisor. At-least-once con lease/fencing;
+no garantiza inbox final. Gate de credenciales productivas todavía pendiente.
+
 ## Seguridad de despacho móvil — Fase 5
 
 - Cliente público `fueltrack-mobile`, Authorization Code + PKCE S256, callback
