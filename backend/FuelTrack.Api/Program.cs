@@ -194,6 +194,7 @@ builder.Services.AddScoped<CierreDiarioService>();
 builder.Services.AddScoped<ReporteService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<SecuritySeedService>();
+builder.Services.AddHostedService<SolicitudRecurrenteService>();
 
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")

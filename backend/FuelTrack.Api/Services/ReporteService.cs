@@ -260,14 +260,103 @@ public sealed class ReporteService(AppDbContext db)
         {
             p.Size(PageSizes.A4.Landscape());
             p.Margin(24);
-            p.DefaultTextStyle(s => s.FontSize(9));
-            p.Header().Text($"FuelTrack — Reporte: {page.Tipo} ({page.Total} registros)")
-                .SemiBold().FontSize(13).FontColor(Colors.Blue.Darken2);
-            p.Content().PaddingVertical(12).Text(
-                $"Total: {page.Total} · Página {page.Pagina} · " +
-                $"Generado: {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC");
+            p.DefaultTextStyle(s => s.FontSize(8));
+
+            p.Header().Column(col =>
+            {
+                col.Item().Text($"FuelTrack — Reporte: {page.Tipo}")
+                    .SemiBold().FontSize(13).FontColor(Colors.Blue.Darken2);
+                col.Item().Text(
+                    $"Total: {page.Total} registros · Generado: {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC")
+                    .FontSize(8).FontColor(Colors.Grey.Darken1);
+            });
+
+            p.Content().PaddingVertical(10).Table(t =>
+            {
+                switch (page.Tipo)
+                {
+                    case "solicitudes":
+                        DefinirColumnasYFilas(t,
+                            ["#", "Fecha", "Empleado", "Vehículo", "Depto.", "Combustible", "Solicitado", "Autorizado", "Estado"],
+                            [1, 2, 3, 3, 2, 2, 2, 2, 2],
+                            page.Items.Cast<SolicitudReporteDto>().Select(s => new[]
+                            {
+                                s.Id.ToString(), s.FechaSolicitud.ToString("yyyy-MM-dd"),
+                                s.Empleado, s.Vehiculo, s.Departamento, s.TipoCombustible,
+                                s.CantidadSolicitada.ToString("F4"),
+                                s.CantidadAutorizada?.ToString("F4") ?? "—",
+                                s.Estado.ToString()
+                            }));
+                        break;
+
+                    case "despachos":
+                        DefinirColumnasYFilas(t,
+                            ["#", "Fecha", "Hora", "Ticket", "Empleado", "Vehículo", "Galones", "Tanque", "Estación", "Operador", "Inv.Rest."],
+                            [1, 2, 2, 3, 3, 2, 2, 2, 2, 2, 2],
+                            page.Items.Cast<DespachoReporteDto>().Select(d => new[]
+                            {
+                                d.Id.ToString(), d.Fecha.ToString(), d.Hora.ToString("HH:mm"),
+                                d.CodigoTicket, d.Empleado, d.Vehiculo,
+                                d.GalonesServidos.ToString("F4"), d.Tanque,
+                                d.Estacion, d.Operador, d.InventarioRestante.ToString("F4")
+                            }));
+                        break;
+
+                    case "inventario":
+                        DefinirColumnasYFilas(t,
+                            ["#", "FechaHora", "Tanque", "Combustible", "Tipo", "Volumen", "Referencia"],
+                            [1, 3, 2, 2, 2, 2, 3],
+                            page.Items.Cast<MovimientoReporteDto>().Select(m => new[]
+                            {
+                                m.Id.ToString(), m.FechaHora.ToString("yyyy-MM-dd HH:mm"),
+                                m.Tanque, m.TipoCombustible, m.Tipo.ToString(),
+                                m.Volumen.ToString("F4"), m.ReferenciaOperacion ?? "—"
+                            }));
+                        break;
+
+                    case "cierres":
+                        DefinirColumnasYFilas(t,
+                            ["#", "Fecha", "Despachos", "Vol.Despachado", "Inv.Final", "Diferencias", "Creado por"],
+                            [1, 2, 2, 3, 3, 3, 3],
+                            page.Items.Cast<CierreReporteDto>().Select(c => new[]
+                            {
+                                c.Id.ToString(), c.Fecha.ToString(),
+                                c.TotalDespachos.ToString(), c.VolumenDespachado.ToString("F4"),
+                                c.InventarioFinal.ToString("F4"), c.Diferencias.ToString("F4"),
+                                c.CreadoPor
+                            }));
+                        break;
+                }
+            });
+
             p.Footer().AlignCenter().Text(t => { t.Span("FuelTrack · "); t.CurrentPageNumber(); });
         })).GeneratePdf();
+
+    private static void DefinirColumnasYFilas(
+        QuestPDF.Fluent.TableDescriptor t,
+        string[] headers, int[] pesos,
+        IEnumerable<string[]> filas)
+    {
+        t.ColumnsDefinition(c =>
+        {
+            foreach (var peso in pesos) c.RelativeColumn(peso);
+        });
+
+        // Encabezados
+        foreach (var h in headers)
+            t.Header(hdr => hdr.Cell().Background(Colors.Blue.Darken2)
+                .Padding(4).Text(h).FontColor(Colors.White).Bold().FontSize(8));
+
+        // Filas
+        var rowIndex = 0;
+        foreach (var fila in filas)
+        {
+            var bg = rowIndex++ % 2 == 0 ? Colors.White : Colors.Grey.Lighten4;
+            foreach (var celda in fila)
+                t.Cell().Background(bg).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2)
+                    .Padding(3).Text(celda).FontSize(8);
+        }
+    }
 
     private static void ValidarTipo(string tipo)
     {
