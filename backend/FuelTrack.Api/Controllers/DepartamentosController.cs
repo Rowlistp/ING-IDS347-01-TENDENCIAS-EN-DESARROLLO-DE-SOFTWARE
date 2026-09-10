@@ -67,6 +67,21 @@ public sealed class DepartamentosController : ControllerBase
     {
         var entity = await _db.Departamentos.FindAsync([id], ct);
         if (entity is null) return NotFound();
+
+        if (await _db.Empleados.AnyAsync(e => e.DepartamentoId == id && e.Activo, ct))
+            return Conflict(new
+            {
+                code = "DEPARTAMENTO_CON_EMPLEADOS_ACTIVOS",
+                message = "No se puede desactivar el departamento porque tiene empleados activos asignados."
+            });
+
+        if (await _db.Vehiculos.AnyAsync(v => v.DepartamentoId == id && v.Activo, ct))
+            return Conflict(new
+            {
+                code = "DEPARTAMENTO_CON_VEHICULOS_ACTIVOS",
+                message = "No se puede desactivar el departamento porque tiene vehículos activos asignados."
+            });
+
         entity.Activo = false;
         await _db.SaveChangesAsync(ct);
         return NoContent();
