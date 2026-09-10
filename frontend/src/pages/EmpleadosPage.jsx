@@ -3,6 +3,7 @@ import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
 import StatusBadge from '../components/StatusBadge'
+import { useDepartamentos } from '../hooks/useDepartamentos'
 import apiRequest from '../services/api'
 
 const EMPTY_FORM = {
@@ -18,7 +19,7 @@ const EMPTY_FORM = {
 
 export default function EmpleadosPage() {
   const [empleados, setEmpleados] = useState([])
-  const [departamentos, setDepartamentos] = useState([])
+  const departamentos = useDepartamentos()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -44,9 +45,6 @@ export default function EmpleadosPage() {
 
   useEffect(() => {
     cargarEmpleados()
-    apiRequest('/departamentos')
-      .then(setDepartamentos)
-      .catch(() => {})
   }, [])
 
   function handleFormChange(e) {
