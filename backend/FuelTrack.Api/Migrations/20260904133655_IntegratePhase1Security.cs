@@ -10,51 +10,15 @@ namespace FuelTrack.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
-                name: "SecurityVersion",
-                table: "Usuarios",
-                type: "integer",
-                nullable: false,
-                defaultValue: 1);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Roles_Nombre",
-                table: "Roles",
-                column: "Nombre",
-                unique: true);
-
-            migrationBuilder.Sql("""
-                CREATE OR REPLACE FUNCTION prevent_auditorias_modification()
-                RETURNS trigger
-                LANGUAGE plpgsql
-                AS $function$
-                BEGIN
-                    RAISE EXCEPTION 'Auditorias es append-only: UPDATE y DELETE están prohibidos.'
-                        USING ERRCODE = '55000';
-                END;
-                $function$;
-
-                CREATE TRIGGER auditorias_append_only
-                BEFORE UPDATE OR DELETE ON "Auditorias"
-                FOR EACH ROW EXECUTE FUNCTION prevent_auditorias_modification();
-                """);
+            // SecurityVersion ya agregada por AddUserSecurityVersion (20260830190110)
+            // IX_Roles_Nombre ya creado por AddUniqueRoleName (20260830190256)
+            // Trigger append-only ya creado por ProtectAuditAppendOnly (20260831222440)
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql("""
-                DROP TRIGGER IF EXISTS auditorias_append_only ON "Auditorias";
-                DROP FUNCTION IF EXISTS prevent_auditorias_modification();
-                """);
-
-            migrationBuilder.DropIndex(
-                name: "IX_Roles_Nombre",
-                table: "Roles");
-
-            migrationBuilder.DropColumn(
-                name: "SecurityVersion",
-                table: "Usuarios");
+            // No-op: los rollbacks corresponden a cada migración individual
         }
     }
 }
