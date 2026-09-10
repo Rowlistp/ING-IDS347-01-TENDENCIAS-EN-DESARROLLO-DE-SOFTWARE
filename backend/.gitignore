@@ -6,3 +6,6 @@
 
 # Secretos — nunca al repo
 **/appsettings.Development.json
+
+# Overrides locales de Docker (config específica de cada máquina, no del equipo)
+docker-compose.override.yml
