@@ -40,7 +40,7 @@ export default function DashboardPage() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    apiRequest('/api/v1/dashboard/resumen')
+    apiRequest('/dashboard/resumen')
       .then(setData)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
