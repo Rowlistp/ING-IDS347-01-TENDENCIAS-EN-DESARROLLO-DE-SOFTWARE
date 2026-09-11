@@ -1,5 +1,6 @@
 using System.Text;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using Microsoft.IdentityModel.JsonWebTokens;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.Security;
@@ -224,7 +225,8 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader());
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
