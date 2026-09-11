@@ -2,6 +2,7 @@ using FuelTrack.Api.Controllers;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.TiposCombustible;
 using FuelTrack.Api.Models;
+using FuelTrack.Api.Models.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -204,7 +205,131 @@ public sealed class TiposCombustibleControllerTests
         });
         await _db.SaveChangesAsync();
 
-        // tanques inactivos no bloquean la desactivación del tipo
+        var result = await _controller.Deactivate(tipo.Id, CancellationToken.None);
+        Assert.IsInstanceOfType<NoContentResult>(result);
+    }
+
+    [TestMethod]
+    public async Task Deactivate_Returns409_CuandoHaySolicitudesActivas()
+    {
+        var tipo = new TipoCombustible { Nombre = "Gasolina Regular", Activo = true };
+        _db.TiposCombustible.Add(tipo);
+        var dep = new Departamento { Nombre = "Ops", Activo = true };
+        _db.Departamentos.Add(dep);
+        await _db.SaveChangesAsync();
+
+        var emp = new Empleado
+        {
+            Codigo = "TC-EMP01", NombreCompleto = "Test Emp", Cedula = "003-0000001-1",
+            Cargo = "Cargo", Correo = "tc@test.com", Telefono = "809-300-0001",
+            Activo = true, DepartamentoId = dep.Id
+        };
+        var veh = new Vehiculo
+        {
+            Placa = "TC00001", Ficha = "TCF01", Marca = "Toyota", Modelo = "Prado",
+            Año = 2021, Tipo = "SUV", CapacidadTanque = 65, Odometro = 0,
+            Activo = true, DepartamentoId = dep.Id
+        };
+        _db.Empleados.Add(emp);
+        _db.Vehiculos.Add(veh);
+        await _db.SaveChangesAsync();
+
+        _db.SolicitudesCombustible.Add(new SolicitudCombustible
+        {
+            CantidadSolicitada = 30m, TipoSolicitud = "Manual",
+            Estado = EstadoSolicitud.Pendiente, FechaSolicitud = DateTime.UtcNow,
+            EmpleadoId = emp.Id, VehiculoId = veh.Id,
+            DepartamentoId = dep.Id, TipoCombustibleId = tipo.Id
+        });
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.Deactivate(tipo.Id, CancellationToken.None);
+        var conflict = result as ConflictObjectResult;
+        Assert.IsNotNull(conflict, "Esperaba 409 Conflict");
+        var code = conflict.Value!.GetType().GetProperty("code")?.GetValue(conflict.Value)?.ToString();
+        Assert.AreEqual("TIPO_COMBUSTIBLE_CON_SOLICITUDES_ACTIVAS", code);
+    }
+
+    [TestMethod]
+    public async Task Deactivate_Returns409_CuandoHayTicketsActivos()
+    {
+        var tipo = new TipoCombustible { Nombre = "Gasolina Premium", Activo = true };
+        _db.TiposCombustible.Add(tipo);
+        var dep = new Departamento { Nombre = "Flota", Activo = true };
+        _db.Departamentos.Add(dep);
+        await _db.SaveChangesAsync();
+
+        var emp = new Empleado
+        {
+            Codigo = "TC-EMP02", NombreCompleto = "Test Emp2", Cedula = "003-0000002-2",
+            Cargo = "Cargo", Correo = "tc2@test.com", Telefono = "809-300-0002",
+            Activo = true, DepartamentoId = dep.Id
+        };
+        var veh = new Vehiculo
+        {
+            Placa = "TC00002", Ficha = "TCF02", Marca = "Ford", Modelo = "Explorer",
+            Año = 2020, Tipo = "SUV", CapacidadTanque = 70, Odometro = 0,
+            Activo = true, DepartamentoId = dep.Id
+        };
+        _db.Empleados.Add(emp);
+        _db.Vehiculos.Add(veh);
+        await _db.SaveChangesAsync();
+
+        _db.Tickets.Add(new Ticket
+        {
+            Id = Guid.NewGuid(), NumeroSecuencial = 1, Prefijo = "COM",
+            FechaCreacion = DateTime.UtcNow,
+            FechaVencimiento = DateTime.UtcNow.AddDays(7),
+            Estado = EstadoTicket.Pendiente, CantidadAutorizada = 30m,
+            TipoCombustibleId = tipo.Id,
+            EmpleadoId = emp.Id, VehiculoId = veh.Id, DepartamentoId = dep.Id
+        });
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.Deactivate(tipo.Id, CancellationToken.None);
+        var conflict = result as ConflictObjectResult;
+        Assert.IsNotNull(conflict, "Esperaba 409 Conflict");
+        var code = conflict.Value!.GetType().GetProperty("code")?.GetValue(conflict.Value)?.ToString();
+        Assert.AreEqual("TIPO_COMBUSTIBLE_CON_TICKETS_ACTIVOS", code);
+    }
+
+    [TestMethod]
+    public async Task Deactivate_Returns204_CuandoSoloHayTicketsTerminales()
+    {
+        var tipo = new TipoCombustible { Nombre = "Diesel Premium", Activo = true };
+        _db.TiposCombustible.Add(tipo);
+        var dep = new Departamento { Nombre = "Archivo", Activo = true };
+        _db.Departamentos.Add(dep);
+        await _db.SaveChangesAsync();
+
+        var emp = new Empleado
+        {
+            Codigo = "TC-EMP03", NombreCompleto = "Test Emp3", Cedula = "003-0000003-3",
+            Cargo = "Cargo", Correo = "tc3@test.com", Telefono = "809-300-0003",
+            Activo = true, DepartamentoId = dep.Id
+        };
+        var veh = new Vehiculo
+        {
+            Placa = "TC00003", Ficha = "TCF03", Marca = "Nissan", Modelo = "Pathfinder",
+            Año = 2019, Tipo = "SUV", CapacidadTanque = 75, Odometro = 0,
+            Activo = true, DepartamentoId = dep.Id
+        };
+        _db.Empleados.Add(emp);
+        _db.Vehiculos.Add(veh);
+        await _db.SaveChangesAsync();
+
+        // ticket consumido — no debe bloquear
+        _db.Tickets.Add(new Ticket
+        {
+            Id = Guid.NewGuid(), NumeroSecuencial = 2, Prefijo = "COM",
+            FechaCreacion = DateTime.UtcNow.AddDays(-10),
+            FechaVencimiento = DateTime.UtcNow.AddDays(-3),
+            Estado = EstadoTicket.Consumido, CantidadAutorizada = 25m,
+            TipoCombustibleId = tipo.Id,
+            EmpleadoId = emp.Id, VehiculoId = veh.Id, DepartamentoId = dep.Id
+        });
+        await _db.SaveChangesAsync();
+
         var result = await _controller.Deactivate(tipo.Id, CancellationToken.None);
         Assert.IsInstanceOfType<NoContentResult>(result);
     }

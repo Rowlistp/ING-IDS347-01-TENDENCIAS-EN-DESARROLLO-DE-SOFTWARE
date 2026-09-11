@@ -1,6 +1,7 @@
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.TiposCombustible;
 using FuelTrack.Api.Models;
+using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -82,6 +83,24 @@ public sealed class TiposCombustibleController : ControllerBase
             {
                 code = "TIPO_COMBUSTIBLE_CON_TANQUES_ACTIVOS",
                 message = "No se puede desactivar el tipo de combustible porque tiene tanques activos asignados."
+            });
+
+        if (await _db.SolicitudesCombustible.AnyAsync(s => s.TipoCombustibleId == id &&
+            (s.Estado == EstadoSolicitud.Pendiente || s.Estado == EstadoSolicitud.Aprobada), ct))
+            return Conflict(new
+            {
+                code = "TIPO_COMBUSTIBLE_CON_SOLICITUDES_ACTIVAS",
+                message = "No se puede desactivar el tipo de combustible porque tiene solicitudes pendientes o aprobadas."
+            });
+
+        if (await _db.Tickets.AnyAsync(t => t.TipoCombustibleId == id &&
+            t.Estado != EstadoTicket.Vencido &&
+            t.Estado != EstadoTicket.Consumido &&
+            t.Estado != EstadoTicket.Anulado, ct))
+            return Conflict(new
+            {
+                code = "TIPO_COMBUSTIBLE_CON_TICKETS_ACTIVOS",
+                message = "No se puede desactivar el tipo de combustible porque tiene tickets activos."
             });
 
         entity.Activo = false;

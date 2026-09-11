@@ -147,4 +147,56 @@ public sealed class ProveedoresControllerTests
         var result = await _controller.Deactivate(999, CancellationToken.None);
         Assert.IsInstanceOfType<NotFoundResult>(result);
     }
+
+    [TestMethod]
+    public async Task Deactivate_Returns409_CuandoHayRecepciones()
+    {
+        var proveedor = new Proveedor { Rnc = "301-12345-6", Nombre = "Shell RD", Activo = true };
+        _db.Proveedores.Add(proveedor);
+
+        var tipo = new TipoCombustible { Nombre = "Gasolina", Activo = true };
+        _db.TiposCombustible.Add(tipo);
+        await _db.SaveChangesAsync();
+
+        var tanque = new Tanque
+        {
+            Identificacion = "T-PROV01", Capacidad = 5000m,
+            NivelActual = 0m, NivelCritico = 500m,
+            TipoCombustibleId = tipo.Id, Activo = true
+        };
+        _db.Tanques.Add(tanque);
+        await _db.SaveChangesAsync();
+
+        _db.RecepcionesCombustible.Add(new RecepcionCombustible
+        {
+            NumeroFactura = "FAC-001", VolumenRecibido = 2000m,
+            Fecha = DateTime.UtcNow.AddDays(-7),
+            ProveedorId = proveedor.Id, TanqueId = tanque.Id
+        });
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.Deactivate(proveedor.Id, CancellationToken.None);
+        var conflict = result as ConflictObjectResult;
+        Assert.IsNotNull(conflict, "Esperaba 409 Conflict");
+
+        var code = conflict.Value!.GetType().GetProperty("code")?.GetValue(conflict.Value)?.ToString();
+        Assert.AreEqual("PROVEEDOR_CON_RECEPCIONES", code);
+
+        await _db.Entry(proveedor).ReloadAsync();
+        Assert.IsTrue(proveedor.Activo);
+    }
+
+    [TestMethod]
+    public async Task Deactivate_Returns204_SinRecepciones()
+    {
+        var proveedor = new Proveedor { Rnc = "401-99999-9", Nombre = "Proveedor Nuevo", Activo = true };
+        _db.Proveedores.Add(proveedor);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.Deactivate(proveedor.Id, CancellationToken.None);
+        Assert.IsInstanceOfType<NoContentResult>(result);
+
+        await _db.Entry(proveedor).ReloadAsync();
+        Assert.IsFalse(proveedor.Activo);
+    }
 }

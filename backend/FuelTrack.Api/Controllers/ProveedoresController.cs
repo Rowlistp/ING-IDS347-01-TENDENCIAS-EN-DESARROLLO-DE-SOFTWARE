@@ -77,6 +77,14 @@ public sealed class ProveedoresController : ControllerBase
     {
         var entity = await _db.Proveedores.FindAsync([id], ct);
         if (entity is null) return NotFound();
+
+        if (await _db.RecepcionesCombustible.AnyAsync(r => r.ProveedorId == id, ct))
+            return Conflict(new
+            {
+                code = "PROVEEDOR_CON_RECEPCIONES",
+                message = "No se puede desactivar el proveedor porque tiene recepciones de combustible registradas."
+            });
+
         entity.Activo = false;
         await _db.SaveChangesAsync(ct);
         return NoContent();
