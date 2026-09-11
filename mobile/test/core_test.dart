@@ -119,7 +119,7 @@ void main() {
       'tipoCombustibleId': 1,
       'cantidadAutorizada': 5.25,
       'fechaVencimiento': '2099-01-01T00:00:00Z',
-      'estado': 5,
+      'estado': 'Consumido',
     });
     expect(ticket.quantity, 5.25);
     expect(ticket.stateLabel, 'Consumido');

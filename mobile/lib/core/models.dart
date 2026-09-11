@@ -32,18 +32,19 @@ class Ticket {
     required this.state,
   });
   final String id, code, employee, department, vehicle, fuel;
-  final int fuelId, state;
+  final int fuelId;
+  final String state;
   final double quantity;
   final DateTime expires;
-  String get stateLabel => const [
-    'Creado',
-    'Enviado',
-    'Pendiente',
-    'Próximo a vencer',
-    'Vencido',
-    'Consumido',
-    'Anulado',
-  ][state];
+  String get stateLabel => const {
+    'Creado': 'Creado',
+    'Enviado': 'Enviado',
+    'Pendiente': 'Pendiente',
+    'ProximoAVencer': 'Próximo a vencer',
+    'Vencido': 'Vencido',
+    'Consumido': 'Consumido',
+    'Anulado': 'Anulado',
+  }[state] ?? state;
   factory Ticket.fromJson(Map<String, dynamic> j) => Ticket(
     id: j['id'] as String,
     code: j['codigo'] as String,
@@ -54,7 +55,7 @@ class Ticket {
     fuelId: j['tipoCombustibleId'] as int,
     quantity: (j['cantidadAutorizada'] as num).toDouble(),
     expires: DateTime.parse(j['fechaVencimiento'] as String),
-    state: j['estado'] as int,
+    state: j['estado'] as String,
   );
 }
 
