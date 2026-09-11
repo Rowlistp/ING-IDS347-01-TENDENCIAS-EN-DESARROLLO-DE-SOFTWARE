@@ -76,6 +76,14 @@ public sealed class TiposCombustibleController : ControllerBase
     {
         var entity = await _db.TiposCombustible.FindAsync([id], ct);
         if (entity is null) return NotFound();
+
+        if (await _db.Tanques.AnyAsync(t => t.TipoCombustibleId == id && t.Activo, ct))
+            return Conflict(new
+            {
+                code = "TIPO_COMBUSTIBLE_CON_TANQUES_ACTIVOS",
+                message = "No se puede desactivar el tipo de combustible porque tiene tanques activos asignados."
+            });
+
         entity.Activo = false;
         await _db.SaveChangesAsync(ct);
         return NoContent();

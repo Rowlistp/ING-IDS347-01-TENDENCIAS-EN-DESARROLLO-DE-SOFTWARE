@@ -1,6 +1,7 @@
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Empleados;
 using FuelTrack.Api.Models;
+using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -129,6 +130,15 @@ public sealed class EmpleadosController : ControllerBase
     {
         var entity = await _db.Empleados.FindAsync([id], ct);
         if (entity is null) return NotFound();
+
+        if (await _db.SolicitudesCombustible.AnyAsync(s => s.EmpleadoId == id &&
+            (s.Estado == EstadoSolicitud.Pendiente || s.Estado == EstadoSolicitud.Aprobada), ct))
+            return Conflict(new
+            {
+                code = "EMPLEADO_CON_SOLICITUDES_ACTIVAS",
+                message = "No se puede desactivar el empleado porque tiene solicitudes pendientes o aprobadas."
+            });
+
         entity.Activo = false;
         await _db.SaveChangesAsync(ct);
         return NoContent();

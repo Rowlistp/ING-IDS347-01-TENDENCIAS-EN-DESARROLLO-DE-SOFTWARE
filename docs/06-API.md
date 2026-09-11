@@ -61,7 +61,10 @@ POST /api/v1/auth/login
 POST /api/v1/auth/refresh
 POST /api/v1/auth/logout
 POST /api/v1/auth/password/reset
+GET  /api/v1/auth/me
 ```
+
+- `GET /api/v1/auth/me`: requiere token válido; devuelve usuario local y roles de negocio resueltos. Necesario porque los roles externos de Keycloak no autorizan operaciones directamente.
 
 ### Usuarios
 
@@ -93,7 +96,7 @@ GET /api/v1/roles
 ### Auditoría
 
 ```text
-GET    /api/v1/audit?pagina=1&tamanoPagina=50
+GET    /api/v1/auditoria?pagina=1&tamanoPagina=50
 ```
 
 - Solo `Administrador` y `Auditor`.
@@ -301,10 +304,25 @@ POST   /api/v1/inventario/ajustes
 POST   /api/v1/inventario/transferencias
 ```
 
+### Solicitudes Recurrentes
+
+```text
+GET    /api/v1/solicitudes-recurrentes
+GET    /api/v1/solicitudes-recurrentes/{id}
+POST   /api/v1/solicitudes-recurrentes
+POST   /api/v1/solicitudes-recurrentes/{id}/activar
+POST   /api/v1/solicitudes-recurrentes/{id}/desactivar
+```
+
+- Solo `Administrador` y `Supervisor`.
+- Crea plantillas de solicitud periódica (Diaria/Semanal/Mensual) que un `BackgroundService` procesa a medianoche UTC.
+- `POST /{id}/desactivar`: `409 YA_DESACTIVADA` si la plantilla ya estaba desactivada.
+
 ### Recepciones de Combustible
 
 ```text
 GET    /api/v1/recepciones
+GET    /api/v1/recepciones/{id}
 POST   /api/v1/recepciones
 ```
 

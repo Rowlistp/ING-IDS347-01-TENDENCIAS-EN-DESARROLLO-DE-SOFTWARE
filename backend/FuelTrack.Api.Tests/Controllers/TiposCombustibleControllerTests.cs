@@ -162,4 +162,50 @@ public sealed class TiposCombustibleControllerTests
         var result = await _controller.Deactivate(999, CancellationToken.None);
         Assert.IsInstanceOfType<NotFoundResult>(result);
     }
+
+    [TestMethod]
+    public async Task Deactivate_Returns409_CuandoHayTanquesActivos()
+    {
+        var tipo = new TipoCombustible { Nombre = "Gasolina Premium", Activo = true };
+        _db.TiposCombustible.Add(tipo);
+        await _db.SaveChangesAsync();
+
+        _db.Tanques.Add(new Tanque
+        {
+            Identificacion = "T-ACTIVO", Capacidad = 3000m,
+            NivelActual = 0m, NivelCritico = 300m,
+            TipoCombustibleId = tipo.Id, Activo = true
+        });
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.Deactivate(tipo.Id, CancellationToken.None);
+        var conflict = result as ConflictObjectResult;
+        Assert.IsNotNull(conflict, "Esperaba 409 Conflict");
+
+        var code = conflict.Value!.GetType().GetProperty("code")?.GetValue(conflict.Value)?.ToString();
+        Assert.AreEqual("TIPO_COMBUSTIBLE_CON_TANQUES_ACTIVOS", code);
+
+        await _db.Entry(tipo).ReloadAsync();
+        Assert.IsTrue(tipo.Activo);
+    }
+
+    [TestMethod]
+    public async Task Deactivate_Returns204_CuandoTanquesInactivos()
+    {
+        var tipo = new TipoCombustible { Nombre = "Diesel 50", Activo = true };
+        _db.TiposCombustible.Add(tipo);
+        await _db.SaveChangesAsync();
+
+        _db.Tanques.Add(new Tanque
+        {
+            Identificacion = "T-INACTIVO", Capacidad = 2000m,
+            NivelActual = 0m, NivelCritico = 200m,
+            TipoCombustibleId = tipo.Id, Activo = false
+        });
+        await _db.SaveChangesAsync();
+
+        // tanques inactivos no bloquean la desactivación del tipo
+        var result = await _controller.Deactivate(tipo.Id, CancellationToken.None);
+        Assert.IsInstanceOfType<NoContentResult>(result);
+    }
 }

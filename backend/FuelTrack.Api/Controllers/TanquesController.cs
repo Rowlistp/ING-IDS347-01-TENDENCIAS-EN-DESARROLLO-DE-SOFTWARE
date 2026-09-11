@@ -121,6 +121,14 @@ public sealed class TanquesController : ControllerBase
     {
         var entity = await _db.Tanques.FindAsync([id], ct);
         if (entity is null) return NotFound();
+
+        if (await _db.Inventarios.AnyAsync(i => i.TanqueId == id && i.ExistenciaActual > 0, ct))
+            return Conflict(new
+            {
+                code = "TANQUE_CON_INVENTARIO",
+                message = "No se puede desactivar el tanque porque tiene combustible en inventario."
+            });
+
         entity.Activo = false;
         await _db.SaveChangesAsync(ct);
         return NoContent();
