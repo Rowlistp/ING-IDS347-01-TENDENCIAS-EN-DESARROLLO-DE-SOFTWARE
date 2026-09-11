@@ -168,7 +168,7 @@ void main() {
           ),
           throwsA(isA<ApiFailure>()),
         );
-        expect((await api.validate(fixture['rollbackQr'] as String)).state, 0);
+        expect((await api.validate(fixture['rollbackQr'] as String)).state, 'Creado');
       });
     },
   );
