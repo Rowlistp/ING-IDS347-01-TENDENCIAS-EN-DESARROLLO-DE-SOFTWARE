@@ -23,6 +23,12 @@ const EMPTY_FORM = {
   fechaVencimiento: '',
 }
 
+function nowLocalInputValue() {
+  const now = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
+}
+
 export default function SolicitudesPage() {
   const [solicitudes, setSolicitudes] = useState([])
   const empleados = useEmpleados()
@@ -66,7 +72,12 @@ export default function SolicitudesPage() {
   }
 
   const requiredFieldsFilled =
-    form.empleadoId && form.vehiculoId && form.departamentoId && form.tipoCombustibleId && form.cantidadSolicitada
+    form.empleadoId &&
+    form.vehiculoId &&
+    form.departamentoId &&
+    form.tipoCombustibleId &&
+    form.cantidadSolicitada &&
+    form.fechaVencimiento
 
   async function handleCreate(e) {
     e.preventDefault()
@@ -81,7 +92,7 @@ export default function SolicitudesPage() {
           departamentoId: Number(form.departamentoId),
           tipoCombustibleId: Number(form.tipoCombustibleId),
           cantidadSolicitada: Number(form.cantidadSolicitada),
-          fechaVencimiento: form.fechaVencimiento || null,
+          fechaVencimiento: new Date(form.fechaVencimiento).toISOString(),
         }),
       })
       setShowCreate(false)
@@ -279,12 +290,14 @@ export default function SolicitudesPage() {
                 placeholder="0.00"
               />
             </Field>
-            <Field label="Fecha de vencimiento (opcional)">
+            <Field label="Fecha de vencimiento">
               <input
                 type="datetime-local"
                 name="fechaVencimiento"
                 value={form.fechaVencimiento}
                 onChange={handleFormChange}
+                required
+                min={nowLocalInputValue()}
                 className={inputCls}
               />
             </Field>
