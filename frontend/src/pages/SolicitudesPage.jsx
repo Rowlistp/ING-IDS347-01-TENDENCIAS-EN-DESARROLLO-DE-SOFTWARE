@@ -1,51 +1,34 @@
 import { useEffect, useState } from 'react'
+import Field, { inputCls } from '../components/Field'
+import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
+import StatusBadge from '../components/StatusBadge'
+import { useDepartamentos } from '../hooks/useDepartamentos'
+import { useEmpleados } from '../hooks/useEmpleados'
+import { useVehiculos } from '../hooks/useVehiculos'
 import apiRequest from '../services/api'
 
-const ESTADO_LABEL = {
-  Pendiente: { text: 'Pendiente', cls: 'bg-yellow-100 text-yellow-800' },
-  Aprobada:  { text: 'Aprobada',  cls: 'bg-green-100 text-green-800'  },
-  Rechazada: { text: 'Rechazada', cls: 'bg-red-100 text-red-800'      },
+const ESTADO_VARIANT = {
+  Pendiente: 'yellow',
+  Aprobada: 'green',
+  Rechazada: 'red',
 }
 
 const EMPTY_FORM = {
-  empleadoId: '', vehiculoId: '', departamentoId: '',
-  tipoCombustibleId: '', cantidadSolicitada: '', fechaVencimiento: '',
+  empleadoId: '',
+  vehiculoId: '',
+  departamentoId: '',
+  tipoCombustibleId: '',
+  cantidadSolicitada: '',
+  fechaVencimiento: '',
 }
-
-function Badge({ estado }) {
-  const { text, cls } = ESTADO_LABEL[estado] ?? { text: estado, cls: 'bg-gray-100 text-gray-700' }
-  return <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{text}</span>
-}
-
-function Modal({ title, onClose, children }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-base font-semibold text-gray-800">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
-        </div>
-        <div className="px-6 py-4">{children}</div>
-      </div>
-    </div>
-  )
-}
-
-function Field({ label, children }) {
-  return (
-    <div>
-      <label className="mb-1 block text-sm font-medium text-gray-700">{label}</label>
-      {children}
-    </div>
-  )
-}
-
-const inputCls = 'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 
 export default function SolicitudesPage() {
   const [solicitudes, setSolicitudes] = useState([])
-  const [catalogos, setCatalogos] = useState({ empleados: [], vehiculos: [], departamentos: [], tipos: [] })
+  const empleados = useEmpleados()
+  const vehiculos = useVehiculos()
+  const departamentos = useDepartamentos()
+  const [tipos, setTipos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -73,19 +56,17 @@ export default function SolicitudesPage() {
 
   useEffect(() => {
     cargarSolicitudes()
-    Promise.all([
-      apiRequest('/empleados'),
-      apiRequest('/vehiculos'),
-      apiRequest('/departamentos'),
-      apiRequest('/tipos-combustible'),
-    ]).then(([empleados, vehiculos, departamentos, tipos]) =>
-      setCatalogos({ empleados, vehiculos, departamentos, tipos })
-    ).catch(() => {})
+    apiRequest('/tipos-combustible')
+      .then(setTipos)
+      .catch(() => {})
   }, [])
 
   function handleFormChange(e) {
-    setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
   }
+
+  const requiredFieldsFilled =
+    form.empleadoId && form.vehiculoId && form.departamentoId && form.tipoCombustibleId && form.cantidadSolicitada
 
   async function handleCreate(e) {
     e.preventDefault()
@@ -145,9 +126,14 @@ export default function SolicitudesPage() {
 
   return (
     <PageContainer title="Solicitudes de Combustible">
-      <div className="flex justify-end mb-4">
+      <div className="mb-4 flex justify-end">
         <button
-          onClick={() => setShowCreate(true)}
+          type="button"
+          onClick={() => {
+            setForm(EMPTY_FORM)
+            setFormError(null)
+            setShowCreate(true)
+          }}
           className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
           + Nueva solicitud
@@ -156,54 +142,78 @@ export default function SolicitudesPage() {
 
       {loading && <p className="text-sm text-gray-500">Cargando...</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {actionError && <p className="text-sm text-red-600">{actionError}</p>}
 
       {!loading && !error && (
         <div className="overflow-x-auto rounded-lg border border-gray-200">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {['#', 'Empleado', 'Vehículo', 'Tipo', 'Solicitado', 'Autorizado', 'Estado', 'Fecha', 'Acciones'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
-                ))}
+                {['#', 'Empleado', 'Vehículo', 'Departamento', 'Tipo', 'Solicitado', 'Autorizado', 'Estado', 'Fecha solicitud', 'Vencimiento', 'Acciones'].map(
+                  (h) => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {h}
+                    </th>
+                  )
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
               {solicitudes.length === 0 && (
-                <tr><td colSpan={9} className="px-4 py-6 text-center text-gray-400">Sin solicitudes registradas.</td></tr>
+                <tr>
+                  <td colSpan={11} className="px-4 py-6 text-center text-gray-400">
+                    Sin solicitudes registradas.
+                  </td>
+                </tr>
               )}
-              {solicitudes.map(s => (
+              {solicitudes.map((s) => (
                 <tr key={s.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-gray-500">{s.id}</td>
                   <td className="px-4 py-3 font-medium text-gray-800">{s.empleadoNombre}</td>
                   <td className="px-4 py-3 text-gray-600">{s.vehiculoPlaca}</td>
+                  <td className="px-4 py-3 text-gray-600">{s.departamentoNombre}</td>
                   <td className="px-4 py-3 text-gray-600">{s.tipoCombustibleNombre}</td>
                   <td className="px-4 py-3 text-gray-600">{s.cantidadSolicitada}</td>
                   <td className="px-4 py-3 text-gray-600">{s.cantidadAutorizada ?? '—'}</td>
-                  <td className="px-4 py-3"><Badge estado={s.estado} /></td>
+                  <td className="px-4 py-3">
+                    <StatusBadge label={s.estado} variant={ESTADO_VARIANT[s.estado]} />
+                  </td>
                   <td className="px-4 py-3 text-gray-500">{new Date(s.fechaSolicitud).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-gray-500">
+                    {s.fechaVencimiento ? new Date(s.fechaVencimiento).toLocaleDateString() : '—'}
+                  </td>
                   <td className="px-4 py-3">
                     {s.estado === 'Pendiente' && (
                       <div className="flex gap-2">
                         <button
+                          type="button"
                           onClick={() => {
                             setAprobarModal({ id: s.id })
                             setCantidadAutorizada(String(s.cantidadSolicitada))
                             setActionError(null)
                           }}
                           className="rounded bg-green-600 px-2 py-1 text-xs text-white hover:bg-green-700"
-                        >Aprobar</button>
+                        >
+                          Aprobar
+                        </button>
                         <button
+                          type="button"
                           onClick={() => {
                             setRechazarModal({ id: s.id })
                             setMotivoRechazo('')
                             setActionError(null)
                           }}
                           className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
-                        >Rechazar</button>
+                        >
+                          Rechazar
+                        </button>
                       </div>
                     )}
                     {s.estado === 'Rechazada' && s.motivoRechazo && (
-                      <span className="text-xs text-gray-400" title={s.motivoRechazo}>· {s.motivoRechazo.slice(0, 30)}{s.motivoRechazo.length > 30 ? '…' : ''}</span>
+                      <span className="text-xs text-gray-400" title={s.motivoRechazo}>
+                        · {s.motivoRechazo.slice(0, 30)}
+                        {s.motivoRechazo.length > 30 ? '…' : ''}
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -219,42 +229,79 @@ export default function SolicitudesPage() {
             <Field label="Empleado">
               <select name="empleadoId" value={form.empleadoId} onChange={handleFormChange} required className={inputCls}>
                 <option value="">Seleccionar...</option>
-                {catalogos.empleados.map(e => <option key={e.id} value={e.id}>{e.nombreCompleto}</option>)}
+                {empleados.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.nombreCompleto}
+                  </option>
+                ))}
               </select>
             </Field>
             <Field label="Vehículo">
               <select name="vehiculoId" value={form.vehiculoId} onChange={handleFormChange} required className={inputCls}>
                 <option value="">Seleccionar...</option>
-                {catalogos.vehiculos.map(v => <option key={v.id} value={v.id}>{v.placa} — {v.marca} {v.modelo}</option>)}
+                {vehiculos.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.placa} — {v.marca} {v.modelo}
+                  </option>
+                ))}
               </select>
             </Field>
             <Field label="Departamento">
               <select name="departamentoId" value={form.departamentoId} onChange={handleFormChange} required className={inputCls}>
                 <option value="">Seleccionar...</option>
-                {catalogos.departamentos.map(d => <option key={d.id} value={d.id}>{d.nombre}</option>)}
+                {departamentos.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.nombre}
+                  </option>
+                ))}
               </select>
             </Field>
             <Field label="Tipo de combustible">
               <select name="tipoCombustibleId" value={form.tipoCombustibleId} onChange={handleFormChange} required className={inputCls}>
                 <option value="">Seleccionar...</option>
-                {catalogos.tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                {tipos.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nombre}
+                  </option>
+                ))}
               </select>
             </Field>
             <Field label="Cantidad solicitada">
-              <input type="number" name="cantidadSolicitada" value={form.cantidadSolicitada}
-                onChange={handleFormChange} min="0.0001" step="0.0001" required
-                className={inputCls} placeholder="0.00" />
+              <input
+                type="number"
+                name="cantidadSolicitada"
+                value={form.cantidadSolicitada}
+                onChange={handleFormChange}
+                min="0.0001"
+                step="0.0001"
+                required
+                className={inputCls}
+                placeholder="0.00"
+              />
             </Field>
             <Field label="Fecha de vencimiento (opcional)">
-              <input type="datetime-local" name="fechaVencimiento" value={form.fechaVencimiento}
-                onChange={handleFormChange} className={inputCls} />
+              <input
+                type="datetime-local"
+                name="fechaVencimiento"
+                value={form.fechaVencimiento}
+                onChange={handleFormChange}
+                className={inputCls}
+              />
             </Field>
             {formError && <p className="text-sm text-red-600">{formError}</p>}
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setShowCreate(false)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancelar</button>
-              <button type="submit" disabled={submitting}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50">
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={submitting || !requiredFieldsFilled}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+              >
                 {submitting ? 'Guardando...' : 'Crear solicitud'}
               </button>
             </div>
@@ -266,15 +313,28 @@ export default function SolicitudesPage() {
         <Modal title="Aprobar solicitud" onClose={() => setAprobarModal(null)}>
           <form onSubmit={handleAprobar} className="space-y-4">
             <Field label="Cantidad autorizada">
-              <input type="number" value={cantidadAutorizada} onChange={e => setCantidadAutorizada(e.target.value)}
-                min="0.0001" step="0.0001" required className={inputCls} />
+              <input
+                type="number"
+                value={cantidadAutorizada}
+                onChange={(e) => setCantidadAutorizada(e.target.value)}
+                min="0.0001"
+                step="0.0001"
+                required
+                className={inputCls}
+              />
             </Field>
             {actionError && <p className="text-sm text-red-600">{actionError}</p>}
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setAprobarModal(null)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancelar</button>
-              <button type="submit"
-                className="rounded-md bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700">Aprobar</button>
+              <button
+                type="button"
+                onClick={() => setAprobarModal(null)}
+                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button type="submit" className="rounded-md bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700">
+                Aprobar
+              </button>
             </div>
           </form>
         </Modal>
@@ -284,16 +344,28 @@ export default function SolicitudesPage() {
         <Modal title="Rechazar solicitud" onClose={() => setRechazarModal(null)}>
           <form onSubmit={handleRechazar} className="space-y-4">
             <Field label="Motivo de rechazo">
-              <textarea value={motivoRechazo} onChange={e => setMotivoRechazo(e.target.value)}
-                required maxLength={500} rows={3} className={inputCls}
-                placeholder="Indique el motivo..." />
+              <textarea
+                value={motivoRechazo}
+                onChange={(e) => setMotivoRechazo(e.target.value)}
+                required
+                maxLength={500}
+                rows={3}
+                className={inputCls}
+                placeholder="Indique el motivo..."
+              />
             </Field>
             {actionError && <p className="text-sm text-red-600">{actionError}</p>}
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setRechazarModal(null)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancelar</button>
-              <button type="submit"
-                className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700">Rechazar</button>
+              <button
+                type="button"
+                onClick={() => setRechazarModal(null)}
+                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button type="submit" className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700">
+                Rechazar
+              </button>
             </div>
           </form>
         </Modal>
