@@ -138,7 +138,7 @@ public sealed class PostgreSqlInventarioTests
         var tanque = new Tanque
         {
             Identificacion = "T-PG", Capacidad = 5000m, NivelActual = 0m,
-            NivelCritico = 200m, TipoCombustibleId = tipo.Id, Activo = true
+            NivelCritico = 200m, TipoCombustible = tipo, Activo = true
         };
         db.Tanques.Add(tanque);
         var usuario = new Usuario { NombreUsuario = "pg-operador", PasswordHash = "x", Activo = true };
