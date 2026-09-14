@@ -9,6 +9,7 @@ const navItems = [
   { to: '/solicitudes', label: 'Solicitudes' },
   { to: '/tickets', label: 'Tickets' },
   { to: '/inventario', label: 'Inventario' },
+  { to: '/recepciones', label: 'Recepciones' },
 ]
 
 export default function Sidebar() {
