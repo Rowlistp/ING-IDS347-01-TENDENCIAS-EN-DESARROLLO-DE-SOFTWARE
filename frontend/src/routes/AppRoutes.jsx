@@ -5,6 +5,7 @@ import DepartamentosPage from '../pages/DepartamentosPage'
 import EmpleadosPage from '../pages/EmpleadosPage'
 import InventarioPage from '../pages/InventarioPage'
 import LoginPage from '../pages/LoginPage'
+import RecepcionesPage from '../pages/RecepcionesPage'
 import SolicitudesPage from '../pages/SolicitudesPage'
 import TicketsPage from '../pages/TicketsPage'
 import UsuariosPage from '../pages/UsuariosPage'
@@ -27,6 +28,7 @@ export default function AppRoutes() {
           <Route path="/solicitudes" element={<SolicitudesPage />} />
           <Route path="/tickets" element={<TicketsPage />} />
           <Route path="/inventario" element={<InventarioPage />} />
+          <Route path="/recepciones" element={<RecepcionesPage />} />
         </Route>
       </Route>
     </Routes>
