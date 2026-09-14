@@ -51,7 +51,7 @@ final sampleTicket = Ticket(
   fuelId: 3,
   quantity: 10,
   expires: DateTime.utc(2099),
-  state: 0,
+  state: 'Creado',
 );
 
 class FakeApi implements FuelTrackApi {
