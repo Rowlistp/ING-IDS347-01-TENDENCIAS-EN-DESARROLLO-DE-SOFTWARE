@@ -6,7 +6,9 @@ public sealed record DashboardResumenResponse(
     IReadOnlyList<DashboardTanque> Top3TanquesMasUsados,
     DashboardComparativaMes ComparativaMes,
     IReadOnlyList<DashboardDistribucion> DistribucionPorTipoCombustible,
-    DashboardEficiencia EficienciaAprobacion);
+    DashboardEficiencia EficienciaAprobacion,
+    IReadOnlyList<DashboardConsumoDepto> ConsumoPorDepartamento,
+    IReadOnlyList<DashboardConsumoVehiculo> ConsumoPorVehiculo);
 
 public sealed record DashboardHoy(
     int TotalDespachos,
@@ -29,3 +31,7 @@ public sealed record DashboardEficiencia(
     int Rechazadas,
     int Pendientes,
     decimal TasaAprobacion);
+
+public sealed record DashboardConsumoDepto(int DepartamentoId, string Departamento, decimal TotalGalones);
+
+public sealed record DashboardConsumoVehiculo(int VehiculoId, string Placa, decimal TotalGalones);

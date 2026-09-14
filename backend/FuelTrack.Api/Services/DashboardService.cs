@@ -21,8 +21,10 @@ public sealed class DashboardService(AppDbContext db)
         var comparativa = await GetComparativaAsync(inicioMesActual, hoy, inicioMesAnterior, finMesAnterior, ct);
         var distribucion = await GetDistribucionAsync(hace30Dias, hoy, ct);
         var eficiencia = await GetEficienciaAsync(inicioMesActual, hoy, ct);
+        var consuDepto = await GetConsumoDeptoAsync(hace30Dias, hoy, ct);
+        var consuVehiculo = await GetConsumoVehiculoAsync(hace30Dias, hoy, ct);
 
-        return new DashboardResumenResponse(hoyData, ultimos7, top3, comparativa, distribucion, eficiencia);
+        return new DashboardResumenResponse(hoyData, ultimos7, top3, comparativa, distribucion, eficiencia, consuDepto, consuVehiculo);
     }
 
     private async Task<DashboardHoy> GetHoyAsync(DateOnly hoy, CancellationToken ct)
@@ -114,6 +116,36 @@ public sealed class DashboardService(AppDbContext db)
         return datos
             .Select(d => new DashboardDistribucion(d.Tipo, Math.Round(d.Total * 100 / totalGlobal, 1)))
             .OrderByDescending(d => d.Porcentaje)
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<DashboardConsumoDepto>> GetConsumoDeptoAsync(
+        DateOnly desde, DateOnly hasta, CancellationToken ct)
+    {
+        var raw = await db.Despachos
+            .Where(d => d.Fecha >= desde && d.Fecha <= hasta)
+            .Select(d => new { d.Ticket.DepartamentoId, d.Ticket.Departamento.Nombre, d.GalonesServidos })
+            .ToListAsync(ct);
+
+        return raw
+            .GroupBy(d => new { d.DepartamentoId, d.Nombre })
+            .Select(g => new DashboardConsumoDepto(g.Key.DepartamentoId, g.Key.Nombre, g.Sum(d => d.GalonesServidos)))
+            .OrderByDescending(x => x.TotalGalones)
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<DashboardConsumoVehiculo>> GetConsumoVehiculoAsync(
+        DateOnly desde, DateOnly hasta, CancellationToken ct)
+    {
+        var raw = await db.Despachos
+            .Where(d => d.Fecha >= desde && d.Fecha <= hasta)
+            .Select(d => new { d.Ticket.VehiculoId, d.Ticket.Vehiculo.Placa, d.GalonesServidos })
+            .ToListAsync(ct);
+
+        return raw
+            .GroupBy(d => new { d.VehiculoId, d.Placa })
+            .Select(g => new DashboardConsumoVehiculo(g.Key.VehiculoId, g.Key.Placa, g.Sum(d => d.GalonesServidos)))
+            .OrderByDescending(x => x.TotalGalones)
             .ToList();
     }
 
