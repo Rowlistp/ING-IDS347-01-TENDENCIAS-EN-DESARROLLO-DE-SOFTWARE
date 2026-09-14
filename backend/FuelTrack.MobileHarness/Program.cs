@@ -56,7 +56,8 @@ await db.Database.ExecuteSqlRawAsync("""
 var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
 var port = ((IPEndPoint)listener.LocalEndpoint).Port; listener.Stop();
 var apiUrl = $"http://127.0.0.1:{port}";
-await File.WriteAllTextAsync(fixtureFile, JsonSerializer.Serialize(new { apiUrl = apiUrl + "/api/v1", token = new TokenService(jwt).CreateAccessToken(actor, [Roles.Despachador]).Token,
+var e2eToken = new TokenService(jwt).CreateAccessToken(actor, [Roles.Despachador]).Token;
+await File.WriteAllTextAsync(fixtureFile, JsonSerializer.Serialize(new { apiUrl = apiUrl + "/api/v1", token = e2eToken,
     qrPayload = valid.QrPayload, rollbackQr = rollback.QrPayload, rollbackId = rollback.Ticket.Id, tanqueId = tank.Id, estacionId = station.Id }));
 if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(fixtureFile, UnixFileMode.UserRead | UnixFileMode.UserWrite);
 var apiStart = new ProcessStartInfo("dotnet") { WorkingDirectory = root, RedirectStandardOutput = true, RedirectStandardError = true };
@@ -66,7 +67,8 @@ foreach (var pair in new Dictionary<string, string> {
     ["Jwt__Key"] = jwt.Value.Key, ["Jwt__Issuer"] = jwt.Value.Issuer, ["Jwt__Audience"] = jwt.Value.Audience,
     ["Tickets__SigningPrivateKeyPkcs8Base64"] = ticketOptions.Value.SigningPrivateKeyPkcs8Base64,
     ["Tickets__SigningPublicKeySpkiBase64"] = ticketOptions.Value.SigningPublicKeySpkiBase64,
-    ["Logging__LogLevel__Default"] = "Critical" }) apiStart.Environment[pair.Key] = pair.Value;
+    ["Logging__LogLevel__Default"] = "Critical",
+    ["Logging__LogLevel__Microsoft.AspNetCore.Authentication"] = "Warning" }) apiStart.Environment[pair.Key] = pair.Value;
 using var api = Process.Start(apiStart)!;
 var output = api.StandardOutput.ReadToEndAsync(); var errors = api.StandardError.ReadToEndAsync();
 try
@@ -81,10 +83,30 @@ try
         await Task.Delay(500);
     }
     if (!ready) throw new Exception("Timeout API E2E.");
+    // Pre-check: verifica que el JWT emitido es aceptado por el API antes de lanzar Flutter.
+    using var meReq = new HttpRequestMessage(HttpMethod.Get, apiUrl + "/api/v1/auth/me");
+    meReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", e2eToken);
+    var meResp = await client.SendAsync(meReq);
+    if (!meResp.IsSuccessStatusCode)
+    {
+        var wwwAuth = meResp.Headers.WwwAuthenticate.ToString();
+        var meBody = await meResp.Content.ReadAsStringAsync();
+        if (!api.HasExited) { api.Kill(entireProcessTree: true); await api.WaitForExitAsync(); }
+        var apiErrors = await errors;
+        throw new Exception(
+            $"JWT pre-check falló: HTTP {(int)meResp.StatusCode}. " +
+            $"WWW-Authenticate: [{wwwAuth}]. Body: [{meBody}]." +
+            (string.IsNullOrWhiteSpace(apiErrors) ? "" : $"\nAPI authentication logs:\n{apiErrors}") +
+            "\nRevisar issuer/audience/clave entre harness y API.");
+    }
     var start = new ProcessStartInfo(flutter) { WorkingDirectory = Path.Combine(root, "mobile") };
     foreach (var arg in new[] { "test", "e2e/api_e2e_test.dart", "--dart-define=E2E_FIXTURE=" + fixtureFile }) start.ArgumentList.Add(arg);
     using var test = Process.Start(start)!; await test.WaitForExitAsync();
-    if (test.ExitCode != 0) throw new Exception("Flutter E2E falló.");
+    if (test.ExitCode != 0)
+    {
+        if (!api.HasExited) { api.Kill(entireProcessTree: true); await api.WaitForExitAsync(); }
+        throw new Exception("Flutter E2E falló.\nAPI authentication logs:\n" + await errors);
+    }
     db.ChangeTracker.Clear();
     if (await db.Despachos.CountAsync() != 1 || await db.MovimientosInventario.CountAsync() != 1 ||
         (await db.Inventarios.SingleAsync()).ExistenciaActual != 45 ||

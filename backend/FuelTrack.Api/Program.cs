@@ -105,6 +105,12 @@ builder.Services
         };
         options.Events = new JwtBearerEvents
         {
+            OnAuthenticationFailed = context =>
+            {
+                Console.Error.WriteLine(
+                    $"[JWT] Authentication failed: {context.Exception.GetType().Name}: {context.Exception.Message}");
+                return Task.CompletedTask;
+            },
             OnTokenValidated = async context =>
             {
                 var userIdClaim = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
