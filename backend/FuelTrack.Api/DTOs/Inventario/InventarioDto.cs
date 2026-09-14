@@ -5,5 +5,8 @@ public record InventarioDto(
     decimal ExistenciaActual,
     decimal Disponibilidad,
     DateTime UltimaActualizacion,
-    int TanqueId, string TanqueIdentificacion, decimal TanqueCapacidad
-);
+    int TanqueId,
+    string TanqueIdentificacion,
+    decimal TanqueCapacidad,
+    decimal ConsumoDiario,
+    decimal ConsumoMensual);

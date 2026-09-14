@@ -24,8 +24,9 @@ public sealed class TanquesController : ControllerBase
             .AsNoTracking()
             .Include(t => t.TipoCombustible)
             .Select(t => new TanqueDto(
-                t.Id, t.Identificacion, t.Capacidad, t.NivelActual, t.NivelCritico,
-                t.TipoCombustibleId, t.TipoCombustible.Nombre, t.Activo))
+                t.Id, t.Identificacion, t.Capacidad,
+                t.Inventario != null ? t.Inventario.ExistenciaActual : 0m,
+                t.NivelCritico, t.TipoCombustibleId, t.TipoCombustible.Nombre, t.Activo))
             .ToListAsync(ct);
         return Ok(list);
     }
@@ -36,10 +37,11 @@ public sealed class TanquesController : ControllerBase
         var t = await _db.Tanques
             .AsNoTracking()
             .Include(x => x.TipoCombustible)
+            .Include(x => x.Inventario)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (t is null) return NotFound();
         return Ok(new TanqueDto(
-            t.Id, t.Identificacion, t.Capacidad, t.NivelActual, t.NivelCritico,
+            t.Id, t.Identificacion, t.Capacidad, t.Inventario?.ExistenciaActual ?? 0m, t.NivelCritico,
             t.TipoCombustibleId, t.TipoCombustible.Nombre, t.Activo));
     }
 
@@ -79,7 +81,7 @@ public sealed class TanquesController : ControllerBase
         await _db.Entry(tanque).Reference(t => t.TipoCombustible).LoadAsync(ct);
 
         return CreatedAtAction(nameof(GetById), new { id = tanque.Id },
-            new TanqueDto(tanque.Id, tanque.Identificacion, tanque.Capacidad, tanque.NivelActual,
+            new TanqueDto(tanque.Id, tanque.Identificacion, tanque.Capacidad, tanque.Inventario?.ExistenciaActual ?? 0m,
                 tanque.NivelCritico, tanque.TipoCombustibleId, tanque.TipoCombustible.Nombre, tanque.Activo));
     }
 
@@ -89,6 +91,7 @@ public sealed class TanquesController : ControllerBase
     {
         var tanque = await _db.Tanques
             .Include(t => t.TipoCombustible)
+            .Include(t => t.Inventario)
             .FirstOrDefaultAsync(t => t.Id == id, ct);
         if (tanque is null) return NotFound();
 
@@ -111,7 +114,7 @@ public sealed class TanquesController : ControllerBase
         if (tipoCambio)
             await _db.Entry(tanque).Reference(t => t.TipoCombustible).LoadAsync(ct);
 
-        return Ok(new TanqueDto(tanque.Id, tanque.Identificacion, tanque.Capacidad, tanque.NivelActual,
+        return Ok(new TanqueDto(tanque.Id, tanque.Identificacion, tanque.Capacidad, tanque.Inventario?.ExistenciaActual ?? 0m,
             tanque.NivelCritico, tanque.TipoCombustibleId, tanque.TipoCombustible.Nombre, tanque.Activo));
     }
 

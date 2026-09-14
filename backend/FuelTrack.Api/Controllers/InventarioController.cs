@@ -25,7 +25,12 @@ public sealed class InventarioController : ControllerBase
             .AsNoTracking()
             .Include(i => i.Tanque)
             .ToListAsync(ct);
-        return Ok(list.ConvertAll(ToDto));
+        var consumos = await GetConsumosBatchAsync(ct);
+        return Ok(list.ConvertAll(i =>
+        {
+            var (diario, mensual) = consumos.GetValueOrDefault(i.TanqueId);
+            return ToDto(i, diario, mensual);
+        }));
     }
 
     [HttpGet("{tanqueId:int}")]
@@ -35,7 +40,10 @@ public sealed class InventarioController : ControllerBase
             .AsNoTracking()
             .Include(i => i.Tanque)
             .FirstOrDefaultAsync(i => i.TanqueId == tanqueId, ct);
-        return inv is null ? NotFound() : Ok(ToDto(inv));
+        if (inv is null) return NotFound();
+
+        var (diario, mensual) = await GetConsumoAsync(tanqueId, ct);
+        return Ok(ToDto(inv, diario, mensual));
     }
 
     [HttpPost("ajustes")]
@@ -76,7 +84,8 @@ public sealed class InventarioController : ControllerBase
 
         await _db.Entry(inventario).Reference(i => i.Tanque).LoadAsync(ct);
 
-        return Ok(ToDto(inventario));
+        var (diario, mensual) = await GetConsumoAsync(req.TanqueId, ct);
+        return Ok(ToDto(inventario, diario, mensual));
     }
 
     [HttpPost("transferencias")]
@@ -146,13 +155,50 @@ public sealed class InventarioController : ControllerBase
         await _db.Entry(inventarioOrigen).Reference(i => i.Tanque).LoadAsync(ct);
         await _db.Entry(inventarioDestino).Reference(i => i.Tanque).LoadAsync(ct);
 
-        return Ok(new TransferenciaResultDto(ToDto(inventarioOrigen), ToDto(inventarioDestino)));
+        var (diarioO, mensualO) = await GetConsumoAsync(req.TanqueOrigenId, ct);
+        var (diarioD, mensualD) = await GetConsumoAsync(req.TanqueDestinoId, ct);
+        return Ok(new TransferenciaResultDto(ToDto(inventarioOrigen, diarioO, mensualO), ToDto(inventarioDestino, diarioD, mensualD)));
     }
 
-    private static InventarioDto ToDto(Inventario i) => new(
+    private async Task<(decimal Diario, decimal Mensual)> GetConsumoAsync(int tanqueId, CancellationToken ct)
+    {
+        var hoyUtc = DateTime.UtcNow.Date;
+        var inicioMesUtc = new DateTime(hoyUtc.Year, hoyUtc.Month, 1);
+
+        var movs = await _db.MovimientosInventario
+            .Where(m => m.TanqueId == tanqueId && m.Tipo == TipoMovimiento.Salida && m.FechaHora >= inicioMesUtc)
+            .Select(m => new { m.FechaHora, m.Volumen })
+            .ToListAsync(ct);
+
+        return (
+            movs.Where(m => m.FechaHora.Date == hoyUtc).Sum(m => -m.Volumen),
+            movs.Sum(m => -m.Volumen));
+    }
+
+    private async Task<Dictionary<int, (decimal Diario, decimal Mensual)>> GetConsumosBatchAsync(CancellationToken ct)
+    {
+        var hoyUtc = DateTime.UtcNow.Date;
+        var inicioMesUtc = new DateTime(hoyUtc.Year, hoyUtc.Month, 1);
+
+        var movs = await _db.MovimientosInventario
+            .Where(m => m.Tipo == TipoMovimiento.Salida && m.FechaHora >= inicioMesUtc)
+            .Select(m => new { m.TanqueId, m.FechaHora, m.Volumen })
+            .ToListAsync(ct);
+
+        return movs
+            .GroupBy(m => m.TanqueId)
+            .ToDictionary(
+                g => g.Key,
+                g => (
+                    Diario: g.Where(m => m.FechaHora.Date == hoyUtc).Sum(m => -m.Volumen),
+                    Mensual: g.Sum(m => -m.Volumen)));
+    }
+
+    private static InventarioDto ToDto(Inventario i, decimal consumoDiario = 0m, decimal consumoMensual = 0m) => new(
         i.Id,
         i.ExistenciaActual,
         i.Disponibilidad,
         i.UltimaActualizacion,
-        i.TanqueId, i.Tanque.Identificacion, i.Tanque.Capacidad);
+        i.TanqueId, i.Tanque.Identificacion, i.Tanque.Capacidad,
+        consumoDiario, consumoMensual);
 }

@@ -259,4 +259,52 @@ public sealed class TanquesControllerTests
         var result = await _controller.Update(tanque.Id, req, CancellationToken.None);
         Assert.IsInstanceOfType<BadRequestObjectResult>(result.Result);
     }
+
+    [TestMethod]
+    public async Task GetById_NivelActual_ReflexaInventario_NoElCampoStale()
+    {
+        var tipo = await CrearTipoCombustibleAsync();
+        var tanque = new Tanque
+        {
+            Identificacion = "T-INV", Capacidad = 5000m,
+            NivelActual = 0m, NivelCritico = 500m,
+            TipoCombustibleId = tipo.Id, Activo = true
+        };
+        _db.Tanques.Add(tanque);
+        await _db.SaveChangesAsync();
+        _db.Inventarios.Add(new Inventario
+        {
+            TanqueId = tanque.Id, ExistenciaActual = 750m,
+            Disponibilidad = 700m, UltimaActualizacion = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.GetById(tanque.Id, CancellationToken.None);
+        var dto = (result.Result as OkObjectResult)!.Value as TanqueDto;
+        Assert.AreEqual(750m, dto!.NivelActual);
+    }
+
+    [TestMethod]
+    public async Task GetAll_NivelActual_ReflexaInventarioDeCadaTanque()
+    {
+        var tipo = await CrearTipoCombustibleAsync();
+        var tanque = new Tanque
+        {
+            Identificacion = "T-GA", Capacidad = 8000m,
+            NivelActual = 0m, NivelCritico = 200m,
+            TipoCombustibleId = tipo.Id, Activo = true
+        };
+        _db.Tanques.Add(tanque);
+        await _db.SaveChangesAsync();
+        _db.Inventarios.Add(new Inventario
+        {
+            TanqueId = tanque.Id, ExistenciaActual = 3200m,
+            Disponibilidad = 3200m, UltimaActualizacion = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.GetAll(CancellationToken.None);
+        var list = (result.Result as OkObjectResult)!.Value as List<TanqueDto>;
+        Assert.AreEqual(3200m, list![0].NivelActual);
+    }
 }

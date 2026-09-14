@@ -319,6 +319,35 @@ public sealed class InventarioControllerTests
     }
 
     [TestMethod]
+    public async Task GetByTanque_RetornaConsumoDiarioYMensual_SegunMovimientosSalida()
+    {
+        var (tanqueId, _, usuarioId) = await CrearDependenciasAsync(existenciaActual: 500m);
+        _db.MovimientosInventario.Add(new MovimientoInventario
+        {
+            Tipo = TipoMovimiento.Salida, Volumen = -30m, TanqueId = tanqueId,
+            FechaHora = DateTime.UtcNow, UsuarioId = usuarioId
+        });
+        _db.MovimientosInventario.Add(new MovimientoInventario
+        {
+            Tipo = TipoMovimiento.Salida, Volumen = -20m, TanqueId = tanqueId,
+            FechaHora = DateTime.UtcNow, UsuarioId = usuarioId
+        });
+        _db.MovimientosInventario.Add(new MovimientoInventario
+        {
+            Tipo = TipoMovimiento.Ajuste, Volumen = -10m, TanqueId = tanqueId,
+            FechaHora = DateTime.UtcNow, UsuarioId = usuarioId
+        });
+        await _db.SaveChangesAsync();
+
+        var ctrl = CrearController(usuarioId);
+        var result = await ctrl.GetByTanque(tanqueId, CancellationToken.None);
+        var dto = (result.Result as OkObjectResult)!.Value as InventarioDto;
+
+        Assert.AreEqual(50m, dto!.ConsumoDiario);
+        Assert.AreEqual(50m, dto.ConsumoMensual);
+    }
+
+    [TestMethod]
     public async Task Transferir_Returns400_WhenDestInactive()
     {
         var (tanqueOrigenId, _, usuarioId) = await CrearDependenciasAsync(existenciaActual: 500m);
