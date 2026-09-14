@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import PageContainer from '../components/PageContainer'
 import apiRequest from '../services/api'
+
+const ESTADOS_TICKET_ACTIVOS = ['Creado', 'Enviado', 'Pendiente', 'ProximoAVencer']
+const AUTO_REFRESH_MS = 60_000
 
 function StatCard({ label, value, sub }) {
   return (
@@ -36,15 +39,43 @@ function Section({ title, children }) {
 
 export default function DashboardPage() {
   const [data, setData] = useState(null)
+  const [inventarioActual, setInventarioActual] = useState(null)
+  const [ticketsStats, setTicketsStats] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
+  const [lastUpdated, setLastUpdated] = useState(null)
+
+  const load = useCallback(async (isInitial) => {
+    if (isInitial) setLoading(true)
+    else setRefreshing(true)
+    try {
+      const [resumen, inventarios, tickets] = await Promise.all([
+        apiRequest('/dashboard/resumen'),
+        apiRequest('/inventario'),
+        apiRequest('/tickets'),
+      ])
+      setData(resumen)
+      setInventarioActual(inventarios.reduce((sum, i) => sum + i.existenciaActual, 0))
+      setTicketsStats({
+        activos: tickets.filter(t => ESTADOS_TICKET_ACTIVOS.includes(t.estado)).length,
+        vencidos: tickets.filter(t => t.estado === 'Vencido').length,
+      })
+      setError(null)
+      setLastUpdated(new Date())
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [])
 
   useEffect(() => {
-    apiRequest('/dashboard/resumen')
-      .then(setData)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
-  }, [])
+    load(true)
+    const interval = setInterval(() => load(false), AUTO_REFRESH_MS)
+    return () => clearInterval(interval)
+  }, [load])
 
   if (loading) return <PageContainer title="Dashboard"><p className="text-sm text-gray-500 mt-2">Cargando...</p></PageContainer>
   if (error)   return <PageContainer title="Dashboard"><p className="text-sm text-red-600 mt-2">{error}</p></PageContainer>
@@ -56,12 +87,34 @@ export default function DashboardPage() {
 
   return (
     <PageContainer title="Dashboard">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-xs text-gray-400">
+          {lastUpdated && `Actualizado ${lastUpdated.toLocaleTimeString()}`}
+        </p>
+        <button
+          type="button"
+          onClick={() => load(false)}
+          disabled={refreshing}
+          className="rounded bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+        >
+          {refreshing ? 'Actualizando...' : 'Actualizar'}
+        </button>
+      </div>
+
       {/* Tarjetas hoy */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 mb-6">
         <StatCard label="Despachos hoy"        value={hoy.totalDespachos} />
         <StatCard label="Volumen hoy (gal)"    value={hoy.volumenDespachado.toFixed(1)} />
         <StatCard label="Solicitudes pendientes" value={hoy.solicitudesPendientes} />
         <StatCard label="Tanques nivel bajo"   value={hoy.tanquesConInventarioBajo} />
+        <StatCard label="Inventario actual (gal)" value={inventarioActual.toFixed(1)} />
+        <StatCard label="Tickets activos / vencidos" value={`${ticketsStats.activos} / ${ticketsStats.vencidos}`} />
+      </div>
+
+      <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        Pendiente (RF-22): "Consumo por departamento" y "Consumo por vehículo" no se muestran aquí porque el backend
+        no expone ningún endpoint agregado para esos datos — solo existen como filas crudas en el pipeline de
+        Reportes (RF-19/20), fuera de alcance de esta pantalla. Ver <code>docs/19-MATRIZ-TRAZABILIDAD.md</code>.
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
