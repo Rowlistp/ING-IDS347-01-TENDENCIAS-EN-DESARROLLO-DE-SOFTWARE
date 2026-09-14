@@ -80,10 +80,12 @@ export default function DashboardPage() {
   if (loading) return <PageContainer title="Dashboard"><p className="text-sm text-gray-500 mt-2">Cargando...</p></PageContainer>
   if (error)   return <PageContainer title="Dashboard"><p className="text-sm text-red-600 mt-2">{error}</p></PageContainer>
 
-  const { hoy, ultimos7Dias, top3TanquesMasUsados, comparativaMes, distribucionPorTipoCombustible, eficienciaAprobacion } = data
+  const { hoy, ultimos7Dias, top3TanquesMasUsados, comparativaMes, distribucionPorTipoCombustible, eficienciaAprobacion, consumoPorDepartamento, consumoPorVehiculo } = data
 
   const maxVol7 = Math.max(...ultimos7Dias.map(d => d.volumenDespachado), 1)
   const maxTop3 = Math.max(...top3TanquesMasUsados.map(t => t.totalGalones), 1)
+  const maxConsumoDepto = Math.max(...consumoPorDepartamento.map(c => c.totalGalones), 1)
+  const maxConsumoVehiculo = Math.max(...consumoPorVehiculo.map(c => c.totalGalones), 1)
 
   return (
     <PageContainer title="Dashboard">
@@ -111,10 +113,30 @@ export default function DashboardPage() {
         <StatCard label="Tickets activos / vencidos" value={`${ticketsStats.activos} / ${ticketsStats.vencidos}`} />
       </div>
 
-      <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-        Pendiente (RF-22): "Consumo por departamento" y "Consumo por vehículo" no se muestran aquí porque el backend
-        no expone ningún endpoint agregado para esos datos — solo existen como filas crudas en el pipeline de
-        Reportes (RF-19/20), fuera de alcance de esta pantalla. Ver <code>docs/19-MATRIZ-TRAZABILIDAD.md</code>.
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 mb-4">
+        {/* Consumo por departamento */}
+        <Section title="Consumo por departamento (30 días)">
+          {consumoPorDepartamento.length === 0
+            ? <p className="text-sm text-gray-400">Sin consumo registrado en los últimos 30 días.</p>
+            : <div className="space-y-2">
+                {consumoPorDepartamento.map(c => (
+                  <BarRow key={c.departamentoId} label={c.departamento} value={c.totalGalones} max={maxConsumoDepto} color="bg-teal-500" />
+                ))}
+              </div>
+          }
+        </Section>
+
+        {/* Consumo por vehículo */}
+        <Section title="Consumo por vehículo (30 días)">
+          {consumoPorVehiculo.length === 0
+            ? <p className="text-sm text-gray-400">Sin consumo registrado en los últimos 30 días.</p>
+            : <div className="space-y-2">
+                {consumoPorVehiculo.map(c => (
+                  <BarRow key={c.vehiculoId} label={c.placa} value={c.totalGalones} max={maxConsumoVehiculo} color="bg-pink-500" />
+                ))}
+              </div>
+          }
+        </Section>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
