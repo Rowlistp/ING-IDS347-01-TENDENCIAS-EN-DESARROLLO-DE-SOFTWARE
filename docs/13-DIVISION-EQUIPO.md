@@ -75,6 +75,7 @@ cierre; Builder3 frontend. Sus gaps se coordinan en doc.26, no se reescriben en 
 | Fase 0 | Setup de React + Tailwind, estructura de rutas/componentes | – |
 | Fase 1-3 | Pantallas de login, usuarios, catálogos, solicitudes | RF-01 a RF-05 |
 | Fase 4 | Vista de tickets (emisión, estados, QR visual) | RF-06 a RF-10 |
+| Fase 6-7 (frontend) | Pantallas de Inventario, Recepciones, Despachos y Cierre Diario | RF-14 a RF-18 |
 | Fase 8 | Dashboard ejecutivo + vistas de reportes | RF-22 |
 
 ## 5. Por qué esta división
@@ -103,4 +104,6 @@ Después de cada fase entregada por cualquiera de los tres builders, los 3 teste
 - La Fase 3 (Solicitudes, RF-05/RF-11) no tenía builder asignado explícitamente; se resolvió asignándola a Builder 1 junto con el resto del backend.
 - RF-21 (Trazabilidad, actor Auditor) no aparece asignado a ningún builder ni en ninguna fase de `12-PLANIFICACION.md`. Pendiente de que el equipo decida a quién corresponde.
 - RF-22 (Dashboard ejecutivo): el backend (endpoint `GET /api/v1/dashboard/summary` y su lógica) no está asignado a ningún builder, aunque el frontend sí lo tiene Builder 3 en Fase 8. Pendiente de que el equipo decida a quién corresponde.
+- El frontend de Inventario/Recepciones/Despachos/Cierre Diario (RF-14 a RF-18) no tenía builder asignado; se resolvió asignándolo a Builder 3, ya que se conecta directamente con su Dashboard de Fase 8.
+- Falta documento de cierre formal de Fase 6-7 (backend de Inventario), a diferencia de las demás fases que sí lo tienen.
 - ~~Gap de integridad de datos: Departamento.Deactivate() no valida si tiene empleados o vehículos activos asociados antes de desactivarse. Un departamento puede quedar inactivo mientras conserva personal y flota activa asignada, generando un estado de datos inconsistente. Confirmado en prueba real: se desactivó un departamento con 1 empleado y 1 vehículo activos sin ningún error del backend. Pendiente de decisión del equipo (Builder 1): bloquear la desactivación si hay dependientes activos, o permitirlo con advertencia.~~ **RESUELTO:** DepartamentosController.Deactivate() ahora valida empleados/vehículos activos y responde 409 Conflict con el código DEPARTAMENTO_CON_EMPLEADOS_ACTIVOS. Verificado en vivo.
