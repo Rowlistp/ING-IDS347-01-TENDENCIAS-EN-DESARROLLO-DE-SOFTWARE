@@ -3,6 +3,7 @@ import Layout from '../components/Layout'
 import DashboardPage from '../pages/DashboardPage'
 import DepartamentosPage from '../pages/DepartamentosPage'
 import EmpleadosPage from '../pages/EmpleadosPage'
+import InventarioPage from '../pages/InventarioPage'
 import LoginPage from '../pages/LoginPage'
 import SolicitudesPage from '../pages/SolicitudesPage'
 import TicketsPage from '../pages/TicketsPage'
@@ -25,6 +26,7 @@ export default function AppRoutes() {
           <Route path="/departamentos" element={<DepartamentosPage />} />
           <Route path="/solicitudes" element={<SolicitudesPage />} />
           <Route path="/tickets" element={<TicketsPage />} />
+          <Route path="/inventario" element={<InventarioPage />} />
         </Route>
       </Route>
     </Routes>
