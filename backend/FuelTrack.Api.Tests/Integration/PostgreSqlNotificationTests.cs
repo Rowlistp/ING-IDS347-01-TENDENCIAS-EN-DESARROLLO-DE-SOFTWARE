@@ -219,8 +219,12 @@ public sealed partial class PostgreSqlSecurityTests
     [DataRow(false)] [DataRow(true)]
     public async Task Notification_MigrationBackfillPreservesHistoryOrRejectsDuplicate(bool duplicate)
     {
+        // Target the Phase 9 migration explicitly so this test is not broken by future
+        // migrations appended after it (.Reverse().Skip(1) is positional and fragile).
+        const string beforePhase9 = "20260907011209_AddCierreDiarioDetalle";
+        const string phase9 = "20260907212134_AddPhase9NotificationsIntegration";
         await using var db = CreateContext(); var migrator = db.GetService<IMigrator>();
-        var previous = db.Database.GetMigrations().Reverse().Skip(1).First(); await migrator.MigrateAsync(previous);
+        await migrator.MigrateAsync(beforePhase9);
         var count = duplicate ? 2 : 1;
         for (var i = 0; i < count; i++) await db.Database.ExecuteSqlRawAsync("""
             INSERT INTO "Notificaciones" ("Tipo", "Destinatario", "Estado", "FechaHora", "Canal", "ReferenciaEvento")
@@ -228,13 +232,13 @@ public sealed partial class PostgreSqlSecurityTests
             """);
         if (duplicate)
         {
-            await Assert.ThrowsExactlyAsync<PostgresException>(() => migrator.MigrateAsync());
+            await Assert.ThrowsExactlyAsync<PostgresException>(() => migrator.MigrateAsync(phase9));
             await using var connection = new NpgsqlConnection(_connectionString); await connection.OpenAsync();
             Assert.AreEqual(2L, await ScalarLongAsync(connection, "SELECT count(*) FROM \"Notificaciones\""));
         }
         else
         {
-            await migrator.MigrateAsync(); var row = await db.Notificaciones.SingleAsync();
+            await migrator.MigrateAsync(phase9); var row = await db.Notificaciones.SingleAsync();
             Assert.AreEqual("TICKET_EMITIDO:history-ticket:EMAIL:history@example.test", row.ClaveIdempotencia);
             Assert.AreEqual("PENDIENTE", row.Estado);
             await Assert.ThrowsExactlyAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync("""
