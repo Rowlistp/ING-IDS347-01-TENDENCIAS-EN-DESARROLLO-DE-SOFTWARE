@@ -10,6 +10,7 @@ const navItems = [
   { to: '/tickets', label: 'Tickets' },
   { to: '/inventario', label: 'Inventario' },
   { to: '/recepciones', label: 'Recepciones' },
+  { to: '/despachos', label: 'Despachos' },
 ]
 
 export default function Sidebar() {
