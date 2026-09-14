@@ -8,6 +8,7 @@ const navItems = [
   { to: '/departamentos', label: 'Departamentos' },
   { to: '/solicitudes', label: 'Solicitudes' },
   { to: '/tickets', label: 'Tickets' },
+  { to: '/inventario', label: 'Inventario' },
 ]
 
 export default function Sidebar() {
