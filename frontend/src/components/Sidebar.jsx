@@ -11,6 +11,7 @@ const navItems = [
   { to: '/inventario', label: 'Inventario' },
   { to: '/recepciones', label: 'Recepciones' },
   { to: '/despachos', label: 'Despachos' },
+  { to: '/cierres-diarios', label: 'Cierre Diario' },
 ]
 
 export default function Sidebar() {
