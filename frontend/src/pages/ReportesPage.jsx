@@ -1,23 +1,29 @@
 import { useEffect, useState } from 'react'
 import PageContainer from '../components/PageContainer'
 import apiRequest, { apiDownload } from '../services/api'
+import { useDepartamentos } from '../hooks/useDepartamentos'
+import { useEmpleados } from '../hooks/useEmpleados'
 import { useTanques } from '../hooks/useTanques'
+import { useVehiculos } from '../hooks/useVehiculos'
 
 const TAMANO_PAGINA = 20
 
-// El backend valida contra exactamente estos 4 tipos (ReporteService.TiposValidos) —
-// no existe "tickets" como tipo de reporte, a pesar de que RF-24 lo menciona junto
-// a los demás módulos. No se agregó una opción que el backend rechazaría.
+// El backend valida contra estos 5 tipos (ReporteService.TiposValidos).
 const TIPOS_REPORTE = [
   { value: 'solicitudes', label: 'Solicitudes de combustible' },
   { value: 'despachos', label: 'Despachos' },
   { value: 'inventario', label: 'Movimientos de inventario' },
   { value: 'cierres', label: 'Cierres diarios' },
+  { value: 'tickets', label: 'Tickets' },
 ]
 
 // tanqueId solo aplica a estos dos tipos en el backend real (ReporteService.cs);
-// solicitudes/cierres lo ignorarían aunque se enviara.
+// solicitudes/cierres/tickets lo ignorarían aunque se enviara.
 const TIPOS_CON_FILTRO_TANQUE = ['despachos', 'inventario']
+
+// empleadoId/vehiculoId/departamentoId solo aplican a estos tres tipos en el
+// backend real; inventario/cierres no tienen esos campos y lo ignorarían.
+const TIPOS_CON_FILTRO_PERSONA = ['solicitudes', 'despachos', 'tickets']
 
 const COLUMNAS_POR_TIPO = {
   solicitudes: [
@@ -62,6 +68,17 @@ const COLUMNAS_POR_TIPO = {
     { key: 'diferencias', label: 'Diferencias', num: true },
     { key: 'creadoPor', label: 'Creado por' },
   ],
+  tickets: [
+    { key: 'id', label: '#' },
+    { key: 'codigo', label: 'Código', mono: true },
+    { key: 'fechaCreacion', label: 'Fecha creación', fecha: true },
+    { key: 'fechaVencimiento', label: 'Fecha vencimiento', fecha: true },
+    { key: 'estado', label: 'Estado' },
+    { key: 'cantidadAutorizada', label: 'Autorizado', num: true },
+    { key: 'empleado', label: 'Empleado' },
+    { key: 'vehiculo', label: 'Vehículo', mono: true },
+    { key: 'departamento', label: 'Departamento' },
+  ],
 }
 
 const FORMATOS = [
@@ -70,7 +87,7 @@ const FORMATOS = [
   { value: 'pdf', label: 'PDF', ext: 'pdf' },
 ]
 
-const FILTROS_VACIOS = { fechaDesde: '', fechaHasta: '', tanqueId: '' }
+const FILTROS_VACIOS = { fechaDesde: '', fechaHasta: '', tanqueId: '', empleadoId: '', vehiculoId: '', departamentoId: '' }
 
 function formatCelda(col, value) {
   if (value === null || value === undefined || value === '') return '—'
@@ -81,6 +98,9 @@ function formatCelda(col, value) {
 
 export default function ReportesPage() {
   const tanques = useTanques()
+  const empleados = useEmpleados()
+  const vehiculos = useVehiculos()
+  const departamentos = useDepartamentos()
 
   const [tipo, setTipo] = useState('solicitudes')
   const [pagina, setPagina] = useState(1)
@@ -103,6 +123,11 @@ export default function ReportesPage() {
     if (filtros.fechaDesde) params.set('fechaDesde', filtros.fechaDesde)
     if (filtros.fechaHasta) params.set('fechaHasta', filtros.fechaHasta)
     if (filtros.tanqueId && TIPOS_CON_FILTRO_TANQUE.includes(tipo)) params.set('tanqueId', filtros.tanqueId)
+    if (TIPOS_CON_FILTRO_PERSONA.includes(tipo)) {
+      if (filtros.empleadoId) params.set('empleadoId', filtros.empleadoId)
+      if (filtros.vehiculoId) params.set('vehiculoId', filtros.vehiculoId)
+      if (filtros.departamentoId) params.set('departamentoId', filtros.departamentoId)
+    }
 
     apiRequest(`/reportes?${params.toString()}`)
       .then((data) => {
@@ -148,6 +173,11 @@ export default function ReportesPage() {
       if (filtros.fechaDesde) params.set('fechaDesde', filtros.fechaDesde)
       if (filtros.fechaHasta) params.set('fechaHasta', filtros.fechaHasta)
       if (filtros.tanqueId && TIPOS_CON_FILTRO_TANQUE.includes(tipo)) params.set('tanqueId', filtros.tanqueId)
+      if (TIPOS_CON_FILTRO_PERSONA.includes(tipo)) {
+        if (filtros.empleadoId) params.set('empleadoId', filtros.empleadoId)
+        if (filtros.vehiculoId) params.set('vehiculoId', filtros.vehiculoId)
+        if (filtros.departamentoId) params.set('departamentoId', filtros.departamentoId)
+      }
 
       // El backend no expone Content-Disposition vía CORS (mismo hallazgo que en
       // Tickets/CierreDiario), así que el nombre del archivo se arma en el cliente.
@@ -174,9 +204,9 @@ export default function ReportesPage() {
   return (
     <PageContainer title="Reportes">
       <p className="mb-4 text-sm text-acero">
-        El backend solo filtra por fecha{TIPOS_CON_FILTRO_TANQUE.includes(tipo) ? ' y tanque' : ''} para este tipo de
-        reporte — no existe filtro por empleado, vehículo o departamento en <span className="font-mono">GET /api/v1/reportes</span>,
-        aunque RF-19 los menciona. No se agregó ningún filtro que el backend no soporte de verdad.
+        Los filtros disponibles varían según el tipo de reporte: fecha aplica a todos; tanque solo a despachos e
+        inventario; empleado, vehículo y departamento a solicitudes, despachos y tickets. Solo se muestran los
+        filtros que el backend soporta de verdad para el tipo seleccionado.
       </p>
 
       <div className="mb-4">
@@ -228,6 +258,52 @@ export default function ReportesPage() {
               ))}
             </select>
           </div>
+        )}
+        {TIPOS_CON_FILTRO_PERSONA.includes(tipo) && (
+          <>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-acero">Empleado</label>
+              <select
+                name="empleadoId"
+                value={filtrosPendientes.empleadoId}
+                onChange={handleFiltroChange}
+                className="rounded-md border border-acero/40 px-3 py-2 text-sm text-tinta"
+              >
+                <option value="">Todos</option>
+                {empleados.map((e) => (
+                  <option key={e.id} value={e.id}>{e.nombreCompleto}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-acero">Vehículo</label>
+              <select
+                name="vehiculoId"
+                value={filtrosPendientes.vehiculoId}
+                onChange={handleFiltroChange}
+                className="rounded-md border border-acero/40 px-3 py-2 text-sm text-tinta"
+              >
+                <option value="">Todos</option>
+                {vehiculos.map((v) => (
+                  <option key={v.id} value={v.id}>{v.placa}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-acero">Departamento</label>
+              <select
+                name="departamentoId"
+                value={filtrosPendientes.departamentoId}
+                onChange={handleFiltroChange}
+                className="rounded-md border border-acero/40 px-3 py-2 text-sm text-tinta"
+              >
+                <option value="">Todos</option>
+                {departamentos.map((d) => (
+                  <option key={d.id} value={d.id}>{d.nombre}</option>
+                ))}
+              </select>
+            </div>
+          </>
         )}
         <button type="submit" className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90">
           Filtrar
