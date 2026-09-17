@@ -7,6 +7,7 @@ const navItems = [
   { to: '/vehiculos', label: 'Vehículos' },
   { to: '/departamentos', label: 'Departamentos' },
   { to: '/solicitudes', label: 'Solicitudes' },
+  { to: '/solicitudes-recurrentes', label: 'Solicitudes Recurrentes' },
   { to: '/tickets', label: 'Tickets' },
   { to: '/inventario', label: 'Inventario' },
   { to: '/recepciones', label: 'Recepciones' },
