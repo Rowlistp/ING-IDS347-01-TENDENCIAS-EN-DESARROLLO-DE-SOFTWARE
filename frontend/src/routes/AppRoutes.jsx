@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Layout from '../components/Layout'
+import AuditoriaPage from '../pages/AuditoriaPage'
 import DashboardPage from '../pages/DashboardPage'
 import CierreDiarioPage from '../pages/CierreDiarioPage'
 import DepartamentosPage from '../pages/DepartamentosPage'
@@ -39,6 +40,7 @@ export default function AppRoutes() {
           <Route path="/recepciones" element={<RecepcionesPage />} />
           <Route path="/despachos" element={<DespachosPage />} />
           <Route path="/cierres-diarios" element={<CierreDiarioPage />} />
+          <Route path="/auditoria" element={<AuditoriaPage />} />
         </Route>
       </Route>
     </Routes>
