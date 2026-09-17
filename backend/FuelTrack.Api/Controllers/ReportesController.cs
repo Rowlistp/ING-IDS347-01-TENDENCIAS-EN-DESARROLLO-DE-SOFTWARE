@@ -18,12 +18,15 @@ public sealed class ReportesController(ReporteService service) : ControllerBase
         DateOnly? fechaDesde = null,
         DateOnly? fechaHasta = null,
         int? tanqueId = null,
+        int? empleadoId = null,
+        int? vehiculoId = null,
+        int? departamentoId = null,
         [Range(1, 100000)] int pagina = 1,
         [Range(1, 100)] int tamanoPagina = 20)
     {
         try
         {
-            var q = new ReporteQuery(tipo, fechaDesde, fechaHasta, tanqueId, pagina, tamanoPagina);
+            var q = new ReporteQuery(tipo, fechaDesde, fechaHasta, tanqueId, empleadoId, vehiculoId, departamentoId, pagina, tamanoPagina);
             return Ok(await service.GetAsync(q, ct));
         }
         catch (TicketDomainException ex)
@@ -39,11 +42,14 @@ public sealed class ReportesController(ReporteService service) : ControllerBase
         [Required] string formato,
         DateOnly? fechaDesde = null,
         DateOnly? fechaHasta = null,
-        int? tanqueId = null)
+        int? tanqueId = null,
+        int? empleadoId = null,
+        int? vehiculoId = null,
+        int? departamentoId = null)
     {
         try
         {
-            var q = new ReporteQuery(tipo, fechaDesde, fechaHasta, tanqueId, 1, int.MaxValue);
+            var q = new ReporteQuery(tipo, fechaDesde, fechaHasta, tanqueId, empleadoId, vehiculoId, departamentoId, 1, int.MaxValue);
             var bytes = await service.ExportarAsync(q, formato, ct);
             var (contentType, ext) = formato switch
             {

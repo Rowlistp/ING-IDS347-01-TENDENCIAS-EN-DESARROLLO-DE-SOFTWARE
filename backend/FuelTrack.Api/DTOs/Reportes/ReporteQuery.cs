@@ -5,5 +5,8 @@ public sealed record ReporteQuery(
     DateOnly? FechaDesde,
     DateOnly? FechaHasta,
     int? TanqueId,
+    int? EmpleadoId,
+    int? VehiculoId,
+    int? DepartamentoId,
     int Pagina,
     int TamanoPagina);
