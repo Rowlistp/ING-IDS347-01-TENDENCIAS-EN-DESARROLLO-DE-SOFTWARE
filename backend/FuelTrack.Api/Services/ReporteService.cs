@@ -13,7 +13,7 @@ namespace FuelTrack.Api.Services;
 public sealed class ReporteService(AppDbContext db)
 {
     private static readonly HashSet<string> TiposValidos =
-        ["solicitudes", "despachos", "inventario", "cierres"];
+        ["solicitudes", "despachos", "inventario", "cierres", "tickets"];
     private static readonly HashSet<string> FormatosValidos =
         ["csv", "excel", "pdf"];
 
@@ -26,6 +26,7 @@ public sealed class ReporteService(AppDbContext db)
             "despachos"   => await GetDespachosAsync(q, ct),
             "inventario"  => await GetInventarioAsync(q, ct),
             "cierres"     => await GetCierresAsync(q, ct),
+            "tickets"     => await GetTicketsAsync(q, ct),
             _             => throw new TicketDomainException(400, "TIPO_REPORTE_INVALIDO", "Tipo no válido.")
         };
     }
@@ -61,6 +62,12 @@ public sealed class ReporteService(AppDbContext db)
             query = query.Where(s => DateOnly.FromDateTime(s.FechaSolicitud) >= q.FechaDesde.Value);
         if (q.FechaHasta.HasValue)
             query = query.Where(s => DateOnly.FromDateTime(s.FechaSolicitud) <= q.FechaHasta.Value);
+        if (q.EmpleadoId.HasValue)
+            query = query.Where(s => s.EmpleadoId == q.EmpleadoId.Value);
+        if (q.VehiculoId.HasValue)
+            query = query.Where(s => s.VehiculoId == q.VehiculoId.Value);
+        if (q.DepartamentoId.HasValue)
+            query = query.Where(s => s.DepartamentoId == q.DepartamentoId.Value);
 
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(s => s.FechaSolicitud)
@@ -85,6 +92,9 @@ public sealed class ReporteService(AppDbContext db)
         if (q.FechaDesde.HasValue) query = query.Where(d => d.Fecha >= q.FechaDesde.Value);
         if (q.FechaHasta.HasValue) query = query.Where(d => d.Fecha <= q.FechaHasta.Value);
         if (q.TanqueId.HasValue)   query = query.Where(d => d.TanqueId == q.TanqueId.Value);
+        if (q.EmpleadoId.HasValue)     query = query.Where(d => d.Ticket.EmpleadoId == q.EmpleadoId.Value);
+        if (q.VehiculoId.HasValue)     query = query.Where(d => d.Ticket.VehiculoId == q.VehiculoId.Value);
+        if (q.DepartamentoId.HasValue) query = query.Where(d => d.Ticket.DepartamentoId == q.DepartamentoId.Value);
 
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(d => d.Fecha).ThenByDescending(d => d.Hora)
@@ -145,6 +155,35 @@ public sealed class ReporteService(AppDbContext db)
                 c.InventarioFinal, c.Diferencias, c.CreadoPor.NombreUsuario)).ToList());
     }
 
+    private async Task<ReportePageResponse> GetTicketsAsync(ReporteQuery q, CancellationToken ct)
+    {
+        var query = db.Tickets.AsNoTracking()
+            .Include(t => t.Empleado).Include(t => t.Vehiculo).Include(t => t.Departamento)
+            .AsQueryable();
+
+        if (q.FechaDesde.HasValue)
+            query = query.Where(t => DateOnly.FromDateTime(t.FechaCreacion) >= q.FechaDesde.Value);
+        if (q.FechaHasta.HasValue)
+            query = query.Where(t => DateOnly.FromDateTime(t.FechaCreacion) <= q.FechaHasta.Value);
+        if (q.EmpleadoId.HasValue)
+            query = query.Where(t => t.EmpleadoId == q.EmpleadoId.Value);
+        if (q.VehiculoId.HasValue)
+            query = query.Where(t => t.VehiculoId == q.VehiculoId.Value);
+        if (q.DepartamentoId.HasValue)
+            query = query.Where(t => t.DepartamentoId == q.DepartamentoId.Value);
+
+        var total = await query.CountAsync(ct);
+        var items = await query.OrderByDescending(t => t.FechaCreacion)
+            .Skip((q.Pagina - 1) * q.TamanoPagina).Take(q.TamanoPagina)
+            .ToListAsync(ct);
+
+        return new ReportePageResponse("tickets", total, q.Pagina, q.TamanoPagina,
+            items.Select(t => (object)new TicketReporteDto(
+                t.Id, $"{t.Prefijo}-{t.FechaCreacion.Year}-{t.NumeroSecuencial:000000}",
+                t.FechaCreacion, t.FechaVencimiento, t.Estado, t.CantidadAutorizada,
+                t.Empleado.NombreCompleto, t.Vehiculo.Placa, t.Departamento.Nombre)).ToList());
+    }
+
     // ── Exportación ───────────────────────────────────────────────────────
 
     private static byte[] ExportarCsv(ReportePageResponse page)
@@ -172,6 +211,11 @@ public sealed class ReporteService(AppDbContext db)
                 foreach (CierreReporteDto c in page.Items)
                     sb.AppendLine($"{c.Id},{c.Fecha},{c.TotalDespachos},{c.VolumenDespachado},{c.InventarioFinal},{c.Diferencias},{Csv(c.CreadoPor)}");
                 break;
+            case "tickets":
+                sb.AppendLine("Id,Codigo,FechaCreacion,FechaVencimiento,Estado,CantidadAutorizada,Empleado,Vehiculo,Departamento");
+                foreach (TicketReporteDto t in page.Items)
+                    sb.AppendLine($"{t.Id},{Csv(t.Codigo)},{t.FechaCreacion:O},{t.FechaVencimiento:O},{t.Estado},{t.CantidadAutorizada},{Csv(t.Empleado)},{Csv(t.Vehiculo)},{Csv(t.Departamento)}");
+                break;
         }
         return Encoding.UTF8.GetBytes(sb.ToString());
     }
@@ -185,6 +229,7 @@ public sealed class ReporteService(AppDbContext db)
             "despachos"   => "Despachos",
             "inventario"  => "Inventario",
             "cierres"     => "Cierres",
+            "tickets"     => "Tickets",
             _             => "Reporte"
         };
         var ws = wb.Worksheets.Add(sheetName);
@@ -195,6 +240,7 @@ public sealed class ReporteService(AppDbContext db)
             "despachos"   => ["Id", "Fecha", "Hora", "CódigoTicket", "Empleado", "Vehículo", "GalonesServidos", "Tanque", "Estación", "Operador", "InvRestante"],
             "inventario"  => ["Id", "FechaHora", "Tanque", "TipoCombustible", "Tipo", "Volumen", "Referencia"],
             "cierres"     => ["Id", "Fecha", "TotalDespachos", "VolumenDespachado", "InventarioFinal", "Diferencias", "CreadoPor"],
+            "tickets"     => ["Id", "Código", "FechaCreación", "FechaVencimiento", "Estado", "CantidadAutorizada", "Empleado", "Vehículo", "Departamento"],
             _             => []
         };
 
@@ -245,6 +291,16 @@ public sealed class ReporteService(AppDbContext db)
                     ws.Cell(row, 3).Value = c.TotalDespachos; ws.Cell(row, 4).Value = (double)c.VolumenDespachado;
                     ws.Cell(row, 5).Value = (double)c.InventarioFinal; ws.Cell(row, 6).Value = (double)c.Diferencias;
                     ws.Cell(row, 7).Value = c.CreadoPor; row++;
+                }
+                break;
+            case "tickets":
+                foreach (TicketReporteDto t in page.Items)
+                {
+                    ws.Cell(row, 1).Value = t.Id.ToString(); ws.Cell(row, 2).Value = t.Codigo;
+                    ws.Cell(row, 3).Value = t.FechaCreacion.ToString("O"); ws.Cell(row, 4).Value = t.FechaVencimiento.ToString("O");
+                    ws.Cell(row, 5).Value = t.Estado.ToString(); ws.Cell(row, 6).Value = (double)t.CantidadAutorizada;
+                    ws.Cell(row, 7).Value = t.Empleado; ws.Cell(row, 8).Value = t.Vehiculo;
+                    ws.Cell(row, 9).Value = t.Departamento; row++;
                 }
                 break;
         }
@@ -326,6 +382,18 @@ public sealed class ReporteService(AppDbContext db)
                                 c.CreadoPor
                             }));
                         break;
+
+                    case "tickets":
+                        DefinirColumnasYFilas(t,
+                            ["#", "Código", "FechaCreación", "FechaVenc.", "Estado", "Autorizado", "Empleado", "Vehículo", "Depto."],
+                            [3, 3, 2, 2, 2, 2, 3, 2, 2],
+                            page.Items.Cast<TicketReporteDto>().Select(tk => new[]
+                            {
+                                tk.Id.ToString(), tk.Codigo, tk.FechaCreacion.ToString("yyyy-MM-dd HH:mm"),
+                                tk.FechaVencimiento.ToString("yyyy-MM-dd HH:mm"), tk.Estado.ToString(),
+                                tk.CantidadAutorizada.ToString("F4"), tk.Empleado, tk.Vehiculo, tk.Departamento
+                            }));
+                        break;
                 }
             });
 
@@ -365,7 +433,7 @@ public sealed class ReporteService(AppDbContext db)
     {
         if (!TiposValidos.Contains(tipo))
             throw new TicketDomainException(400, "TIPO_REPORTE_INVALIDO",
-                "Tipo no válido. Use: solicitudes, despachos, inventario, cierres.");
+                "Tipo no válido. Use: solicitudes, despachos, inventario, cierres, tickets.");
     }
 
     private static string Csv(string s) =>
