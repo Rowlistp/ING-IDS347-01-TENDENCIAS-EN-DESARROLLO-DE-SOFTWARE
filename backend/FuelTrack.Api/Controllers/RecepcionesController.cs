@@ -3,6 +3,7 @@ using FuelTrack.Api.DTOs.Recepciones;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Security;
+using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,12 @@ namespace FuelTrack.Api.Controllers;
 public sealed class RecepcionesController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public RecepcionesController(AppDbContext db) => _db = db;
+    private readonly AuditService _audit;
+    public RecepcionesController(AppDbContext db, AuditService audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<RecepcionDto>>> GetAll(CancellationToken ct)
@@ -67,23 +73,39 @@ public sealed class RecepcionesController : ControllerBase
             ProveedorId = req.ProveedorId,
             TanqueId = req.TanqueId
         };
-        _db.RecepcionesCombustible.Add(recepcion);
 
-        _db.MovimientosInventario.Add(new MovimientoInventario
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+        try
         {
-            Tipo = TipoMovimiento.Entrada,
-            Volumen = req.VolumenRecibido,
-            FechaHora = DateTime.UtcNow,
-            ReferenciaOperacion = req.NumeroFactura,
-            TanqueId = req.TanqueId,
-            UsuarioId = usuarioId
-        });
+            _db.RecepcionesCombustible.Add(recepcion);
 
-        tanque.Inventario!.ExistenciaActual += req.VolumenRecibido;
-        tanque.Inventario.Disponibilidad += req.VolumenRecibido;
-        tanque.Inventario.UltimaActualizacion = DateTime.UtcNow;
+            _db.MovimientosInventario.Add(new MovimientoInventario
+            {
+                Tipo = TipoMovimiento.Entrada,
+                Volumen = req.VolumenRecibido,
+                FechaHora = DateTime.UtcNow,
+                ReferenciaOperacion = req.NumeroFactura,
+                TanqueId = req.TanqueId,
+                UsuarioId = usuarioId
+            });
 
-        await _db.SaveChangesAsync(ct);
+            tanque.Inventario!.ExistenciaActual += req.VolumenRecibido;
+            tanque.Inventario.Disponibilidad += req.VolumenRecibido;
+            tanque.Inventario.UltimaActualizacion = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync(ct);
+
+            await _audit.WriteAsync("RECEPCION_REGISTRADA", "RecepcionCombustible", recepcion.Id.ToString(), usuarioId,
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                new { req.ProveedorId, req.TanqueId, req.VolumenRecibido, req.NumeroFactura }, ct);
+
+            await transaction.CommitAsync(ct);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
 
         await _db.Entry(recepcion).Reference(r => r.Proveedor).LoadAsync(ct);
         await _db.Entry(recepcion).Reference(r => r.Tanque).LoadAsync(ct);

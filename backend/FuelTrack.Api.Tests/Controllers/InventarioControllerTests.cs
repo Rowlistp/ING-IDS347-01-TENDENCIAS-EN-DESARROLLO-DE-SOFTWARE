@@ -3,6 +3,7 @@ using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Inventario;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
+using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
@@ -38,7 +39,7 @@ public sealed class InventarioControllerTests
 
     private InventarioController CrearController(int usuarioId)
     {
-        var controller = new InventarioController(_db);
+        var controller = new InventarioController(_db, new AuditService(_db));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext
@@ -364,5 +365,39 @@ public sealed class InventarioControllerTests
 
         Assert.IsNotNull(bad);
         Assert.IsTrue(bad.Value!.ToString()!.Contains("TANQUE_DESTINO_INACTIVO"));
+    }
+
+    // ── Auditoría (RS-06) ────────────────────────────────────────────────────
+
+    [TestMethod]
+    public async Task Ajustar_RegistraAuditoria_EventoInventarioAjustado()
+    {
+        var (tanqueId, _, usuarioId) = await CrearDependenciasAsync(existenciaActual: 500m);
+        var ctrl = CrearController(usuarioId);
+        var req = new AjustarInventarioRequest(tanqueId, -200m, "Corrección por medición física");
+
+        await ctrl.Ajustar(req, CancellationToken.None);
+
+        var auditoria = await _db.Auditorias.FirstOrDefaultAsync(a => a.Evento == "INVENTARIO_AJUSTADO");
+        Assert.IsNotNull(auditoria);
+        Assert.AreEqual("Inventario", auditoria.EntidadAfectada);
+        Assert.AreEqual(usuarioId, auditoria.UsuarioId);
+    }
+
+    [TestMethod]
+    public async Task Transferir_RegistraAuditoria_EventoInventarioTransferido()
+    {
+        var (tanqueOrigenId, _, usuarioId) = await CrearDependenciasAsync(existenciaActual: 500m);
+        var tipoCombustibleId = (await _db.TiposCombustible.FirstAsync()).Id;
+        var tanqueDestinoId = await AgregarSegundoTanqueAsync(tipoCombustibleId, existenciaActual: 100m);
+        var ctrl = CrearController(usuarioId);
+        var req = new TransferirRequest(tanqueOrigenId, tanqueDestinoId, 200m, "Redistribución");
+
+        await ctrl.Transferir(req, CancellationToken.None);
+
+        var auditoria = await _db.Auditorias.FirstOrDefaultAsync(a => a.Evento == "INVENTARIO_TRANSFERIDO");
+        Assert.IsNotNull(auditoria);
+        Assert.AreEqual("Inventario", auditoria.EntidadAfectada);
+        Assert.AreEqual(usuarioId, auditoria.UsuarioId);
     }
 }

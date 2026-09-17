@@ -3,6 +3,7 @@ using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Inventario;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
+using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -63,7 +64,7 @@ public sealed class PostgreSqlInventarioTests
         }
 
         await using var dbRead = CreateContext();
-        var ctrl = new InventarioController(dbRead);
+        var ctrl = new InventarioController(dbRead, new AuditService(dbRead));
         var result = await ctrl.GetAll(CancellationToken.None);
         var ok = result.Result as OkObjectResult;
         var list = ok!.Value as List<InventarioDto>;
@@ -85,7 +86,7 @@ public sealed class PostgreSqlInventarioTests
         }
 
         await using var dbRead = CreateContext();
-        var ctrl = new InventarioController(dbRead);
+        var ctrl = new InventarioController(dbRead, new AuditService(dbRead));
         var result = await ctrl.GetByTanque(tanqueId, CancellationToken.None);
         var ok = result.Result as OkObjectResult;
         var dto = ok!.Value as InventarioDto;
@@ -163,7 +164,7 @@ public sealed class PostgreSqlInventarioTests
 
     private static InventarioController CrearControllerConUsuario(AppDbContext db, int usuarioId)
     {
-        var ctrl = new InventarioController(db);
+        var ctrl = new InventarioController(db, new AuditService(db));
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext
