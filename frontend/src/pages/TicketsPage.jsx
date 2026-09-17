@@ -159,20 +159,20 @@ export default function TicketsPage() {
         <button
           type="button"
           onClick={openEmitModal}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           + Emitir ticket
         </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Cargando...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+      {loading && <p className="text-sm text-acero">Cargando...</p>}
+      {error && <p className="text-sm text-peligro">{error}</p>}
+      {actionError && <p className="text-sm text-peligro">{actionError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-sm border border-acero/20">
+          <table className="min-w-full divide-y divide-acero/20 text-sm">
+            <thead className="bg-fondo">
               <tr>
                 {[
                   'Código',
@@ -186,30 +186,30 @@ export default function TicketsPage() {
                   'Estado',
                   'Acciones',
                 ].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-acero/10 bg-white">
               {tickets.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={10} className="px-4 py-6 text-center text-acero/70">
                     Sin tickets emitidos.
                   </td>
                 </tr>
               )}
               {tickets.map((t) => (
-                <tr key={t.id} className="cursor-pointer hover:bg-gray-50" onClick={() => setDetailTicket(t)}>
-                  <td className="px-4 py-3 font-medium text-gray-800">{t.codigo}</td>
-                  <td className="px-4 py-3 text-gray-600">{t.empleadoNombre}</td>
-                  <td className="px-4 py-3 text-gray-600">{t.vehiculoPlaca}</td>
-                  <td className="px-4 py-3 text-gray-600">{t.departamentoNombre}</td>
-                  <td className="px-4 py-3 text-gray-600">{t.cantidadAutorizada}</td>
-                  <td className="px-4 py-3 text-gray-600">{t.tipoCombustibleNombre}</td>
-                  <td className="px-4 py-3 text-gray-500">{formatFecha(t.fechaCreacion)}</td>
-                  <td className="px-4 py-3 text-gray-500">{formatFecha(t.fechaVencimiento)}</td>
+                <tr key={t.id} className="cursor-pointer hover:bg-fondo" onClick={() => setDetailTicket(t)}>
+                  <td className="px-4 py-3 font-medium font-mono text-tinta">{t.codigo}</td>
+                  <td className="px-4 py-3 text-acero">{t.empleadoNombre}</td>
+                  <td className="px-4 py-3 font-mono text-acero">{t.vehiculoPlaca}</td>
+                  <td className="px-4 py-3 text-acero">{t.departamentoNombre}</td>
+                  <td className="px-4 py-3 font-mono num text-acero">{t.cantidadAutorizada}</td>
+                  <td className="px-4 py-3 text-acero">{t.tipoCombustibleNombre}</td>
+                  <td className="px-4 py-3 text-acero">{formatFecha(t.fechaCreacion)}</td>
+                  <td className="px-4 py-3 text-acero">{formatFecha(t.fechaVencimiento)}</td>
                   <td className="px-4 py-3">
                     <StatusBadge label={ESTADO_LABEL[t.estado] ?? t.estado} variant={ESTADO_VARIANT[t.estado]} />
                   </td>
@@ -219,7 +219,7 @@ export default function TicketsPage() {
                         type="button"
                         onClick={() => handleDescargarPdf(t)}
                         disabled={downloadingId === t.id}
-                        className="rounded bg-gray-600 px-2 py-1 text-xs text-white hover:bg-gray-700 disabled:opacity-50"
+                        className="rounded bg-acero px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
                       >
                         {downloadingId === t.id ? 'Descargando...' : 'PDF'}
                       </button>
@@ -229,7 +229,7 @@ export default function TicketsPage() {
                             type="button"
                             onClick={() => handleEnviar(t)}
                             disabled={sendingId === t.id}
-                            className="rounded bg-amber-600 px-2 py-1 text-xs text-white hover:bg-amber-700 disabled:opacity-50"
+                            className="rounded bg-acero px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
                           >
                             {sendingId === t.id ? 'Enviando...' : 'Enviar'}
                           </button>
@@ -240,7 +240,7 @@ export default function TicketsPage() {
                               setMotivoAnulacion('')
                               setAnularError(null)
                             }}
-                            className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+                            className="rounded bg-peligro px-2 py-1 text-xs text-white hover:opacity-90"
                           >
                             Anular
                           </button>
@@ -273,7 +273,7 @@ export default function TicketsPage() {
                 ))}
               </select>
               {solicitudesAprobadas.length === 0 && (
-                <p className="mt-1 text-xs text-gray-400">No hay solicitudes aprobadas disponibles.</p>
+                <p className="mt-1 text-xs text-acero/70">No hay solicitudes aprobadas disponibles.</p>
               )}
             </Field>
             <Field label="Prefijo (opcional)">
@@ -286,19 +286,19 @@ export default function TicketsPage() {
                 className={inputCls}
               />
             </Field>
-            {emitError && <p className="text-sm text-red-600">{emitError}</p>}
+            {emitError && <p className="text-sm text-peligro">{emitError}</p>}
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowEmitModal(false)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={emitting || !emitForm.solicitudId}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
               >
                 {emitting ? 'Emitiendo...' : 'Emitir ticket'}
               </button>
@@ -312,56 +312,56 @@ export default function TicketsPage() {
           <div className="space-y-3 text-sm">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <div>
-                <p className="text-xs text-gray-400">UUID</p>
-                <p className="break-all text-gray-700">{detailTicket.id}</p>
+                <p className="text-xs text-acero/70">UUID</p>
+                <p className="break-all font-mono text-tinta">{detailTicket.id}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Número secuencial</p>
-                <p className="text-gray-700">{detailTicket.numeroSecuencial}</p>
+                <p className="text-xs text-acero/70">Número secuencial</p>
+                <p className="font-mono num text-tinta">{detailTicket.numeroSecuencial}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Empleado</p>
-                <p className="text-gray-700">{detailTicket.empleadoNombre}</p>
+                <p className="text-xs text-acero/70">Empleado</p>
+                <p className="text-tinta">{detailTicket.empleadoNombre}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Vehículo</p>
-                <p className="text-gray-700">{detailTicket.vehiculoPlaca}</p>
+                <p className="text-xs text-acero/70">Vehículo</p>
+                <p className="font-mono text-tinta">{detailTicket.vehiculoPlaca}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Departamento</p>
-                <p className="text-gray-700">{detailTicket.departamentoNombre}</p>
+                <p className="text-xs text-acero/70">Departamento</p>
+                <p className="text-tinta">{detailTicket.departamentoNombre}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Cantidad autorizada</p>
-                <p className="text-gray-700">
-                  {detailTicket.cantidadAutorizada} {detailTicket.tipoCombustibleNombre}
+                <p className="text-xs text-acero/70">Cantidad autorizada</p>
+                <p className="text-tinta">
+                  <span className="font-mono num">{detailTicket.cantidadAutorizada}</span> {detailTicket.tipoCombustibleNombre}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Fecha de creación</p>
-                <p className="text-gray-700">{formatFecha(detailTicket.fechaCreacion)}</p>
+                <p className="text-xs text-acero/70">Fecha de creación</p>
+                <p className="text-tinta">{formatFecha(detailTicket.fechaCreacion)}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Fecha de vencimiento</p>
-                <p className="text-gray-700">{formatFecha(detailTicket.fechaVencimiento)}</p>
+                <p className="text-xs text-acero/70">Fecha de vencimiento</p>
+                <p className="text-tinta">{formatFecha(detailTicket.fechaVencimiento)}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Estado</p>
+                <p className="text-xs text-acero/70">Estado</p>
                 <StatusBadge label={ESTADO_LABEL[detailTicket.estado] ?? detailTicket.estado} variant={ESTADO_VARIANT[detailTicket.estado]} />
               </div>
               <div>
-                <p className="text-xs text-gray-400">Solicitud de origen</p>
-                <p className="text-gray-700">#{detailTicket.solicitudId}</p>
+                <p className="text-xs text-acero/70">Solicitud de origen</p>
+                <p className="text-tinta">#{detailTicket.solicitudId}</p>
               </div>
             </div>
 
             {detailTicket.motivoAnulacion && (
-              <p className="rounded-md bg-red-50 p-2 text-xs text-red-700">
+              <p className="rounded-md bg-peligro/10 p-2 text-xs text-peligro">
                 Motivo de anulación: {detailTicket.motivoAnulacion}
               </p>
             )}
 
-            <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-500">
+            <div className="rounded-md bg-fondo p-3 text-xs text-acero">
               {detailTicket.qrDisponible
                 ? 'El QR seguro está disponible, pero la API no expone la imagen por separado — solo viene embebido en el PDF del ticket. Descárgalo para verlo.'
                 : 'Este ticket no tiene un QR disponible.'}
@@ -371,7 +371,7 @@ export default function TicketsPage() {
               <button
                 type="button"
                 onClick={() => setDetailTicket(null)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cerrar
               </button>
@@ -379,7 +379,7 @@ export default function TicketsPage() {
                 type="button"
                 onClick={() => handleDescargarPdf(detailTicket)}
                 disabled={downloadingId === detailTicket.id}
-                className="rounded-md bg-gray-600 px-4 py-2 text-sm text-white hover:bg-gray-700 disabled:opacity-50"
+                className="rounded-md bg-acero px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
               >
                 {downloadingId === detailTicket.id ? 'Descargando...' : 'Descargar PDF'}
               </button>
@@ -403,19 +403,19 @@ export default function TicketsPage() {
                 placeholder="Indique el motivo..."
               />
             </Field>
-            {anularError && <p className="text-sm text-red-600">{anularError}</p>}
+            {anularError && <p className="text-sm text-peligro">{anularError}</p>}
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setAnularModal(null)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={anulando || motivoAnulacion.trim().length < 5}
-                className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:opacity-50"
+                className="rounded-md bg-peligro px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
               >
                 {anulando ? 'Anulando...' : 'Anular'}
               </button>

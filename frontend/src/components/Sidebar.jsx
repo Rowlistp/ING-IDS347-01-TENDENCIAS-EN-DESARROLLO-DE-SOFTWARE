@@ -16,20 +16,20 @@ const navItems = [
 
 export default function Sidebar() {
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-gray-200 bg-white">
-      <div className="px-4 py-5">
-        <span className="text-lg font-bold text-gray-800">Combustible App</span>
+    <aside className="flex w-60 shrink-0 flex-col border-r border-acero/30 bg-tanque">
+      <div className="border-b border-white/10 px-4 py-5">
+        <span className="text-lg font-bold tracking-tight text-white">FuelTrack</span>
       </div>
-      <nav className="flex flex-col gap-1 px-2">
+      <nav className="flex flex-col gap-0.5 px-2 py-3">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              `rounded-sm border-l-2 px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'border-medidor bg-white/10 text-white'
+                  : 'border-transparent text-white/60 hover:bg-white/5 hover:text-white'
               }`
             }
           >

@@ -168,18 +168,18 @@ export default function InventarioPage() {
   return (
     <PageContainer title="Inventario">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-md bg-gray-100 p-1">
+        <div className="flex gap-1 rounded-md bg-acero/10 p-1">
           <button
             type="button"
             onClick={() => setTab('existencia')}
-            className={`rounded px-3 py-1.5 text-sm font-medium ${tab === 'existencia' ? 'bg-white shadow text-gray-800' : 'text-gray-500'}`}
+            className={`rounded px-3 py-1.5 text-sm font-medium ${tab === 'existencia' ? 'bg-white shadow text-tinta' : 'text-acero'}`}
           >
             Existencia actual
           </button>
           <button
             type="button"
             onClick={() => setTab('historial')}
-            className={`rounded px-3 py-1.5 text-sm font-medium ${tab === 'historial' ? 'bg-white shadow text-gray-800' : 'text-gray-500'}`}
+            className={`rounded px-3 py-1.5 text-sm font-medium ${tab === 'historial' ? 'bg-white shadow text-tinta' : 'text-acero'}`}
           >
             Historial de movimientos
           </button>
@@ -189,14 +189,14 @@ export default function InventarioPage() {
           <button
             type="button"
             onClick={openAjuste}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
           >
             + Registrar ajuste
           </button>
           <button
             type="button"
             onClick={openTransferencia}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            className="rounded-md bg-info px-4 py-2 text-sm font-medium text-white hover:opacity-90"
           >
             + Transferir entre tanques
           </button>
@@ -205,25 +205,25 @@ export default function InventarioPage() {
 
       {tab === 'existencia' && (
         <>
-          {loading && <p className="text-sm text-gray-500">Cargando...</p>}
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {loading && <p className="text-sm text-acero">Cargando...</p>}
+          {error && <p className="text-sm text-peligro">{error}</p>}
 
           {!loading && !error && (
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
+            <div className="overflow-x-auto rounded-sm border border-acero/20">
+              <table className="min-w-full divide-y divide-acero/20 text-sm">
+                <thead className="bg-fondo">
                   <tr>
                     {['Tanque', 'Tipo combustible', 'Existencia actual', 'Disponibilidad', 'Nivel crítico', 'Estado'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
                         {h}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
+                <tbody className="divide-y divide-acero/10 bg-white">
                   {filas.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                      <td colSpan={6} className="px-4 py-6 text-center text-acero/70">
                         Sin tanques registrados.
                       </td>
                     </tr>
@@ -232,12 +232,12 @@ export default function InventarioPage() {
                     const critico = f.tanque && f.existenciaActual <= f.tanque.nivelCritico
                     const inactivo = f.tanque && !f.tanque.activo
                     return (
-                      <tr key={f.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 font-medium text-gray-800">{f.tanqueIdentificacion}</td>
-                        <td className="px-4 py-3 text-gray-600">{f.tanque?.tipoCombustibleNombre ?? '—'}</td>
-                        <td className="px-4 py-3 text-gray-800">{f.existenciaActual.toFixed(2)} gal</td>
-                        <td className="px-4 py-3 text-gray-600">{f.disponibilidad.toFixed(2)} gal</td>
-                        <td className="px-4 py-3 text-gray-600">{f.tanque ? `${f.tanque.nivelCritico.toFixed(2)} gal` : '—'}</td>
+                      <tr key={f.id} className="hover:bg-fondo">
+                        <td className="px-4 py-3 font-medium font-mono text-tinta">{f.tanqueIdentificacion}</td>
+                        <td className="px-4 py-3 text-acero">{f.tanque?.tipoCombustibleNombre ?? '—'}</td>
+                        <td className="px-4 py-3 font-mono num text-tinta">{f.existenciaActual.toFixed(2)} gal</td>
+                        <td className="px-4 py-3 font-mono num text-acero">{f.disponibilidad.toFixed(2)} gal</td>
+                        <td className="px-4 py-3 font-mono num text-acero">{f.tanque ? `${f.tanque.nivelCritico.toFixed(2)} gal` : '—'}</td>
                         <td className="px-4 py-3">
                           {inactivo
                             ? <StatusBadge label="Inactivo" variant="gray" />
@@ -270,41 +270,41 @@ export default function InventarioPage() {
             </select>
           </div>
 
-          {movLoading && <p className="text-sm text-gray-500">Cargando...</p>}
-          {movError && <p className="text-sm text-red-600">{movError}</p>}
+          {movLoading && <p className="text-sm text-acero">Cargando...</p>}
+          {movError && <p className="text-sm text-peligro">{movError}</p>}
 
           {!movLoading && !movError && (
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
+            <div className="overflow-x-auto rounded-sm border border-acero/20">
+              <table className="min-w-full divide-y divide-acero/20 text-sm">
+                <thead className="bg-fondo">
                   <tr>
                     {['Fecha', 'Tipo', 'Volumen', 'Tanque', 'Usuario', 'Referencia / Observaciones'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
                         {h}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
+                <tbody className="divide-y divide-acero/10 bg-white">
                   {movimientos.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                      <td colSpan={6} className="px-4 py-6 text-center text-acero/70">
                         Sin movimientos registrados.
                       </td>
                     </tr>
                   )}
                   {movimientos.map((m) => (
-                    <tr key={m.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-600">{formatFecha(m.fechaHora)}</td>
+                    <tr key={m.id} className="hover:bg-fondo">
+                      <td className="px-4 py-3 text-acero">{formatFecha(m.fechaHora)}</td>
                       <td className="px-4 py-3">
                         <StatusBadge label={TIPO_LABEL[m.tipo] ?? m.tipo} variant={TIPO_VARIANT[m.tipo]} />
                       </td>
-                      <td className={`px-4 py-3 font-medium ${m.volumen < 0 ? 'text-red-600' : 'text-gray-800'}`}>
+                      <td className={`px-4 py-3 font-medium font-mono num ${m.volumen < 0 ? 'text-peligro' : 'text-tinta'}`}>
                         {m.volumen > 0 ? '+' : ''}{m.volumen.toFixed(2)} gal
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{m.tanqueIdentificacion}</td>
-                      <td className="px-4 py-3 text-gray-600">{m.usuarioNombreUsuario}</td>
-                      <td className="px-4 py-3 text-gray-500">{m.referenciaOperacion || m.observaciones || '—'}</td>
+                      <td className="px-4 py-3 font-mono text-acero">{m.tanqueIdentificacion}</td>
+                      <td className="px-4 py-3 text-acero">{m.usuarioNombreUsuario}</td>
+                      <td className="px-4 py-3 text-acero">{m.referenciaOperacion || m.observaciones || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -369,20 +369,20 @@ export default function InventarioPage() {
               />
             </Field>
 
-            {ajusteError && <p className="text-sm text-red-600">{ajusteError}</p>}
+            {ajusteError && <p className="text-sm text-peligro">{ajusteError}</p>}
 
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowAjuste(false)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={ajusteSubmitting || !ajusteForm.tanqueId || !ajusteForm.magnitud || !ajusteForm.observaciones.trim()}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
               >
                 {ajusteSubmitting ? 'Guardando...' : 'Registrar ajuste'}
               </button>
@@ -448,13 +448,13 @@ export default function InventarioPage() {
               />
             </Field>
 
-            {transferenciaError && <p className="text-sm text-red-600">{transferenciaError}</p>}
+            {transferenciaError && <p className="text-sm text-peligro">{transferenciaError}</p>}
 
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowTransferencia(false)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cancelar
               </button>
@@ -466,7 +466,7 @@ export default function InventarioPage() {
                   !transferenciaForm.tanqueDestinoId ||
                   !transferenciaForm.volumen
                 }
-                className="rounded-md bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="rounded-md bg-info px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
               >
                 {transferenciaSubmitting ? 'Transfiriendo...' : 'Transferir'}
               </button>
