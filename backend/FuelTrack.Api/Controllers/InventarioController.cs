@@ -3,6 +3,7 @@ using FuelTrack.Api.DTOs.Inventario;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Security;
+using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,12 @@ namespace FuelTrack.Api.Controllers;
 public sealed class InventarioController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public InventarioController(AppDbContext db) => _db = db;
+    private readonly AuditService _audit;
+    public InventarioController(AppDbContext db, AuditService audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<InventarioDto>>> GetAll(CancellationToken ct)
@@ -70,21 +76,36 @@ public sealed class InventarioController : ControllerBase
         // es idéntico antes o después; pero si falla aquí nada se guarda en la BD.
         var (diario, mensual) = await GetConsumoAsync(req.TanqueId, ct);
 
-        _db.MovimientosInventario.Add(new MovimientoInventario
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+        try
         {
-            Tipo = TipoMovimiento.Ajuste,
-            Volumen = req.Volumen,
-            FechaHora = DateTime.UtcNow,
-            Observaciones = req.Observaciones,
-            TanqueId = req.TanqueId,
-            UsuarioId = usuarioId
-        });
+            _db.MovimientosInventario.Add(new MovimientoInventario
+            {
+                Tipo = TipoMovimiento.Ajuste,
+                Volumen = req.Volumen,
+                FechaHora = DateTime.UtcNow,
+                Observaciones = req.Observaciones,
+                TanqueId = req.TanqueId,
+                UsuarioId = usuarioId
+            });
 
-        inventario.ExistenciaActual += req.Volumen;
-        inventario.Disponibilidad += req.Volumen;
-        inventario.UltimaActualizacion = DateTime.UtcNow;
+            inventario.ExistenciaActual += req.Volumen;
+            inventario.Disponibilidad += req.Volumen;
+            inventario.UltimaActualizacion = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync(ct);
+            await _db.SaveChangesAsync(ct);
+
+            await _audit.WriteAsync("INVENTARIO_AJUSTADO", "Inventario", inventario.Id.ToString(), usuarioId,
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                new { req.TanqueId, req.Volumen, req.Observaciones }, ct);
+
+            await transaction.CommitAsync(ct);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
 
         await _db.Entry(inventario).Reference(i => i.Tanque).LoadAsync(ct);
         return Ok(ToDto(inventario, diario, mensual));
@@ -126,37 +147,52 @@ public sealed class InventarioController : ControllerBase
         var (diarioO, mensualO) = await GetConsumoAsync(req.TanqueOrigenId, ct);
         var (diarioD, mensualD) = await GetConsumoAsync(req.TanqueDestinoId, ct);
 
-        _db.MovimientosInventario.Add(new MovimientoInventario
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+        try
         {
-            Tipo = TipoMovimiento.Transferencia,
-            Volumen = -req.Volumen,
-            FechaHora = DateTime.UtcNow,
-            ReferenciaOperacion = $"HACIA-TANQUE-{req.TanqueDestinoId}",
-            Observaciones = req.Observaciones,
-            TanqueId = req.TanqueOrigenId,
-            UsuarioId = usuarioId
-        });
+            _db.MovimientosInventario.Add(new MovimientoInventario
+            {
+                Tipo = TipoMovimiento.Transferencia,
+                Volumen = -req.Volumen,
+                FechaHora = DateTime.UtcNow,
+                ReferenciaOperacion = $"HACIA-TANQUE-{req.TanqueDestinoId}",
+                Observaciones = req.Observaciones,
+                TanqueId = req.TanqueOrigenId,
+                UsuarioId = usuarioId
+            });
 
-        _db.MovimientosInventario.Add(new MovimientoInventario
+            _db.MovimientosInventario.Add(new MovimientoInventario
+            {
+                Tipo = TipoMovimiento.Transferencia,
+                Volumen = req.Volumen,
+                FechaHora = DateTime.UtcNow,
+                ReferenciaOperacion = $"DESDE-TANQUE-{req.TanqueOrigenId}",
+                Observaciones = req.Observaciones,
+                TanqueId = req.TanqueDestinoId,
+                UsuarioId = usuarioId
+            });
+
+            inventarioOrigen.ExistenciaActual -= req.Volumen;
+            inventarioOrigen.Disponibilidad -= req.Volumen;
+            inventarioOrigen.UltimaActualizacion = DateTime.UtcNow;
+
+            inventarioDestino.ExistenciaActual += req.Volumen;
+            inventarioDestino.Disponibilidad += req.Volumen;
+            inventarioDestino.UltimaActualizacion = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync(ct);
+
+            await _audit.WriteAsync("INVENTARIO_TRANSFERIDO", "Inventario", inventarioOrigen.Id.ToString(), usuarioId,
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                new { req.TanqueOrigenId, req.TanqueDestinoId, req.Volumen }, ct);
+
+            await transaction.CommitAsync(ct);
+        }
+        catch
         {
-            Tipo = TipoMovimiento.Transferencia,
-            Volumen = req.Volumen,
-            FechaHora = DateTime.UtcNow,
-            ReferenciaOperacion = $"DESDE-TANQUE-{req.TanqueOrigenId}",
-            Observaciones = req.Observaciones,
-            TanqueId = req.TanqueDestinoId,
-            UsuarioId = usuarioId
-        });
-
-        inventarioOrigen.ExistenciaActual -= req.Volumen;
-        inventarioOrigen.Disponibilidad -= req.Volumen;
-        inventarioOrigen.UltimaActualizacion = DateTime.UtcNow;
-
-        inventarioDestino.ExistenciaActual += req.Volumen;
-        inventarioDestino.Disponibilidad += req.Volumen;
-        inventarioDestino.UltimaActualizacion = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync(ct);
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
 
         await _db.Entry(inventarioOrigen).Reference(i => i.Tanque).LoadAsync(ct);
         await _db.Entry(inventarioDestino).Reference(i => i.Tanque).LoadAsync(ct);

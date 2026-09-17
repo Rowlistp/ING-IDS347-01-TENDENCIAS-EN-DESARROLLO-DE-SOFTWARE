@@ -3,6 +3,7 @@ using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Recepciones;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
+using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
@@ -38,7 +39,7 @@ public sealed class RecepcionesControllerTests
 
     private RecepcionesController CrearController(int usuarioId)
     {
-        var controller = new RecepcionesController(_db);
+        var controller = new RecepcionesController(_db, new AuditService(_db));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext
@@ -189,5 +190,22 @@ public sealed class RecepcionesControllerTests
 
         Assert.IsNotNull(bad);
         Assert.IsTrue(bad.Value!.ToString()!.Contains("TANQUE_INACTIVO"));
+    }
+
+    // ── Auditoría (RS-06) ────────────────────────────────────────────────────
+
+    [TestMethod]
+    public async Task Create_RegistraAuditoria_EventoRecepcionRegistrada()
+    {
+        var (proveedorId, tanqueId, usuarioId) = await CrearDependenciasAsync();
+        var ctrl = CrearController(usuarioId);
+        var req = new CreateRecepcionRequest(proveedorId, tanqueId, "FAC-005", 200m, DateTime.UtcNow);
+
+        await ctrl.Create(req, CancellationToken.None);
+
+        var auditoria = await _db.Auditorias.FirstOrDefaultAsync(a => a.Evento == "RECEPCION_REGISTRADA");
+        Assert.IsNotNull(auditoria);
+        Assert.AreEqual("RecepcionCombustible", auditoria.EntidadAfectada);
+        Assert.AreEqual(usuarioId, auditoria.UsuarioId);
     }
 }
