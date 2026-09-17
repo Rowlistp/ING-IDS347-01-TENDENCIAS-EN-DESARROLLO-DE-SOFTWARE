@@ -45,7 +45,12 @@ export default function VehiculosPage() {
   }
 
   useEffect(() => {
-    cargarVehiculos()
+    let cancelado = false
+    apiRequest('/vehiculos')
+      .then((data) => { if (!cancelado) setVehiculos(data) })
+      .catch((e) => { if (!cancelado) setError(e.message) })
+      .finally(() => { if (!cancelado) setLoading(false) })
+    return () => { cancelado = true }
   }, [])
 
   function handleFormChange(e) {

@@ -43,10 +43,15 @@ export default function UsuariosPage() {
   }
 
   useEffect(() => {
-    cargarUsuarios()
+    let cancelado = false
+    apiRequest('/usuarios')
+      .then((data) => { if (!cancelado) setUsuarios(data) })
+      .catch((e) => { if (!cancelado) setError(e.message) })
+      .finally(() => { if (!cancelado) setLoading(false) })
     apiRequest('/roles')
-      .then(setRoles)
+      .then((data) => { if (!cancelado) setRoles(data) })
       .catch(() => {})
+    return () => { cancelado = true }
   }, [])
 
   function handleNombreChange(e) {

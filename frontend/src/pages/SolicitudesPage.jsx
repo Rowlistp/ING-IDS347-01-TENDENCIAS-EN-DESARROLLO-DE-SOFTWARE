@@ -61,10 +61,15 @@ export default function SolicitudesPage() {
   }
 
   useEffect(() => {
-    cargarSolicitudes()
+    let cancelado = false
+    apiRequest('/solicitudes')
+      .then((data) => { if (!cancelado) setSolicitudes(data) })
+      .catch((e) => { if (!cancelado) setError(e.message) })
+      .finally(() => { if (!cancelado) setLoading(false) })
     apiRequest('/tipos-combustible')
-      .then(setTipos)
+      .then((data) => { if (!cancelado) setTipos(data) })
       .catch(() => {})
+    return () => { cancelado = true }
   }, [])
 
   function handleFormChange(e) {
