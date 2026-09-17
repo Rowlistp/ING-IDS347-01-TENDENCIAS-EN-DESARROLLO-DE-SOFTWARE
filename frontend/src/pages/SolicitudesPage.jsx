@@ -145,52 +145,52 @@ export default function SolicitudesPage() {
             setFormError(null)
             setShowCreate(true)
           }}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           + Nueva solicitud
         </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Cargando...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+      {loading && <p className="text-sm text-acero">Cargando...</p>}
+      {error && <p className="text-sm text-peligro">{error}</p>}
+      {actionError && <p className="text-sm text-peligro">{actionError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-sm border border-acero/20">
+          <table className="min-w-full divide-y divide-acero/20 text-sm">
+            <thead className="bg-fondo">
               <tr>
                 {['#', 'Empleado', 'Vehículo', 'Departamento', 'Tipo', 'Solicitado', 'Autorizado', 'Estado', 'Fecha solicitud', 'Vencimiento', 'Acciones'].map(
                   (h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
                       {h}
                     </th>
                   )
                 )}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-acero/10 bg-white">
               {solicitudes.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={11} className="px-4 py-6 text-center text-acero/70">
                     Sin solicitudes registradas.
                   </td>
                 </tr>
               )}
               {solicitudes.map((s) => (
-                <tr key={s.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-500">{s.id}</td>
-                  <td className="px-4 py-3 font-medium text-gray-800">{s.empleadoNombre}</td>
-                  <td className="px-4 py-3 text-gray-600">{s.vehiculoPlaca}</td>
-                  <td className="px-4 py-3 text-gray-600">{s.departamentoNombre}</td>
-                  <td className="px-4 py-3 text-gray-600">{s.tipoCombustibleNombre}</td>
-                  <td className="px-4 py-3 text-gray-600">{s.cantidadSolicitada}</td>
-                  <td className="px-4 py-3 text-gray-600">{s.cantidadAutorizada ?? '—'}</td>
+                <tr key={s.id} className="hover:bg-fondo">
+                  <td className="px-4 py-3 font-mono num text-acero">{s.id}</td>
+                  <td className="px-4 py-3 font-medium text-tinta">{s.empleadoNombre}</td>
+                  <td className="px-4 py-3 font-mono text-acero">{s.vehiculoPlaca}</td>
+                  <td className="px-4 py-3 text-acero">{s.departamentoNombre}</td>
+                  <td className="px-4 py-3 text-acero">{s.tipoCombustibleNombre}</td>
+                  <td className="px-4 py-3 font-mono num text-acero">{s.cantidadSolicitada}</td>
+                  <td className="px-4 py-3 font-mono num text-acero">{s.cantidadAutorizada ?? '—'}</td>
                   <td className="px-4 py-3">
                     <StatusBadge label={s.estado} variant={ESTADO_VARIANT[s.estado]} />
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{new Date(s.fechaSolicitud).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-gray-500">
+                  <td className="px-4 py-3 text-acero">{new Date(s.fechaSolicitud).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-acero">
                     {s.fechaVencimiento ? new Date(s.fechaVencimiento).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-4 py-3">
@@ -203,7 +203,7 @@ export default function SolicitudesPage() {
                             setCantidadAutorizada(String(s.cantidadSolicitada))
                             setActionError(null)
                           }}
-                          className="rounded bg-green-600 px-2 py-1 text-xs text-white hover:bg-green-700"
+                          className="rounded bg-exito px-2 py-1 text-xs text-white hover:opacity-90"
                         >
                           Aprobar
                         </button>
@@ -214,14 +214,14 @@ export default function SolicitudesPage() {
                             setMotivoRechazo('')
                             setActionError(null)
                           }}
-                          className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+                          className="rounded bg-peligro px-2 py-1 text-xs text-white hover:opacity-90"
                         >
                           Rechazar
                         </button>
                       </div>
                     )}
                     {s.estado === 'Rechazada' && s.motivoRechazo && (
-                      <span className="text-xs text-gray-400" title={s.motivoRechazo}>
+                      <span className="text-xs text-acero/70" title={s.motivoRechazo}>
                         · {s.motivoRechazo.slice(0, 30)}
                         {s.motivoRechazo.length > 30 ? '…' : ''}
                       </span>
@@ -301,19 +301,19 @@ export default function SolicitudesPage() {
                 className={inputCls}
               />
             </Field>
-            {formError && <p className="text-sm text-red-600">{formError}</p>}
+            {formError && <p className="text-sm text-peligro">{formError}</p>}
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowCreate(false)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={submitting || !requiredFieldsFilled}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
               >
                 {submitting ? 'Guardando...' : 'Crear solicitud'}
               </button>
@@ -336,16 +336,16 @@ export default function SolicitudesPage() {
                 className={inputCls}
               />
             </Field>
-            {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+            {actionError && <p className="text-sm text-peligro">{actionError}</p>}
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setAprobarModal(null)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cancelar
               </button>
-              <button type="submit" className="rounded-md bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700">
+              <button type="submit" className="rounded-md bg-exito px-4 py-2 text-sm text-white hover:opacity-90">
                 Aprobar
               </button>
             </div>
@@ -367,16 +367,16 @@ export default function SolicitudesPage() {
                 placeholder="Indique el motivo..."
               />
             </Field>
-            {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+            {actionError && <p className="text-sm text-peligro">{actionError}</p>}
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setRechazarModal(null)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cancelar
               </button>
-              <button type="submit" className="rounded-md bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700">
+              <button type="submit" className="rounded-md bg-peligro px-4 py-2 text-sm text-white hover:opacity-90">
                 Rechazar
               </button>
             </div>

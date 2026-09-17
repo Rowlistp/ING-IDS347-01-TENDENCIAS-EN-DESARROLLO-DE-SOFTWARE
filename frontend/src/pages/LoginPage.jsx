@@ -34,13 +34,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-semibold text-gray-800">Iniciar sesión</h1>
+    <div className="flex h-screen items-center justify-center bg-tanque">
+      <div className="w-full max-w-sm rounded-sm border border-acero/30 bg-white p-8 shadow-xl">
+        <p className="text-xs font-semibold uppercase tracking-widest text-acero">FuelTrack</p>
+        <h1 className="mt-1 text-xl font-semibold text-tanque">Iniciar sesión</h1>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
-            <label htmlFor="nombreUsuario" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="nombreUsuario" className="mb-1 block text-sm font-medium text-acero">
               Usuario
             </label>
             <input
@@ -51,12 +52,12 @@ export default function LoginPage() {
               required
               autoFocus
               autoComplete="username"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-acero/40 px-3 py-2 text-sm text-tinta focus:outline-none focus:ring-2 focus:ring-tanque/50 focus:border-tanque"
             />
           </div>
 
           <div>
-            <label htmlFor="contrasena" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="contrasena" className="mb-1 block text-sm font-medium text-acero">
               Contraseña
             </label>
             <input
@@ -66,16 +67,16 @@ export default function LoginPage() {
               onChange={(e) => setContrasena(e.target.value)}
               required
               autoComplete="current-password"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-acero/40 px-3 py-2 text-sm text-tinta focus:outline-none focus:ring-2 focus:ring-tanque/50 focus:border-tanque"
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="rounded-sm border border-peligro/40 bg-peligro/10 p-2 text-sm text-peligro">{error}</p>}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="w-full rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>

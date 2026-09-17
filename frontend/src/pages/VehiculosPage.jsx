@@ -145,20 +145,20 @@ export default function VehiculosPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           + Nuevo vehículo
         </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Cargando...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+      {loading && <p className="text-sm text-acero">Cargando...</p>}
+      {error && <p className="text-sm text-peligro">{error}</p>}
+      {actionError && <p className="text-sm text-peligro">{actionError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-sm border border-acero/20">
+          <table className="min-w-full divide-y divide-acero/20 text-sm">
+            <thead className="bg-fondo">
               <tr>
                 {[
                   'Placa',
@@ -173,31 +173,31 @@ export default function VehiculosPage() {
                   'Estado',
                   'Acciones',
                 ].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-acero/10 bg-white">
               {vehiculos.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={11} className="px-4 py-6 text-center text-acero/70">
                     Sin vehículos registrados.
                   </td>
                 </tr>
               )}
               {vehiculos.map((veh) => (
-                <tr key={veh.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-800">{veh.placa}</td>
-                  <td className="px-4 py-3 text-gray-600">{veh.ficha}</td>
-                  <td className="px-4 py-3 text-gray-600">{veh.marca}</td>
-                  <td className="px-4 py-3 text-gray-600">{veh.modelo}</td>
-                  <td className="px-4 py-3 text-gray-600">{veh.año}</td>
-                  <td className="px-4 py-3 text-gray-600">{veh.tipo}</td>
-                  <td className="px-4 py-3 text-gray-600">{veh.departamentoNombre}</td>
-                  <td className="px-4 py-3 text-gray-600">{veh.capacidadTanque}</td>
-                  <td className="px-4 py-3 text-gray-600">{veh.odometro}</td>
+                <tr key={veh.id} className="hover:bg-fondo">
+                  <td className="px-4 py-3 font-medium font-mono text-tinta">{veh.placa}</td>
+                  <td className="px-4 py-3 font-mono text-acero">{veh.ficha}</td>
+                  <td className="px-4 py-3 text-acero">{veh.marca}</td>
+                  <td className="px-4 py-3 text-acero">{veh.modelo}</td>
+                  <td className="px-4 py-3 font-mono num text-acero">{veh.año}</td>
+                  <td className="px-4 py-3 text-acero">{veh.tipo}</td>
+                  <td className="px-4 py-3 text-acero">{veh.departamentoNombre}</td>
+                  <td className="px-4 py-3 font-mono num text-acero">{veh.capacidadTanque}</td>
+                  <td className="px-4 py-3 font-mono num text-acero">{veh.odometro}</td>
                   <td className="px-4 py-3">
                     <StatusBadge active={veh.activo} />
                   </td>
@@ -206,7 +206,7 @@ export default function VehiculosPage() {
                       <button
                         type="button"
                         onClick={() => openEdit(veh)}
-                        className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                        className="rounded bg-tanque px-2 py-1 text-xs text-white hover:opacity-90"
                       >
                         Editar
                       </button>
@@ -215,7 +215,7 @@ export default function VehiculosPage() {
                           type="button"
                           onClick={() => handleDeactivate(veh)}
                           disabled={deactivatingId === veh.id}
-                          className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                          className="rounded bg-peligro px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
                         >
                           {deactivatingId === veh.id ? 'Desactivando...' : 'Desactivar'}
                         </button>
@@ -341,20 +341,20 @@ export default function VehiculosPage() {
               />
             </Field>
 
-            {formError && <p className="text-sm text-red-600">{formError}</p>}
+            {formError && <p className="text-sm text-peligro">{formError}</p>}
 
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={submitting || !requiredFieldsFilled}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
               >
                 {submitting ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear vehículo'}
               </button>

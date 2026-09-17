@@ -112,31 +112,31 @@ export default function RecepcionesPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           + Registrar recepción
         </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Cargando...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {loading && <p className="text-sm text-acero">Cargando...</p>}
+      {error && <p className="text-sm text-peligro">{error}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-sm border border-acero/20">
+          <table className="min-w-full divide-y divide-acero/20 text-sm">
+            <thead className="bg-fondo">
               <tr>
                 {['Proveedor', 'RNC', 'Factura', 'Volumen recibido', 'Fecha', 'Tanque'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-acero/10 bg-white">
               {recepciones.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={6} className="px-4 py-6 text-center text-acero/70">
                     Sin recepciones registradas.
                   </td>
                 </tr>
@@ -145,14 +145,14 @@ export default function RecepcionesPage() {
                 <tr
                   key={r.id}
                   onClick={() => openDetalle(r.id)}
-                  className="cursor-pointer hover:bg-gray-50"
+                  className="cursor-pointer hover:bg-fondo"
                 >
-                  <td className="px-4 py-3 font-medium text-gray-800">{r.proveedorNombre}</td>
-                  <td className="px-4 py-3 text-gray-600">{proveedorById[r.proveedorId]?.rnc ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{r.numeroFactura}</td>
-                  <td className="px-4 py-3 text-gray-800">{r.volumenRecibido.toFixed(2)} gal</td>
-                  <td className="px-4 py-3 text-gray-600">{formatFecha(r.fecha)}</td>
-                  <td className="px-4 py-3 text-gray-600">{r.tanqueIdentificacion}</td>
+                  <td className="px-4 py-3 font-medium text-tinta">{r.proveedorNombre}</td>
+                  <td className="px-4 py-3 font-mono text-acero">{proveedorById[r.proveedorId]?.rnc ?? '—'}</td>
+                  <td className="px-4 py-3 font-mono text-acero">{r.numeroFactura}</td>
+                  <td className="px-4 py-3 font-mono num text-tinta">{r.volumenRecibido.toFixed(2)} gal</td>
+                  <td className="px-4 py-3 text-acero">{formatFecha(r.fecha)}</td>
+                  <td className="px-4 py-3 font-mono text-acero">{r.tanqueIdentificacion}</td>
                 </tr>
               ))}
             </tbody>
@@ -229,20 +229,20 @@ export default function RecepcionesPage() {
               />
             </Field>
 
-            {formError && <p className="text-sm text-red-600">{formError}</p>}
+            {formError && <p className="text-sm text-peligro">{formError}</p>}
 
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={submitting || !requiredFieldsFilled}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
               >
                 {submitting ? 'Registrando...' : 'Registrar recepción'}
               </button>
@@ -253,16 +253,16 @@ export default function RecepcionesPage() {
 
       {detalle && (
         <Modal title="Detalle de recepción" onClose={() => setDetalle(null)}>
-          {detalleLoading && <p className="text-sm text-gray-500">Cargando...</p>}
-          {detalleError && <p className="text-sm text-red-600">{detalleError}</p>}
+          {detalleLoading && <p className="text-sm text-acero">Cargando...</p>}
+          {detalleError && <p className="text-sm text-peligro">{detalleError}</p>}
           {!detalleLoading && !detalleError && detalle.id && (
             <div className="space-y-3 text-sm">
-              <div className="flex justify-between"><span className="text-gray-500">Proveedor</span><span className="font-medium text-gray-800">{detalle.proveedorNombre}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">RNC</span><span className="font-medium text-gray-800">{proveedorById[detalle.proveedorId]?.rnc ?? '—'}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Factura</span><span className="font-medium text-gray-800">{detalle.numeroFactura}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Volumen recibido</span><span className="font-medium text-gray-800">{detalle.volumenRecibido.toFixed(2)} gal</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Fecha</span><span className="font-medium text-gray-800">{formatFecha(detalle.fecha)}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Tanque</span><span className="font-medium text-gray-800">{detalle.tanqueIdentificacion}</span></div>
+              <div className="flex justify-between"><span className="text-acero">Proveedor</span><span className="font-medium text-tinta">{detalle.proveedorNombre}</span></div>
+              <div className="flex justify-between"><span className="text-acero">RNC</span><span className="font-mono font-medium text-tinta">{proveedorById[detalle.proveedorId]?.rnc ?? '—'}</span></div>
+              <div className="flex justify-between"><span className="text-acero">Factura</span><span className="font-mono font-medium text-tinta">{detalle.numeroFactura}</span></div>
+              <div className="flex justify-between"><span className="text-acero">Volumen recibido</span><span className="font-mono num font-medium text-tinta">{detalle.volumenRecibido.toFixed(2)} gal</span></div>
+              <div className="flex justify-between"><span className="text-acero">Fecha</span><span className="font-medium text-tinta">{formatFecha(detalle.fecha)}</span></div>
+              <div className="flex justify-between"><span className="text-acero">Tanque</span><span className="font-mono font-medium text-tinta">{detalle.tanqueIdentificacion}</span></div>
             </div>
           )}
         </Modal>

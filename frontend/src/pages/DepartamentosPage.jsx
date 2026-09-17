@@ -114,39 +114,39 @@ export default function DepartamentosPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           + Nuevo departamento
         </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Cargando...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+      {loading && <p className="text-sm text-acero">Cargando...</p>}
+      {error && <p className="text-sm text-peligro">{error}</p>}
+      {actionError && <p className="text-sm text-peligro">{actionError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-sm border border-acero/20">
+          <table className="min-w-full divide-y divide-acero/20 text-sm">
+            <thead className="bg-fondo">
               <tr>
                 {['Nombre', 'Estado', 'Acciones'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-acero/10 bg-white">
               {departamentos.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={3} className="px-4 py-6 text-center text-acero/70">
                     Sin departamentos registrados.
                   </td>
                 </tr>
               )}
               {departamentos.map((dep) => (
-                <tr key={dep.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-800">{dep.nombre}</td>
+                <tr key={dep.id} className="hover:bg-fondo">
+                  <td className="px-4 py-3 font-medium text-tinta">{dep.nombre}</td>
                   <td className="px-4 py-3">
                     <StatusBadge active={dep.activo} />
                   </td>
@@ -155,7 +155,7 @@ export default function DepartamentosPage() {
                       <button
                         type="button"
                         onClick={() => openEdit(dep)}
-                        className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                        className="rounded bg-tanque px-2 py-1 text-xs text-white hover:opacity-90"
                       >
                         Editar
                       </button>
@@ -164,7 +164,7 @@ export default function DepartamentosPage() {
                           type="button"
                           onClick={() => handleDeactivate(dep)}
                           disabled={deactivatingId === dep.id}
-                          className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                          className="rounded bg-peligro px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
                         >
                           {deactivatingId === dep.id ? 'Desactivando...' : 'Desactivar'}
                         </button>
@@ -194,26 +194,26 @@ export default function DepartamentosPage() {
             </Field>
 
             {editingId && (
-              <label className="flex items-center gap-2 text-sm text-gray-700">
+              <label className="flex items-center gap-2 text-sm text-tinta">
                 <input type="checkbox" name="activo" checked={form.activo} onChange={handleFormChange} />
                 Activo
               </label>
             )}
 
-            {formError && <p className="text-sm text-red-600">{formError}</p>}
+            {formError && <p className="text-sm text-peligro">{formError}</p>}
 
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={submitting || !requiredFieldsFilled}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
               >
                 {submitting ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear departamento'}
               </button>

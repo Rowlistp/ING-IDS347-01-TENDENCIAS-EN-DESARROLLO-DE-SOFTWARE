@@ -162,40 +162,40 @@ export default function UsuariosPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           + Nuevo usuario
         </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Cargando...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+      {loading && <p className="text-sm text-acero">Cargando...</p>}
+      {error && <p className="text-sm text-peligro">{error}</p>}
+      {actionError && <p className="text-sm text-peligro">{actionError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-sm border border-acero/20">
+          <table className="min-w-full divide-y divide-acero/20 text-sm">
+            <thead className="bg-fondo">
               <tr>
                 {['Usuario', 'Roles', 'Estado', 'Acciones'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-acero/10 bg-white">
               {usuarios.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={4} className="px-4 py-6 text-center text-acero/70">
                     Sin usuarios registrados.
                   </td>
                 </tr>
               )}
               {usuarios.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-800">{u.nombreUsuario}</td>
-                  <td className="px-4 py-3 text-gray-600">{u.roles.join(', ')}</td>
+                <tr key={u.id} className="hover:bg-fondo">
+                  <td className="px-4 py-3 font-medium text-tinta">{u.nombreUsuario}</td>
+                  <td className="px-4 py-3 text-acero">{u.roles.join(', ')}</td>
                   <td className="px-4 py-3">
                     <StatusBadge active={u.activo} />
                   </td>
@@ -204,14 +204,14 @@ export default function UsuariosPage() {
                       <button
                         type="button"
                         onClick={() => openEdit(u)}
-                        className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
+                        className="rounded bg-tanque px-2 py-1 text-xs text-white hover:opacity-90"
                       >
                         Editar
                       </button>
                       <button
                         type="button"
                         onClick={() => openResetModal(u)}
-                        className="rounded bg-amber-600 px-2 py-1 text-xs text-white hover:bg-amber-700"
+                        className="rounded bg-acero px-2 py-1 text-xs text-white hover:opacity-90"
                       >
                         Restablecer contraseña
                       </button>
@@ -220,7 +220,7 @@ export default function UsuariosPage() {
                         onClick={() => handleToggleStatus(u)}
                         disabled={statusChangingId === u.id}
                         className={`rounded px-2 py-1 text-xs text-white disabled:opacity-50 ${
-                          u.activo ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+                          u.activo ? 'bg-peligro hover:opacity-90' : 'bg-exito hover:opacity-90'
                         }`}
                       >
                         {statusChangingId === u.id
@@ -263,7 +263,7 @@ export default function UsuariosPage() {
                   maxLength={128}
                   className={inputCls}
                 />
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="mt-1 text-xs text-acero/70">
                   Entre 12 y 128 caracteres, con mayúscula, minúscula, número y carácter especial, sin espacios.
                 </p>
               </Field>
@@ -272,7 +272,7 @@ export default function UsuariosPage() {
             <Field label="Roles">
               <div className="space-y-1">
                 {roles.map((r) => (
-                  <label key={r.id} className="flex items-center gap-2 text-sm text-gray-700">
+                  <label key={r.id} className="flex items-center gap-2 text-sm text-tinta">
                     <input
                       type="checkbox"
                       checked={form.rolIds.includes(r.id)}
@@ -284,20 +284,20 @@ export default function UsuariosPage() {
               </div>
             </Field>
 
-            {formError && <p className="text-sm text-red-600">{formError}</p>}
+            {formError && <p className="text-sm text-peligro">{formError}</p>}
 
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={submitting || !requiredFieldsFilled}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
               >
                 {submitting ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear usuario'}
               </button>
@@ -320,25 +320,25 @@ export default function UsuariosPage() {
                 autoFocus
                 className={inputCls}
               />
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-acero/70">
                 Entre 12 y 128 caracteres, con mayúscula, minúscula, número y carácter especial, sin espacios.
               </p>
             </Field>
 
-            {resetError && <p className="text-sm text-red-600">{resetError}</p>}
+            {resetError && <p className="text-sm text-peligro">{resetError}</p>}
 
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setResetModalUser(null)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={resetSubmitting || nuevaContrasena.length < 12}
-                className="rounded-md bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700 disabled:opacity-50"
+                className="rounded-md bg-acero px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
               >
                 {resetSubmitting ? 'Guardando...' : 'Restablecer'}
               </button>

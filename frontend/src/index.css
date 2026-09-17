@@ -1,1 +1,38 @@
+@import url("https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss";
+
+/*
+ * FuelTrack — "Panel de instrumentación"
+ * Tokens de identidad visual. Ver docs de diseño del equipo: paleta inspirada en
+ * instrumentación industrial (medidores de tanque, contadores de surtidor), no en
+ * el look genérico de SaaS. No hardcodear estos valores en componentes: usar las
+ * utilidades de Tailwind generadas a partir de este @theme (bg-tanque, text-acero,
+ * bg-medidor, text-exito, font-mono, etc.).
+ */
+@theme {
+  --color-tanque: #16333a; /* primario — sidebar/header, botones primarios */
+  --color-acero: #4a5a63; /* secundario — bordes, texto secundario, superficies */
+  --color-medidor: #e29b2e; /* acento — SOLO atención real (crítico, próximo a vencer) */
+  --color-fondo: #f7f8f6; /* fondo general de la app */
+  --color-tinta: #12181a; /* texto principal */
+
+  --color-exito: #2e7d5b; /* éxito / activo */
+  --color-advertencia: #c97a1a; /* advertencia / próximo a vencer */
+  --color-peligro: #c1432b; /* error / crítico */
+  --color-info: #2f6f8f; /* informativo */
+
+  --font-sans: "Public Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+body {
+  background-color: var(--color-fondo);
+  color: var(--color-tinta);
+  font-family: var(--font-sans);
+}
+
+/* Datos numéricos y códigos (galones, niveles, odómetro, COM-2026-XXXXXX):
+   usar font-mono junto con esta clase para alinear dígitos en tablas. */
+.num {
+  font-variant-numeric: tabular-nums;
+}

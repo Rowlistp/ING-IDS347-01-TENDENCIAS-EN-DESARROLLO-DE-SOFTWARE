@@ -94,52 +94,52 @@ export default function CierreDiarioPage() {
         <button
           type="button"
           onClick={openGenerar}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           + Generar cierre
         </button>
       </div>
 
-      {loading && <p className="text-sm text-gray-500">Cargando...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {downloadError && <p className="text-sm text-red-600">{downloadError}</p>}
+      {loading && <p className="text-sm text-acero">Cargando...</p>}
+      {error && <p className="text-sm text-peligro">{error}</p>}
+      {downloadError && <p className="text-sm text-peligro">{downloadError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-sm border border-acero/20">
+          <table className="min-w-full divide-y divide-acero/20 text-sm">
+            <thead className="bg-fondo">
               <tr>
                 {['Fecha', 'Despachos', 'Volumen despachado', 'Inventario final', 'Diferencias', 'Creado por', 'Acciones'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-acero/10 bg-white">
               {cierres.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={7} className="px-4 py-6 text-center text-acero/70">
                     Sin cierres generados todavía.
                   </td>
                 </tr>
               )}
               {cierres.map((c) => (
-                <tr key={c.id} onClick={() => setDetalle(c)} className="cursor-pointer hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-800">{c.fecha}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.totalDespachos}</td>
-                  <td className="px-4 py-3 text-gray-800">{c.totalVolumenDespachado.toFixed(2)} gal</td>
-                  <td className="px-4 py-3 text-gray-600">{c.totalInventarioFinal.toFixed(2)} gal</td>
-                  <td className={`px-4 py-3 font-medium ${c.totalDiferencias !== 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                <tr key={c.id} onClick={() => setDetalle(c)} className="cursor-pointer hover:bg-fondo">
+                  <td className="px-4 py-3 font-medium font-mono text-tinta">{c.fecha}</td>
+                  <td className="px-4 py-3 font-mono num text-acero">{c.totalDespachos}</td>
+                  <td className="px-4 py-3 font-mono num text-tinta">{c.totalVolumenDespachado.toFixed(2)} gal</td>
+                  <td className="px-4 py-3 font-mono num text-acero">{c.totalInventarioFinal.toFixed(2)} gal</td>
+                  <td className={`px-4 py-3 font-mono num font-medium ${c.totalDiferencias !== 0 ? 'text-peligro' : 'text-acero'}`}>
                     {c.totalDiferencias.toFixed(2)} gal
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{c.creadoPorNombre}</td>
+                  <td className="px-4 py-3 text-acero">{c.creadoPorNombre}</td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       onClick={() => handleDescargarPdf(c)}
                       disabled={!c.pdfDisponible || downloadingId === c.id}
-                      className="rounded bg-gray-600 px-2 py-1 text-xs text-white hover:bg-gray-700 disabled:opacity-50"
+                      className="rounded bg-acero px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
                     >
                       {downloadingId === c.id ? 'Descargando...' : 'PDF'}
                     </button>
@@ -166,21 +166,21 @@ export default function CierreDiarioPage() {
             </Field>
 
             {generarError && (
-              <p className="rounded-md bg-red-50 p-2 text-sm text-red-700">{generarError}</p>
+              <p className="rounded-md bg-peligro/10 p-2 text-sm text-peligro">{generarError}</p>
             )}
 
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowGenerar(false)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={generando || !fecha}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
               >
                 {generando ? 'Generando...' : 'Generar cierre'}
               </button>
@@ -194,55 +194,55 @@ export default function CierreDiarioPage() {
           <div className="space-y-4 text-sm">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <div>
-                <p className="text-xs text-gray-400">Total despachos</p>
-                <p className="text-gray-700">{detalle.totalDespachos}</p>
+                <p className="text-xs text-acero/70">Total despachos</p>
+                <p className="font-mono num text-tinta">{detalle.totalDespachos}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Volumen total despachado</p>
-                <p className="text-gray-700">{detalle.totalVolumenDespachado.toFixed(2)} gal</p>
+                <p className="text-xs text-acero/70">Volumen total despachado</p>
+                <p className="font-mono num text-tinta">{detalle.totalVolumenDespachado.toFixed(2)} gal</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Inventario final total</p>
-                <p className="text-gray-700">{detalle.totalInventarioFinal.toFixed(2)} gal</p>
+                <p className="text-xs text-acero/70">Inventario final total</p>
+                <p className="font-mono num text-tinta">{detalle.totalInventarioFinal.toFixed(2)} gal</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Diferencias totales</p>
-                <p className={detalle.totalDiferencias !== 0 ? 'font-medium text-red-600' : 'text-gray-700'}>
+                <p className="text-xs text-acero/70">Diferencias totales</p>
+                <p className={`font-mono num ${detalle.totalDiferencias !== 0 ? 'font-medium text-peligro' : 'text-tinta'}`}>
                   {detalle.totalDiferencias.toFixed(2)} gal
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Creado por</p>
-                <p className="text-gray-700">{detalle.creadoPorNombre}</p>
+                <p className="text-xs text-acero/70">Creado por</p>
+                <p className="text-tinta">{detalle.creadoPorNombre}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Creado en</p>
-                <p className="text-gray-700">{formatFechaHora(detalle.creadoEn)}</p>
+                <p className="text-xs text-acero/70">Creado en</p>
+                <p className="text-tinta">{formatFechaHora(detalle.creadoEn)}</p>
               </div>
             </div>
 
             <div className="border-t pt-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Detalle por tanque</p>
-              <div className="overflow-x-auto rounded-md border border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200 text-xs">
-                  <thead className="bg-gray-50">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-acero">Detalle por tanque</p>
+              <div className="overflow-x-auto rounded-md border border-acero/20">
+                <table className="min-w-full divide-y divide-acero/20 text-xs">
+                  <thead className="bg-fondo">
                     <tr>
                       {['Tanque', 'Combustible', 'Despachos', 'Vol. desp.', 'Vol. recib.', 'Inv. inicial', 'Inv. final', 'Dif.'].map((h) => (
-                        <th key={h} className="px-2 py-2 text-left font-medium text-gray-500 uppercase">{h}</th>
+                        <th key={h} className="px-2 py-2 text-left font-medium text-acero uppercase">{h}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 bg-white">
+                  <tbody className="divide-y divide-acero/10 bg-white">
                     {detalle.detalles.map((d) => (
                       <tr key={d.tanqueId}>
-                        <td className="px-2 py-2 font-medium text-gray-800">{d.tanqueIdentificacion}</td>
-                        <td className="px-2 py-2 text-gray-600">{d.tipoCombustible}</td>
-                        <td className="px-2 py-2 text-gray-600">{d.numeroDespachos}</td>
-                        <td className="px-2 py-2 text-gray-600">{d.volumenDespachado.toFixed(2)}</td>
-                        <td className="px-2 py-2 text-gray-600">{d.volumenRecibido.toFixed(2)}</td>
-                        <td className="px-2 py-2 text-gray-600">{d.inventarioInicial.toFixed(2)}</td>
-                        <td className="px-2 py-2 text-gray-600">{d.inventarioFinal.toFixed(2)}</td>
-                        <td className={`px-2 py-2 font-medium ${d.diferencias !== 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                        <td className="px-2 py-2 font-medium font-mono text-tinta">{d.tanqueIdentificacion}</td>
+                        <td className="px-2 py-2 text-acero">{d.tipoCombustible}</td>
+                        <td className="px-2 py-2 font-mono num text-acero">{d.numeroDespachos}</td>
+                        <td className="px-2 py-2 font-mono num text-acero">{d.volumenDespachado.toFixed(2)}</td>
+                        <td className="px-2 py-2 font-mono num text-acero">{d.volumenRecibido.toFixed(2)}</td>
+                        <td className="px-2 py-2 font-mono num text-acero">{d.inventarioInicial.toFixed(2)}</td>
+                        <td className="px-2 py-2 font-mono num text-acero">{d.inventarioFinal.toFixed(2)}</td>
+                        <td className={`px-2 py-2 font-mono num font-medium ${d.diferencias !== 0 ? 'text-peligro' : 'text-acero'}`}>
                           {d.diferencias.toFixed(2)}
                         </td>
                       </tr>
@@ -252,13 +252,13 @@ export default function CierreDiarioPage() {
               </div>
             </div>
 
-            {downloadError && <p className="text-sm text-red-600">{downloadError}</p>}
+            {downloadError && <p className="text-sm text-peligro">{downloadError}</p>}
 
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setDetalle(null)}
-                className="rounded-md border px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
               >
                 Cerrar
               </button>
@@ -266,7 +266,7 @@ export default function CierreDiarioPage() {
                 type="button"
                 onClick={() => handleDescargarPdf(detalle)}
                 disabled={!detalle.pdfDisponible || downloadingId === detalle.id}
-                className="rounded-md bg-gray-600 px-4 py-2 text-sm text-white hover:bg-gray-700 disabled:opacity-50"
+                className="rounded-md bg-acero px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
               >
                 {downloadingId === detalle.id ? 'Descargando...' : 'Descargar PDF'}
               </button>
