@@ -9,4 +9,5 @@ public sealed class AuditEntryResponse
     public DateTime FechaHoraUtc { get; set; }
     public string? DireccionIp { get; set; }
     public int? UsuarioId { get; set; }
+    public string? NombreUsuario { get; set; }
 }
