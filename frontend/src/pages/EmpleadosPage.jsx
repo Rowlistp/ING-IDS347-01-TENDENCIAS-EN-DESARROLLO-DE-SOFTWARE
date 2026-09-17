@@ -44,7 +44,12 @@ export default function EmpleadosPage() {
   }
 
   useEffect(() => {
-    cargarEmpleados()
+    let cancelado = false
+    apiRequest('/empleados')
+      .then((data) => { if (!cancelado) setEmpleados(data) })
+      .catch((e) => { if (!cancelado) setError(e.message) })
+      .finally(() => { if (!cancelado) setLoading(false) })
+    return () => { cancelado = true }
   }, [])
 
   function handleFormChange(e) {

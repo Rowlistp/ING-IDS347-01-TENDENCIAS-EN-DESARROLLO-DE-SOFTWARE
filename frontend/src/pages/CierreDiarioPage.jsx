@@ -39,7 +39,12 @@ export default function CierreDiarioPage() {
   }
 
   useEffect(() => {
-    cargarCierres()
+    let cancelado = false
+    apiRequest('/cierres-diarios')
+      .then((data) => { if (!cancelado) { setCierres(data); setError(null) } })
+      .catch((e) => { if (!cancelado) setError(e.message) })
+      .finally(() => { if (!cancelado) setLoading(false) })
+    return () => { cancelado = true }
   }, [])
 
   function openGenerar() {

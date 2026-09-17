@@ -66,7 +66,12 @@ export default function TicketsPage() {
   }
 
   useEffect(() => {
-    cargarTickets()
+    let cancelado = false
+    apiRequest('/tickets')
+      .then((data) => { if (!cancelado) setTickets(data) })
+      .catch((e) => { if (!cancelado) setError(e.message) })
+      .finally(() => { if (!cancelado) setLoading(false) })
+    return () => { cancelado = true }
   }, [])
 
   function openEmitModal() {

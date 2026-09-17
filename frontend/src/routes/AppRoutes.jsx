@@ -7,6 +7,7 @@ import DespachosPage from '../pages/DespachosPage'
 import EmpleadosPage from '../pages/EmpleadosPage'
 import InventarioPage from '../pages/InventarioPage'
 import LoginPage from '../pages/LoginPage'
+import NotFoundPage from '../pages/NotFoundPage'
 import RecepcionesPage from '../pages/RecepcionesPage'
 import SolicitudesPage from '../pages/SolicitudesPage'
 import TicketsPage from '../pages/TicketsPage'
@@ -18,6 +19,11 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      {/* Único catch-all: NotFoundPage decide si mostrarse con sidebar/header
+          (sesión activa) o en pantalla completa (sin sesión) — ver el comentario
+          en NotFoundPage.jsx sobre por qué no hay un segundo "*" dentro del
+          Layout protegido. */}
+      <Route path="*" element={<NotFoundPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>

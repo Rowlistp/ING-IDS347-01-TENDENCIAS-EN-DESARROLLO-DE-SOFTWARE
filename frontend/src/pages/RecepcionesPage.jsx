@@ -51,7 +51,12 @@ export default function RecepcionesPage() {
   }
 
   useEffect(() => {
-    cargarRecepciones()
+    let cancelado = false
+    apiRequest('/recepciones')
+      .then((data) => { if (!cancelado) { setRecepciones(data); setError(null) } })
+      .catch((e) => { if (!cancelado) setError(e.message) })
+      .finally(() => { if (!cancelado) setLoading(false) })
+    return () => { cancelado = true }
   }, [])
 
   function openCreate() {

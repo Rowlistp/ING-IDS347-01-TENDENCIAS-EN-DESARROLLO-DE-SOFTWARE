@@ -47,8 +47,9 @@ export default function DashboardPage() {
   const [lastUpdated, setLastUpdated] = useState(null)
 
   const load = useCallback(async (isInitial) => {
-    if (isInitial) setLoading(true)
-    else setRefreshing(true)
+    // `loading` ya inicia en true (useState(true)); load(true) solo se invoca una
+    // vez, desde el montaje, así que no hace falta volver a fijarlo aquí.
+    if (!isInitial) setRefreshing(true)
     try {
       const [resumen, inventarios, tickets] = await Promise.all([
         apiRequest('/dashboard/resumen'),
@@ -72,6 +73,10 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
+    // `load` combina 3 llamadas a la API + cómputo de stats y se reutiliza tal
+    // cual desde el botón "Actualizar" y el intervalo de auto-refresh; inlinearla
+    // aquí solo para esquivar la regla duplicaría esa lógica en tres sitios.
+    // oxlint-disable-next-line react/set-state-in-effect
     load(true)
     const interval = setInterval(() => load(false), AUTO_REFRESH_MS)
     return () => clearInterval(interval)
@@ -160,7 +165,7 @@ export default function DashboardPage() {
           {top3TanquesMasUsados.length === 0
             ? <p className="text-sm text-acero/70">Sin datos.</p>
             : <div className="space-y-2">
-                {top3TanquesMasUsados.map((t, i) => (
+                {top3TanquesMasUsados.map((t) => (
                   <BarRow key={t.tanqueId} label={t.identificacion} value={t.totalGalones} max={maxTop3} color="bg-info" />
                 ))}
               </div>

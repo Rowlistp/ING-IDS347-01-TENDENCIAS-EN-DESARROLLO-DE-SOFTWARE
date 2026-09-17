@@ -36,7 +36,12 @@ export default function DepartamentosPage() {
   }
 
   useEffect(() => {
-    cargarDepartamentos()
+    let cancelado = false
+    apiRequest('/departamentos')
+      .then((data) => { if (!cancelado) setDepartamentos(data) })
+      .catch((e) => { if (!cancelado) setError(e.message) })
+      .finally(() => { if (!cancelado) setLoading(false) })
+    return () => { cancelado = true }
   }, [])
 
   function handleFormChange(e) {
