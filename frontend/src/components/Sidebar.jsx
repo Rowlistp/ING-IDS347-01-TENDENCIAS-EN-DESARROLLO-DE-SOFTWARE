@@ -18,6 +18,7 @@ const navItems = [
   { to: '/tipos-combustible', label: 'Tipos de Combustible' },
   { to: '/auditoria', label: 'Auditoría' },
   { to: '/notificaciones', label: 'Notificaciones' },
+  { to: '/reportes', label: 'Reportes' },
 ]
 
 export default function Sidebar() {

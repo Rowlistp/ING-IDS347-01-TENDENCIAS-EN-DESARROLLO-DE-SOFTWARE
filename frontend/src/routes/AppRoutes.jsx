@@ -12,6 +12,7 @@ import NotFoundPage from '../pages/NotFoundPage'
 import NotificacionesPage from '../pages/NotificacionesPage'
 import ProveedoresPage from '../pages/ProveedoresPage'
 import RecepcionesPage from '../pages/RecepcionesPage'
+import ReportesPage from '../pages/ReportesPage'
 import SolicitudesPage from '../pages/SolicitudesPage'
 import SolicitudesRecurrentesPage from '../pages/SolicitudesRecurrentesPage'
 import TanquesPage from '../pages/TanquesPage'
@@ -51,6 +52,7 @@ export default function AppRoutes() {
           <Route path="/proveedores" element={<ProveedoresPage />} />
           <Route path="/tanques" element={<TanquesPage />} />
           <Route path="/tipos-combustible" element={<TiposCombustiblePage />} />
+          <Route path="/reportes" element={<ReportesPage />} />
         </Route>
       </Route>
     </Routes>
