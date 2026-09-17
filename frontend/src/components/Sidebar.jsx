@@ -12,6 +12,7 @@ const navItems = [
   { to: '/recepciones', label: 'Recepciones' },
   { to: '/despachos', label: 'Despachos' },
   { to: '/cierres-diarios', label: 'Cierre Diario' },
+  { to: '/auditoria', label: 'Auditoría' },
 ]
 
 export default function Sidebar() {
