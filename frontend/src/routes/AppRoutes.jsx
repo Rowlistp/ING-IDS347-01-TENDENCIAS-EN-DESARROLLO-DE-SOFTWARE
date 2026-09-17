@@ -9,9 +9,12 @@ import EmpleadosPage from '../pages/EmpleadosPage'
 import InventarioPage from '../pages/InventarioPage'
 import LoginPage from '../pages/LoginPage'
 import NotFoundPage from '../pages/NotFoundPage'
+import ProveedoresPage from '../pages/ProveedoresPage'
 import RecepcionesPage from '../pages/RecepcionesPage'
 import SolicitudesPage from '../pages/SolicitudesPage'
+import TanquesPage from '../pages/TanquesPage'
 import TicketsPage from '../pages/TicketsPage'
+import TiposCombustiblePage from '../pages/TiposCombustiblePage'
 import UsuariosPage from '../pages/UsuariosPage'
 import VehiculosPage from '../pages/VehiculosPage'
 import ProtectedRoute from './ProtectedRoute'
@@ -41,6 +44,9 @@ export default function AppRoutes() {
           <Route path="/despachos" element={<DespachosPage />} />
           <Route path="/cierres-diarios" element={<CierreDiarioPage />} />
           <Route path="/auditoria" element={<AuditoriaPage />} />
+          <Route path="/proveedores" element={<ProveedoresPage />} />
+          <Route path="/tanques" element={<TanquesPage />} />
+          <Route path="/tipos-combustible" element={<TiposCombustiblePage />} />
         </Route>
       </Route>
     </Routes>
