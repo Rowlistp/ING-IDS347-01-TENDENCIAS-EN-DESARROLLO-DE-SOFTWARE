@@ -21,7 +21,6 @@ export default function AuditoriaPage() {
   const [paginaCargada, setPaginaCargada] = useState(null)
   const [respuesta, setRespuesta] = useState(null)
   const [error, setError] = useState(null)
-  const [usuarioById, setUsuarioById] = useState({})
 
   const loading = paginaCargada !== pagina
 
@@ -38,25 +37,16 @@ export default function AuditoriaPage() {
     return () => { cancelado = true }
   }, [pagina])
 
-  useEffect(() => {
-    let cancelado = false
-    // GET /usuarios es exclusivo de Administrador — un Auditor (el actor principal
-    // de esta pantalla según el SRS) recibirá 403 aquí. Se resuelve el nombre solo
-    // cuando el rol lo permite; si no, se muestra el ID de usuario sin más.
-    apiRequest('/usuarios')
-      .then((data) => {
-        if (cancelado) return
-        setUsuarioById(Object.fromEntries(data.map((u) => [u.id, u.nombreUsuario])))
-      })
-      .catch(() => {})
-    return () => { cancelado = true }
-  }, [])
-
   const totalPaginas = respuesta ? Math.max(1, Math.ceil(respuesta.total / respuesta.tamanoPagina)) : 1
 
-  function nombreUsuario(usuarioId) {
-    if (usuarioId == null) return 'Sistema'
-    return usuarioById[usuarioId] ?? `Usuario #${usuarioId}`
+  // El backend ahora manda nombreUsuario directo en cada entrada (ya no hace falta
+  // cruzar con GET /usuarios, que además es exclusivo de Administrador y bloqueaba
+  // la resolución del nombre para el rol Auditor). nombreUsuario viene null solo en
+  // dos casos reales: usuarioId null (evento del sistema, sin actor) o usuarioId
+  // presente pero el usuario ya no existe (referencia huérfana).
+  function nombreUsuario(a) {
+    if (a.usuarioId == null) return 'Sistema'
+    return a.nombreUsuario ?? 'Usuario eliminado'
   }
 
   return (
@@ -94,7 +84,7 @@ export default function AuditoriaPage() {
                 )}
                 {respuesta.elementos.map((a) => (
                   <tr key={a.id} className="hover:bg-fondo">
-                    <td className="px-4 py-3 text-tinta">{nombreUsuario(a.usuarioId)}</td>
+                    <td className="px-4 py-3 text-tinta">{nombreUsuario(a)}</td>
                     <td className="px-4 py-3 font-mono num text-acero">{formatFecha(a.fechaHoraUtc)}</td>
                     <td className="px-4 py-3 font-mono num text-acero">{formatHora(a.fechaHoraUtc)}</td>
                     <td className="px-4 py-3 font-mono num text-acero">{a.direccionIp ?? '—'}</td>
