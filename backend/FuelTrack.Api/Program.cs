@@ -1,5 +1,6 @@
 using System.Text;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using Microsoft.IdentityModel.JsonWebTokens;
 using FuelTrack.Api.Data;
@@ -44,7 +45,24 @@ builder.Services
 
 builder.Services
     .AddOptions<TicketOptions>()
-    .Bind(builder.Configuration.GetSection(TicketOptions.SectionName));
+    .Bind(builder.Configuration.GetSection(TicketOptions.SectionName))
+    .Validate(options =>
+    {
+        if (string.IsNullOrWhiteSpace(options.SigningPrivateKeyPkcs8Base64))
+            return false;
+        try
+        {
+            using var key = ECDsa.Create();
+            key.ImportPkcs8PrivateKey(Convert.FromBase64String(options.SigningPrivateKeyPkcs8Base64), out _);
+            return true;
+        }
+        catch (Exception ex) when (ex is FormatException or CryptographicException)
+        {
+            return false;
+        }
+    },
+        "Tickets:SigningPrivateKeyPkcs8Base64 es obligatorio y debe ser una clave privada ECDSA P-256 válida en formato PKCS8/Base64.")
+    .ValidateOnStart();
 
 var jwt = builder.Configuration
     .GetSection(JwtOptions.SectionName)

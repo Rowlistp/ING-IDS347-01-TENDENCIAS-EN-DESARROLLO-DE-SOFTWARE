@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Security;
@@ -238,12 +239,21 @@ internal sealed class JwtPipelineFactory : WebApplicationFactory<Program>
     {
         _connection.Open();
         builder.UseEnvironment("Testing");
+        string ticketPrivateKeyBase64;
+        string ticketPublicKeyBase64;
+        using (var ticketKey = ECDsa.Create(ECCurve.NamedCurves.nistP256))
+        {
+            ticketPrivateKeyBase64 = Convert.ToBase64String(ticketKey.ExportPkcs8PrivateKey());
+            ticketPublicKeyBase64 = Convert.ToBase64String(ticketKey.ExportSubjectPublicKeyInfo());
+        }
         builder.ConfigureAppConfiguration((_, configuration) =>
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Jwt:Issuer"] = "FuelTrack.Api",
                 ["Jwt:Audience"] = "FuelTrack.Clients",
-                ["Jwt:Key"] = "TEST-JWT-KEY-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                ["Jwt:Key"] = "TEST-JWT-KEY-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                ["Tickets:SigningPrivateKeyPkcs8Base64"] = ticketPrivateKeyBase64,
+                ["Tickets:SigningPublicKeySpkiBase64"] = ticketPublicKeyBase64
             }));
         builder.ConfigureTestServices(services =>
         {
