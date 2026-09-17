@@ -259,6 +259,13 @@ internal sealed class KeycloakPipelineFactory(string authority, string audience)
     {
         _connection.Open();
         builder.UseEnvironment("Testing");
+        string ticketPrivateKeyBase64;
+        string ticketPublicKeyBase64;
+        using (var ticketKey = ECDsa.Create(ECCurve.NamedCurves.nistP256))
+        {
+            ticketPrivateKeyBase64 = Convert.ToBase64String(ticketKey.ExportPkcs8PrivateKey());
+            ticketPublicKeyBase64 = Convert.ToBase64String(ticketKey.ExportSubjectPublicKeyInfo());
+        }
         builder.ConfigureAppConfiguration((_, configuration) =>
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -267,7 +274,9 @@ internal sealed class KeycloakPipelineFactory(string authority, string audience)
                 ["Authentication:Keycloak:Authority"] = authority,
                 ["Authentication:Keycloak:Audience"] = audience,
                 ["Authentication:Keycloak:IdentityClaim"] = "preferred_username",
-                ["Authentication:Keycloak:RequireHttpsMetadata"] = "false"
+                ["Authentication:Keycloak:RequireHttpsMetadata"] = "false",
+                ["Tickets:SigningPrivateKeyPkcs8Base64"] = ticketPrivateKeyBase64,
+                ["Tickets:SigningPublicKeySpkiBase64"] = ticketPublicKeyBase64
             }));
         builder.ConfigureTestServices(services =>
         {
