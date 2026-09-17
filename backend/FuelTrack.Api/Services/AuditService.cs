@@ -35,7 +35,8 @@ public sealed class AuditService
                 IdentificadorRegistro = a.IdentificadorRegistro,
                 FechaHoraUtc = a.FechaHora,
                 DireccionIp = a.DireccionIp,
-                UsuarioId = a.UsuarioId
+                UsuarioId = a.UsuarioId,
+                NombreUsuario = a.Usuario != null ? a.Usuario.NombreUsuario : null
             })
             .ToListAsync(cancellationToken);
 
