@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Auth;
 using FuelTrack.Api.DTOs.Dispatch;
@@ -23,6 +24,11 @@ namespace FuelTrack.Api.Tests.Integration;
 
 public sealed partial class PostgreSqlSecurityTests
 {
+    // Program.cs registra JsonStringEnumConverter para las respuestas de la API (enums como texto).
+    // Los clientes de este test deben deserializar con el mismo converter.
+    private static readonly JsonSerializerOptions EnumAwareJsonOptions =
+        new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter() } };
+
     [TestMethod]
     [TestCategory("NotificationTransport")]
     public async Task Notifications_RestSmtpSmsLinkDispatchInventoryReport_EndToEnd()
@@ -82,7 +88,7 @@ public sealed partial class PostgreSqlSecurityTests
                 await locks.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM \"Inventarios\" WHERE \"TanqueId\" = {fixture.Tank} FOR UPDATE");
             }
             await deliveries;
-            var ticket = await api.GetFromJsonAsync<TicketResponse>($"/api/v1/tickets/{fixture.Ticket.Ticket.Id}");
+            var ticket = await api.GetFromJsonAsync<TicketResponse>($"/api/v1/tickets/{fixture.Ticket.Ticket.Id}", EnumAwareJsonOptions);
             Assert.AreEqual(EstadoTicket.Enviado, ticket!.Estado);
             Assert.AreEqual(1, sms.Requests.Count);
             using var payload = JsonDocument.Parse(sms.Requests.Single().Body);
@@ -107,10 +113,10 @@ public sealed partial class PostgreSqlSecurityTests
             Assert.AreEqual("application/pdf", ((MimePart)mime.Attachments.Single()).ContentType.MimeType);
 
             var validation = await api.PostAsJsonAsync("/api/v1/tickets/validar", new ValidateTicketRequest { QrPayload = fixture.Ticket.QrPayload });
-            Assert.IsTrue((await validation.Content.ReadFromJsonAsync<TicketValidationResponse>())!.Valido);
+            Assert.IsTrue((await validation.Content.ReadFromJsonAsync<TicketValidationResponse>(EnumAwareJsonOptions))!.Valido);
             var dispatch = await api.PostAsJsonAsync("/api/v1/despachos", fixture.Request());
             Assert.AreEqual(HttpStatusCode.Created, dispatch.StatusCode);
-            Assert.AreEqual(5m, (await dispatch.Content.ReadFromJsonAsync<DispatchResponse>())!.InventarioRestante);
+            Assert.AreEqual(5m, (await dispatch.Content.ReadFromJsonAsync<DispatchResponse>(EnumAwareJsonOptions))!.InventarioRestante);
             Assert.AreEqual(HttpStatusCode.OK, (await api.GetAsync("/api/v1/inventario")).StatusCode);
             var report = await api.GetAsync("/api/v1/reportes?tipo=despachos"); Assert.AreEqual(HttpStatusCode.OK, report.StatusCode);
             StringAssert.Contains(await report.Content.ReadAsStringAsync(), ticket.Codigo);
