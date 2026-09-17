@@ -9,6 +9,10 @@ public sealed class TicketNumberService(AppDbContext db)
 {
     private static readonly SemaphoreSlim NonPostgreSqlLock = new(1, 1);
 
+    // nextval() no es transaccional: si la creación del Ticket falla después de
+    // reservar el número (rollback, DbUpdateException), el número se pierde y
+    // queda un hueco permanente. RF-08 solo exige unicidad, no correlatividad;
+    // ver docs/20-DECISIONES-TECNICAS.md, sección "Límites".
     public async Task<int> NextAsync(CancellationToken cancellationToken)
     {
         if (!db.Database.IsNpgsql())
