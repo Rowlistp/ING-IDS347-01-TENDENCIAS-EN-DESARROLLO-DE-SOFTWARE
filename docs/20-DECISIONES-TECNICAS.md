@@ -86,3 +86,8 @@ en `16-DECISION-NET10.md`.
   proveedor/credenciales productivos siguen como gate de despliegue.
 - Ninguna credencial productiva debe versionarse. Los valores de
   `infra/keycloak` son fixtures reproducibles de testing.
+- La numeración de Tickets (`ticket_numero_seq`) garantiza unicidad, no ausencia
+  de huecos: al ser una secuencia PostgreSQL, avanza aunque la transacción que
+  la consumió haga rollback. RF-08 solo exige unicidad. Si el negocio (AMF u
+  otro requisito de auditoría) exige correlatividad sin huecos, se necesita un
+  rediseño explícito de `TicketNumberService.NextAsync`, no un fix menor.
