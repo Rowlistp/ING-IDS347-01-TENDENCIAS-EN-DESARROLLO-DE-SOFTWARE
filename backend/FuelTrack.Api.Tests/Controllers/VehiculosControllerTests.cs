@@ -1,8 +1,11 @@
+using System.Security.Claims;
 using FuelTrack.Api.Controllers;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Vehiculos;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
+using FuelTrack.Api.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +18,7 @@ public sealed class VehiculosControllerTests
     private SqliteConnection _connection = null!;
     private AppDbContext _db = null!;
     private VehiculosController _controller = null!;
+    private int _usuarioActorId;
 
     [TestInitialize]
     public async Task Setup()
@@ -26,7 +30,21 @@ public sealed class VehiculosControllerTests
             .Options;
         _db = new AppDbContext(options);
         await _db.Database.EnsureCreatedAsync();
-        _controller = new VehiculosController(_db);
+        var usuarioActor = new Usuario { NombreUsuario = "test.actor", PasswordHash = "hash", Activo = true };
+        _db.Usuarios.Add(usuarioActor);
+        await _db.SaveChangesAsync();
+        _usuarioActorId = usuarioActor.Id;
+        _controller = new VehiculosController(_db, new AuditService(_db))
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString())], "Test"))
+                }
+            }
+        };
     }
 
     [TestCleanup]
@@ -124,6 +142,20 @@ public sealed class VehiculosControllerTests
         Assert.AreEqual(201, created.StatusCode);
         var dto = created.Value as VehiculoDto;
         Assert.AreEqual("D300001", dto!.Placa);
+    }
+
+    [TestMethod]
+    public async Task Create_RegistraAuditoria()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var req = new SaveVehiculoRequest("D300001", "FV03", "Toyota", "Hilux",
+            2022, "Camioneta", dep.Id, 60m);
+        await _controller.Create(req, CancellationToken.None);
+
+        var auditoria = await _db.Auditorias.FirstOrDefaultAsync(a => a.Evento == "VEHICULO_CREADO");
+        Assert.IsNotNull(auditoria);
+        Assert.AreEqual("Vehiculo", auditoria.EntidadAfectada);
+        Assert.AreEqual(_usuarioActorId, auditoria.UsuarioId);
     }
 
     [TestMethod]

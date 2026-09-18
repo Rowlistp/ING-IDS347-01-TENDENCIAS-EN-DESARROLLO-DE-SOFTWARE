@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Departamentos;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Security;
+using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,8 +16,16 @@ namespace FuelTrack.Api.Controllers;
 public sealed class DepartamentosController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly AuditService _audit;
 
-    public DepartamentosController(AppDbContext db) => _db = db;
+    public DepartamentosController(AppDbContext db, AuditService audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
+
+    private bool TryGetCurrentUserId(out int userId)
+        => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 
     [HttpGet]
     public async Task<ActionResult<List<DepartamentoDto>>> GetAll(CancellationToken ct)
@@ -41,9 +51,15 @@ public sealed class DepartamentosController : ControllerBase
     public async Task<ActionResult<DepartamentoDto>> Create(
         SaveDepartamentoRequest req, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
+
         var entity = new Departamento { Nombre = req.Nombre, Activo = req.Activo };
         _db.Departamentos.Add(entity);
         await _db.SaveChangesAsync(ct);
+
+        await _audit.WriteAsync("DEPARTAMENTO_CREADO", "Departamento", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(), new { entity.Nombre, entity.Activo }, ct);
+
         var dto = new DepartamentoDto(entity.Id, entity.Nombre, entity.Activo);
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, dto);
     }
@@ -53,11 +69,17 @@ public sealed class DepartamentosController : ControllerBase
     public async Task<ActionResult<DepartamentoDto>> Update(
         int id, SaveDepartamentoRequest req, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
+
         var entity = await _db.Departamentos.FindAsync([id], ct);
         if (entity is null) return NotFound();
         entity.Nombre = req.Nombre;
         entity.Activo = req.Activo;
         await _db.SaveChangesAsync(ct);
+
+        await _audit.WriteAsync("DEPARTAMENTO_ACTUALIZADO", "Departamento", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(), new { entity.Nombre, entity.Activo }, ct);
+
         return Ok(new DepartamentoDto(entity.Id, entity.Nombre, entity.Activo));
     }
 
@@ -65,6 +87,8 @@ public sealed class DepartamentosController : ControllerBase
     [Authorize(Roles = Roles.Administrador)]
     public async Task<IActionResult> Deactivate(int id, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
+
         var entity = await _db.Departamentos.FindAsync([id], ct);
         if (entity is null) return NotFound();
 
@@ -84,6 +108,10 @@ public sealed class DepartamentosController : ControllerBase
 
         entity.Activo = false;
         await _db.SaveChangesAsync(ct);
+
+        await _audit.WriteAsync("DEPARTAMENTO_DESACTIVADO", "Departamento", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(), null, ct);
+
         return NoContent();
     }
 }
