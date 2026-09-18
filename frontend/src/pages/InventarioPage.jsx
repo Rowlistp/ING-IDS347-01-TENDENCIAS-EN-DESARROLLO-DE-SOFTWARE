@@ -4,6 +4,7 @@ import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
 import StatusBadge from '../components/StatusBadge'
 import apiRequest from '../services/api'
+import { getUser } from '../services/auth'
 import { useTanques } from '../hooks/useTanques'
 
 const TIPO_LABEL = {
@@ -30,6 +31,11 @@ function formatFecha(value) {
 }
 
 export default function InventarioPage() {
+  // POST /inventario/ajustes y /inventario/transferencias solo permiten
+  // Administrador/Supervisor (InventarioController.cs) — el resto de roles
+  // con acceso a esta pantalla (Despachador, Auditor, Consulta, Solicitante)
+  // solo consultan existencia e historial.
+  const puedeAjustar = getUser()?.roles?.some((r) => ['Administrador', 'Supervisor'].includes(r)) ?? false
   const tanques = useTanques()
   const [inventarios, setInventarios] = useState([])
   const [loading, setLoading] = useState(true)
@@ -185,22 +191,24 @@ export default function InventarioPage() {
           </button>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={openAjuste}
-            className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-          >
-            + Registrar ajuste
-          </button>
-          <button
-            type="button"
-            onClick={openTransferencia}
-            className="rounded-md bg-info px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-          >
-            + Transferir entre tanques
-          </button>
-        </div>
+        {puedeAjustar && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={openAjuste}
+              className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+            >
+              + Registrar ajuste
+            </button>
+            <button
+              type="button"
+              onClick={openTransferencia}
+              className="rounded-md bg-info px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+            >
+              + Transferir entre tanques
+            </button>
+          </div>
+        )}
       </div>
 
       {tab === 'existencia' && (

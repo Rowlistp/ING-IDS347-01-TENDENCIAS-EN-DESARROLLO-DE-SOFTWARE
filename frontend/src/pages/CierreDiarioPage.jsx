@@ -3,6 +3,7 @@ import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
 import apiRequest, { apiDownload } from '../services/api'
+import { getUser } from '../services/auth'
 
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10)
@@ -13,6 +14,11 @@ function formatFechaHora(value) {
 }
 
 export default function CierreDiarioPage() {
+  // POST /cierres-diarios solo permite Administrador/Supervisor/Despachador
+  // (CierresDiariosController.cs) — Auditor tiene acceso de solo lectura a
+  // esta pantalla, así que se oculta el botón de generar cierre.
+  const rolesConGenerar = ['Administrador', 'Supervisor', 'Despachador']
+  const puedeGenerar = getUser()?.roles?.some((r) => rolesConGenerar.includes(r)) ?? false
   const [cierres, setCierres] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -95,15 +101,17 @@ export default function CierreDiarioPage() {
 
   return (
     <PageContainer title="Cierre Diario">
-      <div className="mb-4 flex justify-end">
-        <button
-          type="button"
-          onClick={openGenerar}
-          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          + Generar cierre
-        </button>
-      </div>
+      {puedeGenerar && (
+        <div className="mb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={openGenerar}
+            className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          >
+            + Generar cierre
+          </button>
+        </div>
+      )}
 
       {loading && <p className="text-sm text-acero">Cargando...</p>}
       {error && <p className="text-sm text-peligro">{error}</p>}
