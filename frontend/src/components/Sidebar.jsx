@@ -12,6 +12,7 @@ const navItems = [
   { to: '/inventario', label: 'Inventario' },
   { to: '/recepciones', label: 'Recepciones' },
   { to: '/despachos', label: 'Despachos' },
+  { to: '/estaciones', label: 'Estaciones' },
   { to: '/cierres-diarios', label: 'Cierre Diario' },
   { to: '/tanques', label: 'Tanques' },
   { to: '/proveedores', label: 'Proveedores' },

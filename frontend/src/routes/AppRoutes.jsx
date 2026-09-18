@@ -6,6 +6,7 @@ import CierreDiarioPage from '../pages/CierreDiarioPage'
 import DepartamentosPage from '../pages/DepartamentosPage'
 import DespachosPage from '../pages/DespachosPage'
 import EmpleadosPage from '../pages/EmpleadosPage'
+import EstacionesPage from '../pages/EstacionesPage'
 import InventarioPage from '../pages/InventarioPage'
 import LoginPage from '../pages/LoginPage'
 import NotFoundPage from '../pages/NotFoundPage'
@@ -46,6 +47,7 @@ export default function AppRoutes() {
           <Route path="/inventario" element={<InventarioPage />} />
           <Route path="/recepciones" element={<RecepcionesPage />} />
           <Route path="/despachos" element={<DespachosPage />} />
+          <Route path="/estaciones" element={<EstacionesPage />} />
           <Route path="/cierres-diarios" element={<CierreDiarioPage />} />
           <Route path="/auditoria" element={<AuditoriaPage />} />
           <Route path="/notificaciones" element={<NotificacionesPage />} />
