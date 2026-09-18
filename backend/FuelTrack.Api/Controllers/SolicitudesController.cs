@@ -1,4 +1,5 @@
 // backend/FuelTrack.Api/Controllers/SolicitudesController.cs
+using System.Security.Claims;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Solicitudes;
 using FuelTrack.Api.Models;
@@ -15,18 +16,26 @@ namespace FuelTrack.Api.Controllers;
 [Authorize]
 public sealed class SolicitudesController : ControllerBase
 {
+    private static readonly string[] OperationalRoles =
+        [Roles.Administrador, Roles.Supervisor, Roles.Despachador, Roles.Auditor, Roles.Consulta];
+
     private readonly AppDbContext _db;
     public SolicitudesController(AppDbContext db) => _db = db;
 
     [HttpGet]
     public async Task<ActionResult<List<SolicitudDto>>> GetAll(CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var actorId))
+            return Unauthorized();
+        var ownerFilter = OwnerFilter(actorId);
+
         var list = await _db.SolicitudesCombustible
             .AsNoTracking()
             .Include(s => s.Empleado)
             .Include(s => s.Vehiculo)
             .Include(s => s.Departamento)
             .Include(s => s.TipoCombustible)
+            .Where(s => ownerFilter == null || s.Empleado.UsuarioId == ownerFilter)
             .ToListAsync(ct);
         return Ok(list.ConvertAll(ToDto));
     }
@@ -34,15 +43,26 @@ public sealed class SolicitudesController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<SolicitudDto>> GetById(int id, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var actorId))
+            return Unauthorized();
+        var ownerFilter = OwnerFilter(actorId);
+
         var s = await _db.SolicitudesCombustible
             .AsNoTracking()
             .Include(s => s.Empleado)
             .Include(s => s.Vehiculo)
             .Include(s => s.Departamento)
             .Include(s => s.TipoCombustible)
+            .Where(s => ownerFilter == null || s.Empleado.UsuarioId == ownerFilter)
             .FirstOrDefaultAsync(s => s.Id == id, ct);
         return s is null ? NotFound() : Ok(ToDto(s));
     }
+
+    private int? OwnerFilter(int actorId)
+        => OperationalRoles.Any(User.IsInRole) ? null : actorId;
+
+    private bool TryGetCurrentUserId(out int userId)
+        => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 
     [HttpPost]
     [Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor},{Roles.Solicitante}")]

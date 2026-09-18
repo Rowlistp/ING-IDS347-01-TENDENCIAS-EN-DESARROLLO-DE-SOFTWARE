@@ -53,7 +53,7 @@ public sealed class InventarioController : ControllerBase
     }
 
     [HttpPost("ajustes")]
-    [Authorize(Roles = Roles.Administrador)]
+    [Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor}")]
     public async Task<ActionResult<InventarioDto>> Ajustar(AjustarInventarioRequest req, CancellationToken ct)
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId))
