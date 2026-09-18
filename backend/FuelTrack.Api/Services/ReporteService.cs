@@ -17,6 +17,17 @@ public sealed class ReporteService(AppDbContext db)
     private static readonly HashSet<string> FormatosValidos =
         ["csv", "excel", "pdf"];
 
+    private static readonly Color ColorTanque = Color.FromHex("#16333A");
+    private static readonly Color ColorTanqueClaro = Color.FromHex("#EDF3F4");
+    private static readonly Color ColorAcero = Color.FromHex("#4A5A63");
+    private static readonly Color ColorAceroBorde = Color.FromHex("#D3DADE");
+    private static readonly Color ColorMedidor = Color.FromHex("#E29B2E");
+    private static readonly Color ColorMedidorClaro = Color.FromHex("#FDF3DC");
+    private static readonly Color ColorExito = Color.FromHex("#2E7D5B");
+    private static readonly Color ColorPeligro = Color.FromHex("#C1432B");
+    private static readonly Color ColorFondo = Color.FromHex("#F7F8F6");
+    private static readonly Color ColorTinta = Color.FromHex("#12181A");
+
     public async Task<ReportePageResponse> GetAsync(ReporteQuery q, CancellationToken ct)
     {
         ValidarTipo(q.Tipo);
@@ -315,26 +326,47 @@ public sealed class ReporteService(AppDbContext db)
         => Document.Create(doc => doc.Page(p =>
         {
             p.Size(PageSizes.A4.Landscape());
-            p.Margin(24);
-            p.DefaultTextStyle(s => s.FontSize(8));
+            p.Margin(20);
+            p.DefaultTextStyle(s => s.FontSize(8).FontColor(ColorTinta));
 
             p.Header().Column(col =>
             {
-                col.Item().Text($"FuelTrack — Reporte: {page.Tipo}")
-                    .SemiBold().FontSize(13).FontColor(Colors.Blue.Darken2);
-                col.Item().Text(
-                    $"Total: {page.Total} registros · Generado: {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC")
-                    .FontSize(8).FontColor(Colors.Grey.Darken1);
+                // Top brand bar
+                col.Item().Background(ColorTanque).Padding(10).Row(r =>
+                {
+                    r.RelativeItem().Column(c =>
+                    {
+                        c.Item().Row(lr =>
+                        {
+                            lr.ConstantItem(4).Height(12).Background(ColorMedidor);
+                            lr.AutoItem().PaddingLeft(6).Text("FUELTRACK").Bold().FontSize(12).FontColor(Colors.White);
+                            lr.AutoItem().PaddingLeft(6).Text("· SISTEMA DE GESTIÓN Y DESPACHO").FontSize(8).FontColor(ColorAceroBorde);
+                        });
+                        c.Item().PaddingTop(3).Text($"REPORTE OPERACIONAL — {page.Tipo.ToUpperInvariant()}")
+                            .ExtraBold().FontSize(11).FontColor(Colors.White);
+                    });
+
+                    r.ConstantItem(260).AlignRight().Column(c =>
+                    {
+                        c.Item().Text($"Generado: {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC")
+                            .FontSize(8).FontColor(ColorAceroBorde);
+                        c.Item().Text($"Total: {page.Total} registros encontrados")
+                            .Bold().FontSize(9).FontColor(ColorMedidor);
+                    });
+                });
+
+                // Accent sub-band
+                col.Item().Height(2).Background(ColorMedidor);
             });
 
-            p.Content().PaddingVertical(10).Table(t =>
+            p.Content().PaddingTop(10).Table(t =>
             {
                 switch (page.Tipo)
                 {
                     case "solicitudes":
                         DefinirColumnasYFilas(t,
                             ["#", "Fecha", "Empleado", "Vehículo", "Depto.", "Combustible", "Solicitado", "Autorizado", "Estado"],
-                            [1, 2, 3, 3, 2, 2, 2, 2, 2],
+                            [1, 2, 3, 2, 3, 2, 2, 2, 2],
                             page.Items.Cast<SolicitudReporteDto>().Select(s => new[]
                             {
                                 s.Id.ToString(), s.FechaSolicitud.ToString("yyyy-MM-dd"),
@@ -342,20 +374,22 @@ public sealed class ReporteService(AppDbContext db)
                                 s.CantidadSolicitada.ToString("F4"),
                                 s.CantidadAutorizada?.ToString("F4") ?? "—",
                                 s.Estado.ToString()
-                            }));
+                            }),
+                            [6, 7]);
                         break;
 
                     case "despachos":
                         DefinirColumnasYFilas(t,
                             ["#", "Fecha", "Hora", "Ticket", "Empleado", "Vehículo", "Galones", "Tanque", "Estación", "Operador", "Inv.Rest."],
-                            [1, 2, 2, 3, 3, 2, 2, 2, 2, 2, 2],
+                            [1, 2, 1, 3, 3, 2, 2, 2, 2, 2, 2],
                             page.Items.Cast<DespachoReporteDto>().Select(d => new[]
                             {
                                 d.Id.ToString(), d.Fecha.ToString(), d.Hora.ToString("HH:mm"),
                                 d.CodigoTicket, d.Empleado, d.Vehiculo,
                                 d.GalonesServidos.ToString("F4"), d.Tanque,
                                 d.Estacion, d.Operador, d.InventarioRestante.ToString("F4")
-                            }));
+                            }),
+                            [6, 10]);
                         break;
 
                     case "inventario":
@@ -367,7 +401,8 @@ public sealed class ReporteService(AppDbContext db)
                                 m.Id.ToString(), m.FechaHora.ToString("yyyy-MM-dd HH:mm"),
                                 m.Tanque, m.TipoCombustible, m.Tipo.ToString(),
                                 m.Volumen.ToString("F4"), m.ReferenciaOperacion ?? "—"
-                            }));
+                            }),
+                            [5]);
                         break;
 
                     case "cierres":
@@ -380,52 +415,101 @@ public sealed class ReporteService(AppDbContext db)
                                 c.TotalDespachos.ToString(), c.VolumenDespachado.ToString("F4"),
                                 c.InventarioFinal.ToString("F4"), c.Diferencias.ToString("F4"),
                                 c.CreadoPor
-                            }));
+                            }),
+                            [2, 3, 4, 5]);
                         break;
 
                     case "tickets":
                         DefinirColumnasYFilas(t,
                             ["#", "Código", "FechaCreación", "FechaVenc.", "Estado", "Autorizado", "Empleado", "Vehículo", "Depto."],
-                            [3, 3, 2, 2, 2, 2, 3, 2, 2],
+                            [2, 3, 2, 2, 2, 2, 3, 2, 2],
                             page.Items.Cast<TicketReporteDto>().Select(tk => new[]
                             {
                                 tk.Id.ToString(), tk.Codigo, tk.FechaCreacion.ToString("yyyy-MM-dd HH:mm"),
                                 tk.FechaVencimiento.ToString("yyyy-MM-dd HH:mm"), tk.Estado.ToString(),
                                 tk.CantidadAutorizada.ToString("F4"), tk.Empleado, tk.Vehiculo, tk.Departamento
-                            }));
+                            }),
+                            [5]);
                         break;
                 }
             });
 
-            p.Footer().AlignCenter().Text(t => { t.Span("FuelTrack · "); t.CurrentPageNumber(); });
+            p.Footer().BorderTop(1).BorderColor(ColorAceroBorde).PaddingTop(4).Row(r =>
+            {
+                r.RelativeItem().Text("FuelTrack v2.1 · Documento oficial de reporte y auditoría inmutable")
+                    .FontSize(7).FontColor(ColorAcero);
+                r.AutoItem().Text(t =>
+                {
+                    t.Span("Página ").FontSize(7).FontColor(ColorAcero);
+                    t.CurrentPageNumber().FontSize(7).FontColor(ColorAcero);
+                    t.Span(" de ").FontSize(7).FontColor(ColorAcero);
+                    t.TotalPages().FontSize(7).FontColor(ColorAcero);
+                });
+            });
         })).GeneratePdf();
 
     private static void DefinirColumnasYFilas(
         QuestPDF.Fluent.TableDescriptor t,
         string[] headers, int[] pesos,
-        IEnumerable<string[]> filas)
+        IEnumerable<string[]> filas,
+        HashSet<int>? columnasDerecha = null)
     {
+        columnasDerecha ??= [];
+
         t.ColumnsDefinition(c =>
         {
             foreach (var peso in pesos) c.RelativeColumn(peso);
         });
 
-        // Encabezados — una sola llamada a Header con todas las celdas dentro
+        // Encabezados con estilo industrial
         t.Header(hdr =>
         {
-            foreach (var h in headers)
-                hdr.Cell().Background(Colors.Blue.Darken2)
-                    .Padding(4).Text(h).FontColor(Colors.White).Bold().FontSize(8);
+            for (var i = 0; i < headers.Length; i++)
+            {
+                var celda = hdr.Cell().Background(ColorTanque).PaddingVertical(5).PaddingHorizontal(4);
+                if (columnasDerecha.Contains(i))
+                {
+                    celda.AlignRight().Text(headers[i]).FontColor(Colors.White).Bold().FontSize(8);
+                }
+                else
+                {
+                    celda.AlignLeft().Text(headers[i]).FontColor(Colors.White).Bold().FontSize(8);
+                }
+            }
         });
 
-        // Filas
+        // Filas con bordes sutiles y alternancia
         var rowIndex = 0;
         foreach (var fila in filas)
         {
-            var bg = rowIndex++ % 2 == 0 ? Colors.White : Colors.Grey.Lighten4;
-            foreach (var celda in fila)
-                t.Cell().Background(bg).BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2)
-                    .Padding(3).Text(celda).FontSize(8);
+            var bg = rowIndex++ % 2 == 0 ? Colors.White : ColorFondo;
+            for (var i = 0; i < fila.Length; i++)
+            {
+                var valor = fila[i];
+                var celda = t.Cell().Background(bg).BorderBottom(0.5f).BorderColor(ColorAceroBorde)
+                    .PaddingVertical(4).PaddingHorizontal(4);
+
+                if (columnasDerecha.Contains(i))
+                {
+                    celda.AlignRight().Text(valor).FontSize(7.5f).SemiBold();
+                }
+                else if (valor is "Aprobada" or "Enviado" or "Consumido")
+                {
+                    celda.Text(valor).FontSize(7.5f).Bold().FontColor(ColorExito);
+                }
+                else if (valor is "Rechazada" or "Anulado" or "Vencido")
+                {
+                    celda.Text(valor).FontSize(7.5f).Bold().FontColor(ColorPeligro);
+                }
+                else if (valor is "Pendiente" or "ProximoAVencer" or "Creado")
+                {
+                    celda.Text(valor).FontSize(7.5f).Bold().FontColor(ColorMedidor);
+                }
+                else
+                {
+                    celda.AlignLeft().Text(valor).FontSize(7.5f);
+                }
+            }
         }
     }
 
