@@ -284,6 +284,31 @@ public sealed class TanquesControllerTests
     }
 
     [TestMethod]
+    public async Task Update_NoTocaActivo_CuandoElCampoNoVieneEnElRequest()
+    {
+        // Regresión: un caller (como el frontend actual, que no envía "activo" en el
+        // payload de edición) no debe reactivar ni desactivar el tanque sin querer.
+        var tipo = await CrearTipoCombustibleAsync();
+        var tanque = new Tanque
+        {
+            Identificacion = "T-01", Capacidad = 5000m,
+            NivelActual = 0, NivelCritico = 500m,
+            TipoCombustibleId = tipo.Id, Activo = false
+        };
+        _db.Tanques.Add(tanque);
+        await _db.SaveChangesAsync();
+
+        var req = new SaveTanqueRequest("T-01-MOD", 5000m, 500m, tipo.Id);
+        var result = await _controller.Update(tanque.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as TanqueDto;
+        Assert.IsFalse(dto!.Activo);
+
+        await _db.Entry(tanque).ReloadAsync();
+        Assert.IsFalse(tanque.Activo);
+    }
+
+    [TestMethod]
     public async Task Update_Returns409_CuandoDesactivaConInventarioConStock()
     {
         var tipo = await CrearTipoCombustibleAsync();
