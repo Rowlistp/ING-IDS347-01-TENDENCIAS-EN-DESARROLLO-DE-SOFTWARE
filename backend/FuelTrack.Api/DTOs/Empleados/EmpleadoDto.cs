@@ -10,5 +10,7 @@ public record EmpleadoDto(
     string Telefono,
     int DepartamentoId,
     string DepartamentoNombre,
-    bool Activo
+    bool Activo,
+    int? UsuarioId = null,
+    string? UsuarioNombre = null
 );
