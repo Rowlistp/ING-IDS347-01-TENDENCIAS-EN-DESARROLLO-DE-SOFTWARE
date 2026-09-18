@@ -88,6 +88,25 @@ export function formatTelefonoRD(value) {
   return clean;
 }
 
+export function normalizeTelefonoE164(value) {
+  if (!value) return '';
+  const trimmed = String(value).trim();
+  const digits = trimmed.replace(/\D/g, '');
+  if (trimmed.startsWith('+') && digits.length >= 8 && digits.length <= 15) {
+    return `+${digits}`;
+  }
+  if (digits.length === 10) {
+    return `+1${digits}`;
+  }
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+${digits}`;
+  }
+  if (digits.length >= 8 && digits.length <= 15) {
+    return `+${digits}`;
+  }
+  return trimmed;
+}
+
 // --- Correo Electrónico ---
 export function validateEmail(value, required = true) {
   if (!value || !String(value).trim()) {

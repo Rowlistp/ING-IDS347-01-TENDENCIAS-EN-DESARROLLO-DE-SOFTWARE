@@ -98,5 +98,19 @@ public sealed class SecuritySeedService
 
         _db.Usuarios.Add(admin);
         await _db.SaveChangesAsync(cancellationToken);
+
+        // Normalización preventiva de teléfonos preexistentes al formato internacional E.164 (+1809...)
+        var empleadosSinNormalizar = await _db.Empleados
+            .Where(e => !string.IsNullOrEmpty(e.Telefono) && !e.Telefono.StartsWith("+"))
+            .ToListAsync(cancellationToken);
+
+        if (empleadosSinNormalizar.Count > 0)
+        {
+            foreach (var emp in empleadosSinNormalizar)
+            {
+                emp.Telefono = Notifications.NotificationOptions.NormalizePhone(emp.Telefono);
+            }
+            await _db.SaveChangesAsync(cancellationToken);
+        }
     }
 }

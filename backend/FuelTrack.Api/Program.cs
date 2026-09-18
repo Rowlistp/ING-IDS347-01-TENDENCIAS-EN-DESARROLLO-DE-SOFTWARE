@@ -246,7 +246,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("WebClient", policy =>
         policy.WithOrigins(allowedOrigins)
             .AllowAnyMethod()
-            .AllowAnyHeader());
+            .AllowAnyHeader()
+            .WithExposedHeaders("Content-Disposition"));
 });
 
 builder.Services.AddControllers()

@@ -60,7 +60,8 @@ public sealed class HttpSmsGatewaySender(HttpClient client, IOptions<Notificatio
 {
     public async Task<DeliveryResult> SendAsync(OutgoingNotification input, CancellationToken ct)
     {
-        if (!NotificationOptions.ValidPhone(input.To)) return DeliveryResult.Error("TELEFONO_INVALIDO", false);
+        var to = NotificationOptions.NormalizePhone(input.To);
+        if (!NotificationOptions.ValidPhone(to)) return DeliveryResult.Error("TELEFONO_INVALIDO", false);
         var sms = options.Value.Sms;
         if (!sms.Enabled) return DeliveryResult.Error("SMS_DESHABILITADO", true);
         try
@@ -68,7 +69,7 @@ public sealed class HttpSmsGatewaySender(HttpClient client, IOptions<Notificatio
             using var request = new HttpRequestMessage(HttpMethod.Post, sms.BaseUrl);
             request.Headers.TryAddWithoutValidation(sms.AuthHeaderName, sms.ApiKey);
             request.Headers.Add("Idempotency-Key", Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(input.Key))));
-            request.Content = JsonContent.Create(new { to = input.To, message = input.Text, reference = input.Key, sender = sms.Sender });
+            request.Content = JsonContent.Create(new { to, message = input.Text, reference = input.Key, sender = sms.Sender });
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!response.IsSuccessStatusCode)
                 return DeliveryResult.Error($"SMS_HTTP_{(int)response.StatusCode}", (int)response.StatusCode == 429 || (int)response.StatusCode >= 500);

@@ -36,7 +36,7 @@ public sealed class NotificationRuleService(AppDbContext db, IOptions<Notificati
                 var type = expired ? "TICKET_VENCIDO" : "TICKET_PROXIMO_VENCER";
                 var message = $"FuelTrack {type}: {ticket.Prefijo}-{ticket.FechaCreacion.Year}-{ticket.NumeroSecuencial:000000}. Vencimiento UTC: {ticket.FechaVencimiento:O}.";
                 if (!string.IsNullOrWhiteSpace(ticket.Empleado.Correo)) await NotificationQueue.EnqueueAsync(db, NotificationQueue.New(type, ticket.Id.ToString("D"), "EMAIL", ticket.Empleado.Correo, message), ct);
-                if (!string.IsNullOrWhiteSpace(ticket.Empleado.Telefono)) await NotificationQueue.EnqueueAsync(db, NotificationQueue.New(type, ticket.Id.ToString("D"), "SMS", ticket.Empleado.Telefono, message), ct);
+                if (!string.IsNullOrWhiteSpace(ticket.Empleado.Telefono)) await NotificationQueue.EnqueueAsync(db, NotificationQueue.New(type, ticket.Id.ToString("D"), "SMS", NotificationOptions.NormalizePhone(ticket.Empleado.Telefono), message), ct);
                 await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); db.ChangeTracker.Clear();
             }
             cursor = candidates[^1].NumeroSecuencial;
@@ -57,7 +57,7 @@ public sealed class NotificationRuleService(AppDbContext db, IOptions<Notificati
     {
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         foreach (var email in options.Operations.Emails.Distinct()) await NotificationQueue.EnqueueAsync(db, NotificationQueue.New(type, reference, "EMAIL", email, text, period), ct);
-        foreach (var phone in options.Operations.Phones.Distinct()) await NotificationQueue.EnqueueAsync(db, NotificationQueue.New(type, reference, "SMS", phone, text, period), ct);
+        foreach (var phone in options.Operations.Phones.Distinct()) await NotificationQueue.EnqueueAsync(db, NotificationQueue.New(type, reference, "SMS", NotificationOptions.NormalizePhone(phone), text, period), ct);
         await tx.CommitAsync(ct);
     }
 }

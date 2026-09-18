@@ -2,6 +2,7 @@ using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Empleados;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
+using FuelTrack.Api.Notifications;
 using FuelTrack.Api.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -78,7 +79,7 @@ public sealed class EmpleadosController : ControllerBase
             Cedula         = req.Cedula,
             Cargo          = req.Cargo,
             Correo         = req.Correo,
-            Telefono       = req.Telefono,
+            Telefono       = NotificationOptions.NormalizePhone(req.Telefono),
             DepartamentoId = req.DepartamentoId,
             Activo         = req.Activo,
             UsuarioId      = req.UsuarioId
@@ -131,7 +132,7 @@ public sealed class EmpleadosController : ControllerBase
         entity.Cedula         = req.Cedula;
         entity.Cargo          = req.Cargo;
         entity.Correo         = req.Correo;
-        entity.Telefono       = req.Telefono;
+        entity.Telefono       = NotificationOptions.NormalizePhone(req.Telefono);
         entity.DepartamentoId = req.DepartamentoId;
         entity.Activo         = req.Activo;
         entity.UsuarioId      = req.UsuarioId;
