@@ -1,9 +1,12 @@
 // backend/FuelTrack.Api.Tests/Controllers/SolicitudesControllerTests.cs
+using System.Security.Claims;
 using FuelTrack.Api.Controllers;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Solicitudes;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
+using FuelTrack.Api.Security;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -27,8 +30,23 @@ public sealed class SolicitudesControllerTests
             .Options;
         _db = new AppDbContext(options);
         await _db.Database.EnsureCreatedAsync();
-        _controller = new SolicitudesController(_db);
+        _controller = CrearController(1, Roles.Administrador);
     }
+
+    private SolicitudesController CrearController(int usuarioId, string rol) => new(_db)
+    {
+        ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [
+                        new Claim(ClaimTypes.NameIdentifier, usuarioId.ToString()),
+                        new Claim(ClaimTypes.Role, rol)
+                    ], "Test"))
+            }
+        }
+    };
 
     [TestCleanup]
     public async Task Cleanup()
@@ -110,6 +128,76 @@ public sealed class SolicitudesControllerTests
         Assert.AreEqual("A123456", dto.VehiculoPlaca);
         Assert.AreEqual("TI", dto.DepartamentoNombre);
         Assert.AreEqual("Gasolina", dto.TipoCombustibleNombre);
+    }
+
+    private async Task<Usuario> CrearUsuarioAsync(string nombreUsuario)
+    {
+        var usuario = new Usuario { NombreUsuario = nombreUsuario, PasswordHash = "hash", Activo = true };
+        _db.Usuarios.Add(usuario);
+        await _db.SaveChangesAsync();
+        return usuario;
+    }
+
+    [TestMethod]
+    public async Task GetAll_Solicitante_SoloVeSusPropiasSolicitudes()
+    {
+        var (empleadoPropio, vehiculo, depto, tipo) = await CrearDependenciasAsync();
+        var usuarioPropio = await CrearUsuarioAsync("solicitante.propio");
+        var usuarioAjeno = await CrearUsuarioAsync("solicitante.ajeno");
+        empleadoPropio.UsuarioId = usuarioPropio.Id;
+
+        var empleadoAjeno = new Empleado
+        {
+            Codigo = "E-002", NombreCompleto = "María Gómez", Cedula = "001-0000002-2",
+            Cargo = "Analista", Correo = "maria@test.com", Telefono = "8091234568",
+            DepartamentoId = depto.Id, Activo = true, UsuarioId = usuarioAjeno.Id
+        };
+        _db.Empleados.Add(empleadoAjeno);
+        await _db.SaveChangesAsync();
+
+        _db.SolicitudesCombustible.AddRange(
+            new SolicitudCombustible
+            {
+                CantidadSolicitada = 50m, TipoSolicitud = "Manual", Estado = EstadoSolicitud.Pendiente,
+                FechaSolicitud = DateTime.UtcNow, EmpleadoId = empleadoPropio.Id, VehiculoId = vehiculo.Id,
+                DepartamentoId = depto.Id, TipoCombustibleId = tipo.Id
+            },
+            new SolicitudCombustible
+            {
+                CantidadSolicitada = 30m, TipoSolicitud = "Manual", Estado = EstadoSolicitud.Pendiente,
+                FechaSolicitud = DateTime.UtcNow, EmpleadoId = empleadoAjeno.Id, VehiculoId = vehiculo.Id,
+                DepartamentoId = depto.Id, TipoCombustibleId = tipo.Id
+            });
+        await _db.SaveChangesAsync();
+
+        var solicitanteCtrl = CrearController(usuarioPropio.Id, Roles.Solicitante);
+        var result = await solicitanteCtrl.GetAll(CancellationToken.None);
+        var list = (result.Result as OkObjectResult)!.Value as List<SolicitudDto>;
+
+        Assert.AreEqual(1, list!.Count);
+        Assert.AreEqual("Juan Pérez", list[0].EmpleadoNombre);
+    }
+
+    [TestMethod]
+    public async Task GetById_Solicitante_Returns404_ParaSolicitudAjena()
+    {
+        var (empleado, vehiculo, depto, tipo) = await CrearDependenciasAsync();
+        var usuarioAjeno = await CrearUsuarioAsync("solicitante.ajeno");
+        var usuarioPropio = await CrearUsuarioAsync("solicitante.propio");
+        empleado.UsuarioId = usuarioAjeno.Id;
+        var solicitud = new SolicitudCombustible
+        {
+            CantidadSolicitada = 50m, TipoSolicitud = "Manual", Estado = EstadoSolicitud.Pendiente,
+            FechaSolicitud = DateTime.UtcNow, EmpleadoId = empleado.Id, VehiculoId = vehiculo.Id,
+            DepartamentoId = depto.Id, TipoCombustibleId = tipo.Id
+        };
+        _db.SolicitudesCombustible.Add(solicitud);
+        await _db.SaveChangesAsync();
+
+        var solicitanteCtrl = CrearController(usuarioPropio.Id, Roles.Solicitante);
+        var result = await solicitanteCtrl.GetById(solicitud.Id, CancellationToken.None);
+
+        Assert.IsInstanceOfType<NotFoundResult>(result.Result);
     }
 
     [TestMethod]
