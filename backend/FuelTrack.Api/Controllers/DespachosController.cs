@@ -12,7 +12,7 @@ namespace FuelTrack.Api.Controllers;
 [Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor},{Roles.Despachador},{Roles.Auditor},{Roles.Consulta}")]
 public sealed class DespachosController(DispatchService dispatches) : ControllerBase
 {
-    [HttpPost, Authorize(Roles = Roles.Despachador)]
+    [HttpPost, Authorize(Roles = $"{Roles.Despachador},{Roles.Administrador},{Roles.Supervisor}")]
     public async Task<ActionResult<DispatchResponse>> Create(CreateDispatchRequest request, CancellationToken ct)
     {
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId)) return Unauthorized();

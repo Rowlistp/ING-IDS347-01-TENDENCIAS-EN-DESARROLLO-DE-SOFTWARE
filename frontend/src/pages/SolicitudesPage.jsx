@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
+import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
 import { useAuth } from '../hooks/useAuth'
 import { useDepartamentos } from '../hooks/useDepartamentos'
 import { useEmpleados } from '../hooks/useEmpleados'
 import { useVehiculos } from '../hooks/useVehiculos'
 import apiRequest from '../services/api'
+import { canApproveRequests, isReadOnlyRole } from '../utils/rbac'
 
 const ESTADO_VARIANT = {
   Pendiente: 'yellow',
@@ -26,6 +28,8 @@ const EMPTY_FORM = {
 
 export default function SolicitudesPage() {
   const { user } = useAuth()
+  const canApprove = canApproveRequests(user)
+  const isReadOnly = isReadOnlyRole(user)
   const [solicitudes, setSolicitudes] = useState([])
   const empleados = useEmpleados()
   const vehiculos = useVehiculos()
@@ -158,29 +162,37 @@ export default function SolicitudesPage() {
 
   return (
     <PageContainer title="Solicitudes de Combustible">
-      <div className="mb-4 flex justify-end">
-        <button
-          type="button"
-          onClick={openCreate}
-          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          + Nueva solicitud
-        </button>
-      </div>
+      {!isReadOnly && (
+        <div className="mb-4 flex flex-col sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={openCreate}
+            className="inline-flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-md bg-tanque px-4 py-2 text-sm font-semibold text-white hover:bg-tanque/90 shadow-sm transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+            </svg>
+            + Nueva solicitud
+          </button>
+        </div>
+      )}
 
       {isSolicitanteOnly && !miEmpleado && (
         <div className="mb-4 rounded-md border border-peligro/30 bg-peligro/10 p-3 text-sm text-peligro">
-          ⚠️ <strong>Cuenta no vinculada:</strong> Su usuario actual (<code>{user?.nombreUsuario}</code>) no está vinculado a ningún empleado. Comuníquese con un Administrador para asociar su cuenta desde el catálogo de Empleados.
+          ⚠️ <strong>Cuenta no vinculada:</strong> Tu cuenta de usuario aún no está asociada a ningún empleado de la institución. Por favor solicita a un Administrador que complete tu vinculación.
         </div>
       )}
 
       {isSolicitanteOnly && miEmpleado && (
-        <div className="mb-4 rounded-md border border-tanque/30 bg-tanque/10 p-3 text-sm text-tanque flex items-center justify-between">
-          <span>
-            👤 Sesión activa como Solicitante: <strong>{miEmpleado.nombreCompleto}</strong> ({miEmpleado.codigo} — {miEmpleado.departamentoNombre})
-          </span>
-          <span className="text-xs bg-tanque text-white px-2.5 py-0.5 rounded font-mono font-medium">
-            OwnerFilter Activo
+        <div className="mb-4 rounded-md border border-tanque/20 bg-tanque/5 p-3 text-sm text-tanque flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span>👤</span>
+            <span>
+              Solicitante: <strong>{miEmpleado.nombreCompleto}</strong> — {miEmpleado.departamentoNombre}
+            </span>
+          </div>
+          <span className="text-xs bg-tanque/10 text-tanque border border-tanque/20 px-2.5 py-1 rounded font-medium self-start sm:self-auto">
+            Mis solicitudes
           </span>
         </div>
       )}
@@ -190,89 +202,125 @@ export default function SolicitudesPage() {
       {actionError && <p className="text-sm text-peligro">{actionError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-sm border border-acero/20">
-          <table className="min-w-full divide-y divide-acero/20 text-sm">
-            <thead className="bg-fondo">
-              <tr>
-                {['#', 'Empleado', 'Vehículo', 'Departamento', 'Tipo', 'Solicitado', 'Autorizado', 'Estado', 'Fecha solicitud', 'Vencimiento', 'Acciones'].map(
-                  (h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
-                      {h}
-                    </th>
-                  )
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-acero/10 bg-white">
-              {solicitudes.length === 0 && (
-                <tr>
-                  <td colSpan={11} className="px-4 py-6 text-center text-acero/70">
-                    Sin solicitudes registradas.
-                  </td>
-                </tr>
+        <ResponsiveTable
+          data={solicitudes}
+          keyField="id"
+          columns={[
+            {
+              key: 'id',
+              label: '#',
+              priority: 'low',
+              render: (s) => <span className="font-mono num text-acero">{s.id}</span>,
+            },
+            {
+              key: 'empleadoNombre',
+              label: 'Empleado',
+              primary: true,
+              priority: 'high',
+              render: (s) => <span className="font-semibold text-tinta">{s.empleadoNombre}</span>,
+            },
+            {
+              key: 'vehiculoPlaca',
+              label: 'Vehículo',
+              priority: 'high',
+              render: (s) => <span className="font-mono text-acero">{s.vehiculoPlaca}</span>,
+            },
+            {
+              key: 'departamentoNombre',
+              label: 'Departamento',
+              priority: 'low',
+            },
+            {
+              key: 'tipoCombustibleNombre',
+              label: 'Tipo',
+              priority: 'med',
+            },
+            {
+              key: 'cantidadSolicitada',
+              label: 'Solicitado',
+              priority: 'high',
+              render: (s) => <span className="font-mono num font-bold text-tinta">{s.cantidadSolicitada} gal</span>,
+            },
+            {
+              key: 'cantidadAutorizada',
+              label: 'Autorizado',
+              priority: 'med',
+              render: (s) => (
+                <span className="font-mono num text-acero">
+                  {s.cantidadAutorizada ? `${s.cantidadAutorizada} gal` : '—'}
+                </span>
+              ),
+            },
+            {
+              key: 'estado',
+              label: 'Estado',
+              priority: 'high',
+              render: (s) => <StatusBadge label={s.estado} variant={ESTADO_VARIANT[s.estado]} />,
+            },
+            {
+              key: 'fechaSolicitud',
+              label: 'Fecha',
+              priority: 'med',
+              render: (s) => <span className="font-mono num text-xs">{new Date(s.fechaSolicitud).toLocaleDateString()}</span>,
+            },
+            {
+              key: 'fechaVencimiento',
+              label: 'Vence',
+              priority: 'low',
+              render: (s) => (
+                <span className="font-mono num text-xs">
+                  {s.fechaVencimiento ? new Date(s.fechaVencimiento).toLocaleDateString() : '—'}
+                </span>
+              ),
+            },
+          ]}
+          actions={(s) => (
+            <>
+              {s.estado === 'Pendiente' && canApprove && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAprobarModal(s)
+                      setCantidadAutorizada(String(s.cantidadSolicitada))
+                      setActionError(null)
+                    }}
+                    className="inline-flex min-h-[38px] items-center gap-1.5 rounded-md border border-exito/30 bg-exito/10 px-3 py-1.5 text-xs font-semibold text-exito transition-colors hover:bg-exito hover:text-white shadow-xs"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    Aprobar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRechazarModal(s)
+                      setMotivoRechazo('')
+                      setActionError(null)
+                    }}
+                    className="inline-flex min-h-[38px] items-center gap-1.5 rounded-md border border-peligro/30 bg-white px-3 py-1.5 text-xs font-semibold text-peligro transition-colors hover:border-peligro hover:bg-peligro/10 shadow-xs"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                    Rechazar
+                  </button>
+                </div>
               )}
-              {solicitudes.map((s) => (
-                <tr key={s.id} className="hover:bg-fondo">
-                  <td className="px-4 py-3 font-mono num text-acero">{s.id}</td>
-                  <td className="px-4 py-3 font-medium text-tinta">{s.empleadoNombre}</td>
-                  <td className="px-4 py-3 font-mono text-acero">{s.vehiculoPlaca}</td>
-                  <td className="px-4 py-3 text-acero">{s.departamentoNombre}</td>
-                  <td className="px-4 py-3 text-acero">{s.tipoCombustibleNombre}</td>
-                  <td className="px-4 py-3 font-mono num text-acero">{s.cantidadSolicitada}</td>
-                  <td className="px-4 py-3 font-mono num text-acero">{s.cantidadAutorizada ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge label={s.estado} variant={ESTADO_VARIANT[s.estado]} />
-                  </td>
-                  <td className="px-4 py-3 text-acero">{new Date(s.fechaSolicitud).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-acero">
-                    {s.fechaVencimiento ? new Date(s.fechaVencimiento).toLocaleDateString() : '—'}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    {s.estado === 'Pendiente' && (
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAprobarModal(s)
-                            setCantidadAutorizada(String(s.cantidadSolicitada))
-                            setActionError(null)
-                          }}
-                          className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-exito/30 bg-exito/10 px-3 py-1.5 text-xs font-semibold text-exito transition-colors hover:bg-exito hover:text-white"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                          Aprobar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRechazarModal(s)
-                            setMotivoRechazo('')
-                            setActionError(null)
-                          }}
-                          className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-peligro/30 bg-white px-3 py-1.5 text-xs font-semibold text-peligro transition-colors hover:border-peligro hover:bg-peligro/10"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
-                          Rechazar
-                        </button>
-                      </div>
-                    )}
-                    {s.estado === 'Rechazada' && s.motivoRechazo && (
-                      <span className="text-xs text-acero/80" title={s.motivoRechazo}>
-                        Motivo: {s.motivoRechazo.slice(0, 25)}
-                        {s.motivoRechazo.length > 25 ? '…' : ''}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              {s.estado === 'Pendiente' && !canApprove && (
+                <span className="text-xs text-acero italic">En espera de autorización</span>
+              )}
+              {s.estado === 'Rechazada' && s.motivoRechazo && (
+                <span className="text-xs text-acero/80" title={s.motivoRechazo}>
+                  Motivo: {s.motivoRechazo}
+                </span>
+              )}
+            </>
+          )}
+          emptyMessage="Sin solicitudes registradas."
+        />
       )}
 
       {showCreate && (

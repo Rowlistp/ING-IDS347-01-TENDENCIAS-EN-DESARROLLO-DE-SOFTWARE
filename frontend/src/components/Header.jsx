@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { getRoleBadgeInfo } from '../utils/rbac'
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Header — Barra superior con breadcrumb dinámico y zona de usuario.
@@ -43,54 +44,77 @@ function getInitials(name) {
   return name.slice(0, 2).toUpperCase()
 }
 
-export default function Header() {
+export default function Header({ onToggleSidebar }) {
   const { user, logout } = useAuth()
   const { pathname } = useLocation()
 
   const route = routeMap[pathname] ?? { section: null, page: 'Panel' }
-  const displayRoles = user?.roles?.length ? user.roles.join(', ') : 'Usuario'
+  const roleBadge = getRoleBadgeInfo(user)
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-acero/20 bg-white px-6">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb">
-        <ol className="flex items-center gap-1.5 text-sm">
-          <li className="text-acero">
-            {/* Home icon */}
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block">
-              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
-          </li>
-          {route.section && (
-            <>
-              <li aria-hidden="true" className="text-acero/40">/</li>
-              <li className="text-acero">{route.section}</li>
-            </>
-          )}
-          <li aria-hidden="true" className="text-acero/40">/</li>
-          <li className="font-semibold text-tanque" aria-current="page">{route.page}</li>
-        </ol>
-      </nav>
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-acero/20 bg-white px-3 sm:px-6">
+      {/* Zona izquierda: Menú hamburguesa (móvil) + Breadcrumb */}
+      <div className="flex items-center gap-2 overflow-hidden">
+        {/* Botón hamburguesa en móvil */}
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-acero hover:bg-fondo hover:text-tanque md:hidden min-h-[44px] min-w-[44px] transition-colors"
+          aria-label="Abrir menú de navegación"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+        {/* Título en móvil (<768px) */}
+        <h1 className="text-base font-bold text-tanque truncate md:hidden">
+          {route.page}
+        </h1>
+
+        {/* Breadcrumb completo en desktop (≥768px) */}
+        <nav aria-label="Breadcrumb" className="hidden md:block">
+          <ol className="flex items-center gap-1.5 text-sm">
+            <li className="text-acero">
+              {/* Home icon */}
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block">
+                <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+            </li>
+            {route.section && (
+              <>
+                <li aria-hidden="true" className="text-acero/40">/</li>
+                <li className="text-acero">{route.section}</li>
+              </>
+            )}
+            <li aria-hidden="true" className="text-acero/40">/</li>
+            <li className="font-semibold text-tanque" aria-current="page">{route.page}</li>
+          </ol>
+        </nav>
+      </div>
 
       {/* User area */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* Initials avatar */}
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-tanque text-xs font-bold text-white" aria-hidden="true">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tanque text-xs font-bold text-white" aria-hidden="true">
           {getInitials(user?.nombreUsuario)}
         </div>
 
-        <div className="hidden sm:block">
-          <p className="text-sm font-medium leading-tight text-tinta">{user?.nombreUsuario ?? 'Usuario'}</p>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-acero">{displayRoles}</p>
+        <div className="hidden sm:flex flex-col items-start gap-0.5">
+          <p className="text-sm font-semibold leading-tight text-tinta">{user?.nombreUsuario ?? 'Usuario'}</p>
+          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${roleBadge.bg}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${roleBadge.dot}`} />
+            {roleBadge.label}
+          </span>
         </div>
 
-        <div className="mx-1 h-6 w-px bg-acero/20" aria-hidden="true" />
+        <div className="hidden sm:block mx-1 h-6 w-px bg-acero/20" aria-hidden="true" />
 
         <button
           type="button"
           onClick={logout}
-          className="flex min-h-[44px] items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-acero transition-colors hover:bg-fondo hover:text-peligro"
+          className="flex min-h-[44px] min-w-[44px] sm:min-w-0 items-center justify-center gap-1.5 rounded-md px-2.5 sm:px-3 py-2 text-sm font-medium text-acero transition-colors hover:bg-fondo hover:text-peligro"
           title="Cerrar sesión"
         >
           {/* Logout icon */}
@@ -105,3 +129,4 @@ export default function Header() {
     </header>
   )
 }
+

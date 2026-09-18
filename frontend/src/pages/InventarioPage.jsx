@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react'
 import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
+import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
+import { useAuth } from '../hooks/useAuth'
 import apiRequest from '../services/api'
 import { useTanques } from '../hooks/useTanques'
+import { canAdjustInventory } from '../utils/rbac'
 
 const TIPO_LABEL = {
   Entrada: 'Entrada',
@@ -30,6 +33,8 @@ function formatFecha(value) {
 }
 
 export default function InventarioPage() {
+  const { user } = useAuth()
+  const canAdjust = canAdjustInventory(user)
   const tanques = useTanques()
   const [inventarios, setInventarios] = useState([])
   const [loading, setLoading] = useState(true)
@@ -167,40 +172,52 @@ export default function InventarioPage() {
 
   return (
     <PageContainer title="Inventario">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-md bg-acero/10 p-1">
+      <div className="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex gap-1 rounded-md bg-acero/10 p-1 self-start">
           <button
             type="button"
             onClick={() => setTab('existencia')}
-            className={`rounded px-3 py-1.5 text-sm font-medium ${tab === 'existencia' ? 'bg-white shadow text-tinta' : 'text-acero'}`}
+            className={`min-h-[38px] rounded px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'existencia' ? 'bg-white shadow-xs text-tinta' : 'text-acero hover:text-tinta'}`}
           >
             Existencia actual
           </button>
           <button
             type="button"
             onClick={() => setTab('historial')}
-            className={`rounded px-3 py-1.5 text-sm font-medium ${tab === 'historial' ? 'bg-white shadow text-tinta' : 'text-acero'}`}
+            className={`min-h-[38px] rounded px-3 py-1.5 text-sm font-medium transition-colors ${tab === 'historial' ? 'bg-white shadow-xs text-tinta' : 'text-acero hover:text-tinta'}`}
           >
             Historial de movimientos
           </button>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={openAjuste}
-            className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-          >
-            + Registrar ajuste
-          </button>
-          <button
-            type="button"
-            onClick={openTransferencia}
-            className="rounded-md bg-info px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-          >
-            + Transferir entre tanques
-          </button>
-        </div>
+        {canAdjust && (
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={openAjuste}
+              className="flex min-h-[44px] items-center justify-center gap-2 rounded-md bg-tanque px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-tanque/90 active:scale-[0.98]"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Registrar ajuste
+            </button>
+            <button
+              type="button"
+              onClick={openTransferencia}
+              className="flex min-h-[44px] items-center justify-center gap-2 rounded-md bg-info px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-info/90 active:scale-[0.98]"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m16 3 4 4-4 4" />
+                <path d="M20 7H4" />
+                <path d="m8 21-4-4 4-4" />
+                <path d="M4 17h16" />
+              </svg>
+              Transferir tanques
+            </button>
+          </div>
+        )}
       </div>
 
       {tab === 'existencia' && (
@@ -209,48 +226,58 @@ export default function InventarioPage() {
           {error && <p className="text-sm text-peligro">{error}</p>}
 
           {!loading && !error && (
-            <div className="overflow-x-auto rounded-sm border border-acero/20">
-              <table className="min-w-full divide-y divide-acero/20 text-sm">
-                <thead className="bg-fondo">
-                  <tr>
-                    {['Tanque', 'Tipo combustible', 'Existencia actual', 'Disponibilidad', 'Nivel crítico', 'Estado'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-acero/10 bg-white">
-                  {filas.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-acero/70">
-                        Sin tanques registrados.
-                      </td>
-                    </tr>
-                  )}
-                  {filas.map((f) => {
+            <ResponsiveTable
+              data={filas}
+              keyField="id"
+              emptyMessage="Sin tanques registrados."
+              columns={[
+                {
+                  key: 'tanqueIdentificacion',
+                  label: 'Tanque',
+                  primary: true,
+                  priority: 'high',
+                  render: (f) => <span className="font-semibold font-mono text-tinta">{f.tanqueIdentificacion}</span>,
+                },
+                {
+                  key: 'tipoCombustibleNombre',
+                  label: 'Tipo combustible',
+                  priority: 'high',
+                  render: (f) => <span className="text-acero">{f.tanque?.tipoCombustibleNombre ?? '—'}</span>,
+                },
+                {
+                  key: 'existenciaActual',
+                  label: 'Existencia actual',
+                  priority: 'high',
+                  render: (f) => <span className="font-mono num font-semibold text-tinta">{f.existenciaActual.toFixed(2)} gal</span>,
+                },
+                {
+                  key: 'disponibilidad',
+                  label: 'Disponibilidad',
+                  priority: 'med',
+                  render: (f) => <span className="font-mono num text-acero">{f.disponibilidad.toFixed(2)} gal</span>,
+                },
+                {
+                  key: 'nivelCritico',
+                  label: 'Nivel crítico',
+                  priority: 'low',
+                  render: (f) => <span className="font-mono num text-acero">{f.tanque ? `${f.tanque.nivelCritico.toFixed(2)} gal` : '—'}</span>,
+                },
+                {
+                  key: 'estado',
+                  label: 'Estado',
+                  priority: 'high',
+                  render: (f) => {
                     const critico = f.tanque && f.existenciaActual <= f.tanque.nivelCritico
                     const inactivo = f.tanque && !f.tanque.activo
-                    return (
-                      <tr key={f.id} className="hover:bg-fondo">
-                        <td className="px-4 py-3 font-medium font-mono text-tinta">{f.tanqueIdentificacion}</td>
-                        <td className="px-4 py-3 text-acero">{f.tanque?.tipoCombustibleNombre ?? '—'}</td>
-                        <td className="px-4 py-3 font-mono num text-tinta">{f.existenciaActual.toFixed(2)} gal</td>
-                        <td className="px-4 py-3 font-mono num text-acero">{f.disponibilidad.toFixed(2)} gal</td>
-                        <td className="px-4 py-3 font-mono num text-acero">{f.tanque ? `${f.tanque.nivelCritico.toFixed(2)} gal` : '—'}</td>
-                        <td className="px-4 py-3">
-                          {inactivo
-                            ? <StatusBadge label="Inactivo" variant="gray" />
-                            : critico
-                              ? <StatusBadge label="Nivel bajo" variant="red" />
-                              : <StatusBadge label="Normal" variant="green" />}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    return inactivo
+                      ? <StatusBadge label="Inactivo" variant="gray" />
+                      : critico
+                        ? <StatusBadge label="Nivel bajo" variant="red" />
+                        : <StatusBadge label="Normal" variant="green" />
+                  },
+                },
+              ]}
+            />
           )}
         </>
       )}
@@ -261,7 +288,7 @@ export default function InventarioPage() {
             <select
               value={filtroTanque}
               onChange={(e) => setFiltroTanque(e.target.value)}
-              className={`${inputCls} max-w-xs`}
+              className={`${inputCls} w-full sm:max-w-xs min-h-[42px]`}
             >
               <option value="">Todos los tanques</option>
               {tanques.map((t) => (
@@ -274,42 +301,54 @@ export default function InventarioPage() {
           {movError && <p className="text-sm text-peligro">{movError}</p>}
 
           {!movLoading && !movError && (
-            <div className="overflow-x-auto rounded-sm border border-acero/20">
-              <table className="min-w-full divide-y divide-acero/20 text-sm">
-                <thead className="bg-fondo">
-                  <tr>
-                    {['Fecha', 'Tipo', 'Volumen', 'Tanque', 'Usuario', 'Referencia / Observaciones'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-acero/10 bg-white">
-                  {movimientos.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-acero/70">
-                        Sin movimientos registrados.
-                      </td>
-                    </tr>
-                  )}
-                  {movimientos.map((m) => (
-                    <tr key={m.id} className="hover:bg-fondo">
-                      <td className="px-4 py-3 text-acero">{formatFecha(m.fechaHora)}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge label={TIPO_LABEL[m.tipo] ?? m.tipo} variant={TIPO_VARIANT[m.tipo]} />
-                      </td>
-                      <td className={`px-4 py-3 font-medium font-mono num ${m.volumen < 0 ? 'text-peligro' : 'text-tinta'}`}>
-                        {m.volumen > 0 ? '+' : ''}{m.volumen.toFixed(2)} gal
-                      </td>
-                      <td className="px-4 py-3 font-mono text-acero">{m.tanqueIdentificacion}</td>
-                      <td className="px-4 py-3 text-acero">{m.usuarioNombreUsuario}</td>
-                      <td className="px-4 py-3 text-acero">{m.referenciaOperacion || m.observaciones || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ResponsiveTable
+              data={movimientos}
+              keyField="id"
+              emptyMessage="Sin movimientos registrados."
+              columns={[
+                {
+                  key: 'fechaHora',
+                  label: 'Fecha / Hora',
+                  priority: 'high',
+                  render: (m) => <span className="text-acero text-xs sm:text-sm">{formatFecha(m.fechaHora)}</span>,
+                },
+                {
+                  key: 'tipo',
+                  label: 'Tipo',
+                  priority: 'high',
+                  render: (m) => <StatusBadge label={TIPO_LABEL[m.tipo] ?? m.tipo} variant={TIPO_VARIANT[m.tipo]} />,
+                },
+                {
+                  key: 'volumen',
+                  label: 'Volumen',
+                  primary: true,
+                  priority: 'high',
+                  render: (m) => (
+                    <span className={`font-semibold font-mono num ${m.volumen < 0 ? 'text-peligro' : 'text-tinta'}`}>
+                      {m.volumen > 0 ? '+' : ''}{m.volumen.toFixed(2)} gal
+                    </span>
+                  ),
+                },
+                {
+                  key: 'tanqueIdentificacion',
+                  label: 'Tanque',
+                  priority: 'med',
+                  render: (m) => <span className="font-mono text-acero">{m.tanqueIdentificacion}</span>,
+                },
+                {
+                  key: 'usuarioNombreUsuario',
+                  label: 'Usuario',
+                  priority: 'low',
+                  render: (m) => <span className="text-acero">{m.usuarioNombreUsuario}</span>,
+                },
+                {
+                  key: 'referencia',
+                  label: 'Referencia / Obs.',
+                  priority: 'low',
+                  render: (m) => <span className="text-acero">{m.referenciaOperacion || m.observaciones || '—'}</span>,
+                },
+              ]}
+            />
           )}
         </>
       )}

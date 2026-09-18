@@ -1,15 +1,10 @@
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+import { canAccessRoute, ROLES } from '../utils/rbac'
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Sidebar — navegación principal agrupada por categorías semánticas.
- *
- * Decisiones de diseño:
- *   · Ley de Miller: 19 ítems → 5 grupos cognitivos (7±2 fragmentos).
- *   · Ley de Fitts: min-h-[44px] en cada enlace (área táctil accesible).
- *   · Iconos SVG inline 20×20 para reconocimiento antes que recuerdo (Nielsen #6).
- *   · Estado activo con triple señal: borde, fondo, color de texto/icono.
- *   · Contraste WCAG AA validado: texto activo #fff (12.8:1), inactivo #d2d9dc
- *     (8.2:1), etiquetas de sección #9db2ba (5.5:1) sobre bg #16333a.
+ * Sidebar — navegación principal agrupada por categorías semánticas y filtrada por rol.
+ * Soporta modo off-canvas en pantallas móviles/tablets (<768px).
  * ──────────────────────────────────────────────────────────────────────────── */
 
 // Inline SVG icon components (20×20, stroke-based, currentColor)
@@ -216,61 +211,111 @@ const navGroups = [
   },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = false, onClose }) {
+  const { user } = useAuth()
+  const isSolicitanteOnly =
+    user?.roles?.includes(ROLES.SOLICITANTE) &&
+    !user?.roles?.includes(ROLES.ADMINISTRADOR) &&
+    !user?.roles?.includes(ROLES.SUPERVISOR)
+
+  // Filtrar grupos y sus items por rol según el RBAC
+  const visibleGroups = navGroups
+    .map((g) => ({
+      ...g,
+      items: g.items
+        .filter((item) => canAccessRoute(user, item.to))
+        .map((item) => {
+          if (item.to === '/tickets' && isSolicitanteOnly) {
+            return { ...item, label: 'Mis Tickets' }
+          }
+          return item
+        }),
+    }))
+    .filter((g) => g.items.length > 0)
+
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-acero/30 bg-tanque">
-      {/* Logo / Branding */}
-      <div className="border-b border-white/10 px-4 py-5">
-        <div className="flex items-center gap-2.5">
-          {/* Fuel gauge mini-icon */}
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-medidor">
-            <path d="M5 8a7 7 0 0 1 14 0" />
-            <circle cx="12" cy="12" r="2" />
-            <path d="M12 2v2" />
-            <path d="m4.93 4.93 1.41 1.41" />
-            <path d="m17.66 6.34 1.41-1.41" />
-            <path d="M12 14v4" />
-          </svg>
-          <span className="text-lg font-bold tracking-tight text-white">FuelTrack</span>
-        </div>
-      </div>
+    <>
+      {/* Overlay de fondo en móvil */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-tinta/60 backdrop-blur-xs md:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* Navigation — scroll independiente del contenido principal */}
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2 py-3" aria-label="Navegación principal">
-        {navGroups.map((group, gi) => (
-          <div key={gi} className={gi > 0 ? 'mt-2' : undefined}>
-            {/* Encabezado de sección (Gestalt: Región Común) */}
-            {group.label && (
-              <h3 className="mb-1 px-3 text-[11px] font-bold uppercase tracking-wider text-white/50" aria-hidden="true">
-                {group.label}
-              </h3>
-            )}
-
-            {group.items.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `group flex min-h-[44px] items-center gap-3 rounded-md border-l-4 px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'border-medidor bg-white/12 text-white'
-                      : 'border-transparent text-white/70 hover:bg-white/5 hover:text-white'
-                  }`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <span className={`shrink-0 ${isActive ? 'text-medidor' : 'text-white/50 group-hover:text-white/70'}`}>
-                      {item.icon}
-                    </span>
-                    <span>{item.label}</span>
-                  </>
-                )}
-              </NavLink>
-            ))}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-acero/30 bg-tanque transition-transform duration-200 ease-in-out md:static md:w-60 md:translate-x-0 ${
+          isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+        }`}
+      >
+        {/* Logo / Branding y botón de cierre en móvil */}
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-4 md:py-5">
+          <div className="flex items-center gap-2.5">
+            {/* Fuel gauge mini-icon */}
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-medidor">
+              <path d="M5 8a7 7 0 0 1 14 0" />
+              <circle cx="12" cy="12" r="2" />
+              <path d="M12 2v2" />
+              <path d="m4.93 4.93 1.41 1.41" />
+              <path d="m17.66 6.34 1.41-1.41" />
+              <path d="M12 14v4" />
+            </svg>
+            <span className="text-lg font-bold tracking-tight text-white">FuelTrack</span>
           </div>
-        ))}
-      </nav>
-    </aside>
+
+          {/* Botón cerrar off-canvas en pantallas táctiles */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-md text-white/70 hover:bg-white/10 hover:text-white md:hidden min-h-[44px] min-w-[44px]"
+            aria-label="Cerrar menú"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Navigation — scroll independiente del contenido principal */}
+        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2 py-3 pb-20 md:pb-3" aria-label="Navegación principal">
+          {visibleGroups.map((group, gi) => (
+            <div key={gi} className={gi > 0 ? 'mt-2' : undefined}>
+              {/* Encabezado de sección (Gestalt: Región Común) */}
+              {group.label && (
+                <h3 className="mb-1 px-3 text-[11px] font-bold uppercase tracking-wider text-white/50" aria-hidden="true">
+                  {group.label}
+                </h3>
+              )}
+
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `group flex min-h-[44px] items-center gap-3 rounded-md border-l-4 px-3 py-2.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'border-medidor bg-white/12 text-white'
+                        : 'border-transparent text-white/70 hover:bg-white/5 hover:text-white'
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span className={`shrink-0 ${isActive ? 'text-medidor' : 'text-white/50 group-hover:text-white/70'}`}>
+                        {item.icon}
+                      </span>
+                      <span>{item.label}</span>
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          ))}
+        </nav>
+      </aside>
+    </>
   )
 }
+

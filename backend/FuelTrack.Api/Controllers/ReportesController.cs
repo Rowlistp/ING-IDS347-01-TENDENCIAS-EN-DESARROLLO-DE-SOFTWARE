@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace FuelTrack.Api.Controllers;
 
 [ApiController, Route("api/v1/reportes")]
-[Authorize(Roles = $"{Roles.Administrador},{Roles.Auditor}")]
+[Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor},{Roles.Auditor},{Roles.Consulta}")]
 public sealed class ReportesController(ReporteService service) : ControllerBase
 {
     [HttpGet]
@@ -58,7 +58,7 @@ public sealed class ReportesController(ReporteService service) : ControllerBase
                 "pdf"   => ("application/pdf", "pdf"),
                 _       => ("application/octet-stream", "bin")
             };
-            return File(bytes, contentType, $"reporte-{tipo}-{DateTime.UtcNow:yyyyMMdd}.{ext}");
+            return File(bytes, contentType, $"reporte-{tipo}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.{ext}");
         }
         catch (TicketDomainException ex)
         {

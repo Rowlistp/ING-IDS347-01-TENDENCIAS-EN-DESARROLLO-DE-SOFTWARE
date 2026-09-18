@@ -21,7 +21,15 @@ import TicketsPage from '../pages/TicketsPage'
 import TiposCombustiblePage from '../pages/TiposCombustiblePage'
 import UsuariosPage from '../pages/UsuariosPage'
 import VehiculosPage from '../pages/VehiculosPage'
+import { getUser } from '../services/auth'
+import { getDefaultRouteForUser } from '../utils/rbac'
 import ProtectedRoute from './ProtectedRoute'
+import RoleRoute from './RoleRoute'
+
+function IndexRedirect() {
+  const user = getUser()
+  return <Navigate to={getDefaultRouteForUser(user)} replace />
+}
 
 export default function AppRoutes() {
   return (
@@ -35,26 +43,26 @@ export default function AppRoutes() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/usuarios" element={<UsuariosPage />} />
-          <Route path="/empleados" element={<EmpleadosPage />} />
-          <Route path="/vehiculos" element={<VehiculosPage />} />
-          <Route path="/departamentos" element={<DepartamentosPage />} />
-          <Route path="/solicitudes" element={<SolicitudesPage />} />
-          <Route path="/solicitudes-recurrentes" element={<SolicitudesRecurrentesPage />} />
-          <Route path="/tickets" element={<TicketsPage />} />
-          <Route path="/inventario" element={<InventarioPage />} />
-          <Route path="/recepciones" element={<RecepcionesPage />} />
-          <Route path="/despachos" element={<DespachosPage />} />
-          <Route path="/estaciones" element={<EstacionesPage />} />
-          <Route path="/cierres-diarios" element={<CierreDiarioPage />} />
-          <Route path="/auditoria" element={<AuditoriaPage />} />
-          <Route path="/notificaciones" element={<NotificacionesPage />} />
-          <Route path="/proveedores" element={<ProveedoresPage />} />
-          <Route path="/tanques" element={<TanquesPage />} />
-          <Route path="/tipos-combustible" element={<TiposCombustiblePage />} />
-          <Route path="/reportes" element={<ReportesPage />} />
+          <Route path="/" element={<IndexRedirect />} />
+          <Route path="/dashboard" element={<RoleRoute path="/dashboard"><DashboardPage /></RoleRoute>} />
+          <Route path="/usuarios" element={<RoleRoute path="/usuarios"><UsuariosPage /></RoleRoute>} />
+          <Route path="/empleados" element={<RoleRoute path="/empleados"><EmpleadosPage /></RoleRoute>} />
+          <Route path="/vehiculos" element={<RoleRoute path="/vehiculos"><VehiculosPage /></RoleRoute>} />
+          <Route path="/departamentos" element={<RoleRoute path="/departamentos"><DepartamentosPage /></RoleRoute>} />
+          <Route path="/solicitudes" element={<RoleRoute path="/solicitudes"><SolicitudesPage /></RoleRoute>} />
+          <Route path="/solicitudes-recurrentes" element={<RoleRoute path="/solicitudes-recurrentes"><SolicitudesRecurrentesPage /></RoleRoute>} />
+          <Route path="/tickets" element={<RoleRoute path="/tickets"><TicketsPage /></RoleRoute>} />
+          <Route path="/inventario" element={<RoleRoute path="/inventario"><InventarioPage /></RoleRoute>} />
+          <Route path="/recepciones" element={<RoleRoute path="/recepciones"><RecepcionesPage /></RoleRoute>} />
+          <Route path="/despachos" element={<RoleRoute path="/despachos"><DespachosPage /></RoleRoute>} />
+          <Route path="/estaciones" element={<RoleRoute path="/estaciones"><EstacionesPage /></RoleRoute>} />
+          <Route path="/cierres-diarios" element={<RoleRoute path="/cierres-diarios"><CierreDiarioPage /></RoleRoute>} />
+          <Route path="/auditoria" element={<RoleRoute path="/auditoria"><AuditoriaPage /></RoleRoute>} />
+          <Route path="/notificaciones" element={<RoleRoute path="/notificaciones"><NotificacionesPage /></RoleRoute>} />
+          <Route path="/proveedores" element={<RoleRoute path="/proveedores"><ProveedoresPage /></RoleRoute>} />
+          <Route path="/tanques" element={<RoleRoute path="/tanques"><TanquesPage /></RoleRoute>} />
+          <Route path="/tipos-combustible" element={<RoleRoute path="/tipos-combustible"><TiposCombustiblePage /></RoleRoute>} />
+          <Route path="/reportes" element={<RoleRoute path="/reportes"><ReportesPage /></RoleRoute>} />
         </Route>
       </Route>
     </Routes>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import PageContainer from '../components/PageContainer'
 import apiRequest, { apiDownload } from '../services/api'
+import { getSequentialFilename, downloadBlob } from '../utils/download'
 import { useDepartamentos } from '../hooks/useDepartamentos'
 import { useEmpleados } from '../hooks/useEmpleados'
 import { useTanques } from '../hooks/useTanques'
@@ -194,14 +195,9 @@ export default function ReportesPage() {
       // Tickets/CierreDiario), así que el nombre del archivo se arma en el cliente.
       const { blob } = await apiDownload(`/reportes/exportar?${params.toString()}`)
       const fecha = new Date().toISOString().slice(0, 10)
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `reporte-${tipo}-${fecha}.${formato.ext}`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
+      const basePrefix = `reporte-${tipo}-${fecha}`
+      const filename = getSequentialFilename(basePrefix, formato.ext)
+      downloadBlob(blob, filename)
     } catch (e) {
       setDescargaError(e.message)
     } finally {
@@ -242,8 +238,8 @@ export default function ReportesPage() {
         </div>
       )}
 
-      <form onSubmit={handleAplicarFiltros} className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-acero/15 bg-white p-3.5 shadow-sm">
-        <div>
+      <form onSubmit={handleAplicarFiltros} className="mb-4 flex flex-col md:flex-row md:items-end flex-wrap gap-3 rounded-lg border border-acero/15 bg-white p-3.5 shadow-sm">
+        <div className="w-full sm:w-auto">
           <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Desde</label>
           <input
             type="date"
@@ -251,10 +247,10 @@ export default function ReportesPage() {
             value={filtrosPendientes.fechaDesde}
             onChange={handleFiltroChange}
             max={filtrosPendientes.fechaHasta || undefined}
-            className="rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta"
+            className="w-full rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta min-h-[38px]"
           />
         </div>
-        <div>
+        <div className="w-full sm:w-auto">
           <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Hasta</label>
           <input
             type="date"
@@ -262,17 +258,17 @@ export default function ReportesPage() {
             value={filtrosPendientes.fechaHasta}
             onChange={handleFiltroChange}
             min={filtrosPendientes.fechaDesde || undefined}
-            className="rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta"
+            className="w-full rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta min-h-[38px]"
           />
         </div>
         {TIPOS_CON_FILTRO_TANQUE.includes(tipo) && (
-          <div>
+          <div className="w-full sm:w-auto">
             <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Tanque</label>
             <select
               name="tanqueId"
               value={filtrosPendientes.tanqueId}
               onChange={handleFiltroChange}
-              className="rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta"
+              className="w-full rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta min-h-[38px]"
             >
               <option value="">Todos</option>
               {tanques.map((t) => (
@@ -283,13 +279,13 @@ export default function ReportesPage() {
         )}
         {TIPOS_CON_FILTRO_PERSONA.includes(tipo) && (
           <>
-            <div>
+            <div className="w-full sm:w-auto">
               <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Empleado</label>
               <select
                 name="empleadoId"
                 value={filtrosPendientes.empleadoId}
                 onChange={handleFiltroChange}
-                className="rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta"
+                className="w-full rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta min-h-[38px]"
               >
                 <option value="">Todos</option>
                 {empleados.map((e) => (
@@ -297,13 +293,13 @@ export default function ReportesPage() {
                 ))}
               </select>
             </div>
-            <div>
+            <div className="w-full sm:w-auto">
               <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Vehículo</label>
               <select
                 name="vehiculoId"
                 value={filtrosPendientes.vehiculoId}
                 onChange={handleFiltroChange}
-                className="rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta"
+                className="w-full rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta min-h-[38px]"
               >
                 <option value="">Todos</option>
                 {vehiculos.map((v) => (
@@ -311,13 +307,13 @@ export default function ReportesPage() {
                 ))}
               </select>
             </div>
-            <div>
+            <div className="w-full sm:w-auto">
               <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Departamento</label>
               <select
                 name="departamentoId"
                 value={filtrosPendientes.departamentoId}
                 onChange={handleFiltroChange}
-                className="rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta"
+                className="w-full rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta min-h-[38px]"
               >
                 <option value="">Todos</option>
                 {departamentos.map((d) => (
@@ -327,26 +323,26 @@ export default function ReportesPage() {
             </div>
           </>
         )}
-        <div className="flex gap-2">
-          <button type="submit" className="inline-flex items-center gap-1.5 rounded-md bg-tanque px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 shadow-sm">
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button type="submit" className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-md bg-tanque px-4 py-2 text-sm font-semibold text-white hover:opacity-90 shadow-sm min-h-[38px] active:scale-[0.98]">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
             Filtrar
           </button>
-          <button type="button" onClick={handleLimpiarFiltros} className="rounded-md border border-acero/30 px-3 py-1.5 text-sm text-tinta hover:bg-fondo">
+          <button type="button" onClick={handleLimpiarFiltros} className="flex-1 sm:flex-initial rounded-md border border-acero/30 bg-white px-3 py-2 text-sm font-medium text-tinta hover:bg-fondo min-h-[38px] active:scale-[0.98]">
             Limpiar
           </button>
         </div>
 
-        <div className="ml-auto flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto md:ml-auto pt-2 md:pt-0">
           {FORMATOS.map((f) => (
             <button
               key={f.value}
               type="button"
               onClick={() => handleExportar(f)}
               disabled={descargando !== null}
-              className="inline-flex items-center gap-1.5 rounded-md bg-acero px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50 shadow-sm transition-colors"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-md bg-acero px-3 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 shadow-sm transition-colors min-h-[38px] active:scale-[0.98]"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -363,12 +359,12 @@ export default function ReportesPage() {
 
       {!error && !loading && respuesta && (
         <>
-          <div className="overflow-x-auto rounded-sm border border-acero/20">
+          <div className="overflow-x-auto table-responsive-container rounded-sm border border-acero/20">
             <table className="min-w-full divide-y divide-acero/20 text-sm">
               <thead className="bg-fondo">
                 <tr>
                   {columnas.map((c) => (
-                    <th key={c.key} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
+                    <th key={c.key} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider whitespace-nowrap">
                       {c.label}
                     </th>
                   ))}
@@ -387,7 +383,7 @@ export default function ReportesPage() {
                     {columnas.map((c) => (
                       <td
                         key={c.key}
-                        className={`px-4 py-3 ${c.mono || c.num ? 'font-mono' : ''} ${c.num ? 'num' : ''} ${c.key === 'id' ? 'font-mono num' : ''} text-acero`}
+                        className={`px-4 py-3 whitespace-nowrap ${c.mono || c.num ? 'font-mono' : ''} ${c.num ? 'num' : ''} ${c.key === 'id' ? 'font-mono num' : ''} text-acero`}
                       >
                         {formatCelda(c, item[c.key])}
                       </td>
@@ -398,16 +394,16 @@ export default function ReportesPage() {
             </table>
           </div>
 
-          <div className="mt-4 flex items-center justify-between text-sm">
-            <span className="font-mono num text-acero">
+          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
+            <span className="font-mono num text-acero order-2 sm:order-1">
               Página {respuesta.pagina} de {totalPaginas} — {respuesta.total} registros
             </span>
-            <div className="flex gap-2">
+            <div className="flex w-full sm:w-auto gap-2 order-1 sm:order-2">
               <button
                 type="button"
                 onClick={() => setPagina((p) => Math.max(1, p - 1))}
                 disabled={pagina === 1}
-                className="rounded-md border border-acero/40 px-3 py-1.5 text-tinta hover:bg-fondo disabled:opacity-50"
+                className="flex-1 sm:flex-initial min-h-[42px] rounded-md border border-acero/30 bg-white px-4 py-2 text-tinta hover:bg-fondo disabled:opacity-50 active:scale-[0.98]"
               >
                 Anterior
               </button>
@@ -415,7 +411,7 @@ export default function ReportesPage() {
                 type="button"
                 onClick={() => setPagina((p) => p + 1)}
                 disabled={pagina >= totalPaginas}
-                className="rounded-md border border-acero/40 px-3 py-1.5 text-tinta hover:bg-fondo disabled:opacity-50"
+                className="flex-1 sm:flex-initial min-h-[42px] rounded-md border border-acero/30 bg-white px-4 py-2 text-tinta hover:bg-fondo disabled:opacity-50 active:scale-[0.98]"
               >
                 Siguiente
               </button>

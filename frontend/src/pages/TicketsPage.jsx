@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
+import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
 import { useAuth } from '../hooks/useAuth'
 import apiRequest, { apiDownload } from '../services/api'
+import { getSequentialFilename, downloadBlob } from '../utils/download'
+import { canEmitTickets } from '../utils/rbac'
 
 const ESTADO_LABEL = {
   Creado: 'Creado',
@@ -36,6 +39,7 @@ function formatFecha(value) {
 
 export default function TicketsPage() {
   const { user } = useAuth()
+  const canEmit = canEmitTickets(user)
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -84,8 +88,15 @@ export default function TicketsPage() {
     return () => { cancelado = true }
   }, [])
 
+  const nextSequenceNumber = useMemo(() => {
+    if (!tickets || tickets.length === 0) return 1
+    const max = Math.max(...tickets.map((t) => Number(t.numeroSecuencial) || 0), 0)
+    return max + 1
+  }, [tickets])
+  const formattedNextSeq = String(nextSequenceNumber).padStart(6, '0')
+
   function openEmitModal() {
-    setEmitForm({ solicitudId: '', prefijo: 'COM' })
+    setEmitForm({ solicitudId: '', prefijo: 'TCK' })
     setEmitError(null)
     apiRequest('/solicitudes')
       .then((data) => setSolicitudesAprobadas(data.filter((s) => s.estado === 'Aprobada')))
@@ -102,7 +113,7 @@ export default function TicketsPage() {
         method: 'POST',
         body: JSON.stringify({
           solicitudId: Number(emitForm.solicitudId),
-          prefijo: emitForm.prefijo.trim().toUpperCase() || 'COM',
+          prefijo: emitForm.prefijo.trim().toUpperCase() || 'TCK',
         }),
       })
       setShowEmitModal(false)
@@ -121,14 +132,9 @@ export default function TicketsPage() {
     setDownloadingId(ticket.id)
     try {
       const { blob } = await apiDownload(`/tickets/${ticket.id}/pdf`)
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `ticket-${ticket.codigo}.pdf`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
+      const basePrefix = `ticket-${ticket.codigo}`
+      const filename = getSequentialFilename(basePrefix, 'pdf')
+      downloadBlob(blob, filename)
     } catch (e) {
       setActionError(e.message)
     } finally {
@@ -176,14 +182,15 @@ export default function TicketsPage() {
   }
 
   return (
-    <PageContainer title="Tickets de Combustible">
+    <PageContainer title={isSolicitanteOnly ? 'Mis Tickets' : 'Tickets de Combustible'}>
       {isSolicitanteOnly && (
-        <div className="mb-4 rounded-md border border-tanque/30 bg-tanque/10 p-3 text-sm text-tanque flex items-center justify-between">
-          <span>
-            👤 Vista de Solicitante (<code>{user?.nombreUsuario}</code>): Mostrando únicamente tickets autorizados a su nombre.
-          </span>
-          <span className="text-xs bg-tanque text-white px-2.5 py-0.5 rounded font-mono font-medium">
-            OwnerFilter Activo
+        <div className="mb-4 rounded-md border border-tanque/20 bg-tanque/5 p-3 text-sm text-tanque flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span>👤</span>
+            <span>Mostrando únicamente los tickets autorizados a tu nombre para consumo de combustible.</span>
+          </div>
+          <span className="text-xs bg-tanque/10 text-tanque border border-tanque/20 px-2.5 py-1 rounded font-medium self-start sm:self-auto">
+            Mis tickets
           </span>
         </div>
       )}
@@ -196,17 +203,19 @@ export default function TicketsPage() {
             </span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={openEmitModal}
-          className="flex min-h-[42px] items-center gap-2 rounded-lg bg-tanque px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Emitir ticket
-        </button>
+        {canEmit && (
+          <button
+            type="button"
+            onClick={openEmitModal}
+            className="flex min-h-[44px] w-full sm:w-auto justify-center items-center gap-2 rounded-md bg-tanque px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-tanque/90 active:scale-[0.98]"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Emitir ticket
+          </button>
+        )}
       </div>
 
       {successMessage && (
@@ -226,85 +235,101 @@ export default function TicketsPage() {
       {actionError && <p className="text-sm text-peligro">{actionError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-sm border border-acero/20">
-          <table className="min-w-full divide-y divide-acero/20 text-sm">
-            <thead className="bg-fondo">
-              <tr>
-                {[
-                  'Código',
-                  'Empleado',
-                  'Vehículo',
-                  'Departamento',
-                  'Autorizado',
-                  'Tipo',
-                  'Creación',
-                  'Vencimiento',
-                  'Estado',
-                  'Acciones',
-                ].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-acero/10 bg-white">
-              {tickets.length === 0 && (
-                <tr>
-                  <td colSpan={10} className="px-4 py-6 text-center text-acero/70">
-                    Sin tickets emitidos.
-                  </td>
-                </tr>
-              )}
-              {tickets.map((t) => (
-                <tr key={t.id} className="cursor-pointer hover:bg-fondo transition-colors" onClick={() => setDetailTicket(t)}>
-                  <td className="px-4 py-3 font-semibold font-mono text-tanque">{t.codigo}</td>
-                  <td className="px-4 py-3 text-tinta font-medium">{t.empleadoNombre}</td>
-                  <td className="px-4 py-3 font-mono text-acero">{t.vehiculoPlaca}</td>
-                  <td className="px-4 py-3 text-acero">{t.departamentoNombre}</td>
-                  <td className="px-4 py-3 font-mono num font-bold text-tinta">{t.cantidadAutorizada} gal</td>
-                  <td className="px-4 py-3 text-acero">{t.tipoCombustibleNombre}</td>
-                  <td className="px-4 py-3 text-acero">{formatFecha(t.fechaCreacion)}</td>
-                  <td className="px-4 py-3 text-acero">{formatFecha(t.fechaVencimiento)}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge label={ESTADO_LABEL[t.estado] ?? t.estado} variant={ESTADO_VARIANT[t.estado]} />
-                  </td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setDetailTicket(t)}
-                        className="flex min-h-[36px] items-center gap-1 rounded-md border border-acero/30 bg-white px-2.5 py-1.5 text-xs font-medium text-tinta hover:border-tanque hover:bg-fondo transition-colors"
-                        title="Ver detalle completo"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                        Ver
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDescargarPdf(t)}
-                        disabled={downloadingId === t.id}
-                        className="flex min-h-[36px] items-center gap-1 rounded-md border border-tanque/30 bg-tanque/5 px-2.5 py-1.5 text-xs font-medium text-tanque hover:bg-tanque hover:text-white transition-colors disabled:opacity-50"
-                        title="Descargar PDF"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="7 10 12 15 17 10" />
-                          <line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
-                        {downloadingId === t.id ? 'Descargando…' : 'PDF'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ResponsiveTable
+          data={tickets}
+          keyField="id"
+          onRowClick={(t) => setDetailTicket(t)}
+          columns={[
+            {
+              key: 'codigo',
+              label: 'Código',
+              primary: true,
+              priority: 'high',
+              render: (t) => <span className="font-semibold font-mono text-tanque">{t.codigo}</span>,
+            },
+            {
+              key: 'empleadoNombre',
+              label: 'Empleado',
+              priority: 'high',
+              render: (t) => <span className="text-tinta font-medium">{t.empleadoNombre}</span>,
+            },
+            {
+              key: 'vehiculoPlaca',
+              label: 'Vehículo',
+              priority: 'high',
+              render: (t) => <span className="font-mono text-acero">{t.vehiculoPlaca}</span>,
+            },
+            {
+              key: 'departamentoNombre',
+              label: 'Departamento',
+              priority: 'low',
+            },
+            {
+              key: 'cantidadAutorizada',
+              label: 'Autorizado',
+              priority: 'high',
+              render: (t) => <span className="font-mono num font-bold text-tinta">{t.cantidadAutorizada} gal</span>,
+            },
+            {
+              key: 'tipoCombustibleNombre',
+              label: 'Tipo',
+              priority: 'med',
+            },
+            {
+              key: 'fechaCreacion',
+              label: 'Creación',
+              priority: 'low',
+              render: (t) => <span className="font-mono num text-xs">{formatFecha(t.fechaCreacion)}</span>,
+            },
+            {
+              key: 'fechaVencimiento',
+              label: 'Vencimiento',
+              priority: 'med',
+              render: (t) => <span className="font-mono num text-xs">{formatFecha(t.fechaVencimiento)}</span>,
+            },
+            {
+              key: 'estado',
+              label: 'Estado',
+              priority: 'high',
+              render: (t) => (
+                <StatusBadge label={ESTADO_LABEL[t.estado] ?? t.estado} variant={ESTADO_VARIANT[t.estado]} />
+              ),
+            },
+          ]}
+          actions={(t) => (
+            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => setDetailTicket(t)}
+                className="inline-flex min-h-[38px] items-center gap-1 rounded-md border border-acero/30 bg-white px-2.5 py-1.5 text-xs font-semibold text-tinta hover:border-tanque hover:bg-fondo transition-colors shadow-xs"
+                title="Ver detalle completo"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                Ver
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDescargarPdf(t)}
+                disabled={downloadingId === t.id}
+                className="inline-flex min-h-[38px] items-center gap-1 rounded-md border border-tanque/30 bg-tanque/5 px-2.5 py-1.5 text-xs font-semibold text-tanque hover:bg-tanque hover:text-white transition-colors disabled:opacity-50 shadow-xs"
+                title="Descargar PDF"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                {downloadingId === t.id ? 'Descargando…' : 'PDF'}
+              </button>
+            </div>
+          )}
+          emptyMessage="Sin tickets emitidos."
+        />
       )}
+
 
       {showEmitModal && (
         <Modal title="Emitir Ticket de Combustible" onClose={() => setShowEmitModal(false)}>
@@ -331,17 +356,17 @@ export default function TicketsPage() {
             <div className="space-y-2">
               <Field
                 label="Prefijo de numeración"
-                hint="Identificador del tipo de ticket (2 a 10 letras/números)"
+                hint="Identificador alfabético (2 a 5 letras, ej. TCK, COM, DSL). El correlativo numérico es automático."
               >
                 <div className="space-y-2">
                   <div className="flex flex-wrap gap-1.5">
-                    {['COM', 'TCK', 'DSL', 'GAS', 'EMG'].map((pfx) => (
+                    {['TCK', 'COM', 'DSL', 'GAS', 'EMG'].map((pfx) => (
                       <button
                         key={pfx}
                         type="button"
                         onClick={() => setEmitForm((f) => ({ ...f, prefijo: pfx }))}
                         className={`px-3 py-1 text-xs font-semibold rounded border transition-all ${
-                          (emitForm.prefijo || 'COM') === pfx
+                          (emitForm.prefijo || 'TCK') === pfx
                             ? 'bg-tanque text-white border-tanque shadow-xs'
                             : 'bg-white text-acero border-acero/30 hover:bg-fondo'
                         }`}
@@ -353,20 +378,33 @@ export default function TicketsPage() {
                   <input
                     type="text"
                     value={emitForm.prefijo}
-                    onChange={(e) => setEmitForm((f) => ({ ...f, prefijo: e.target.value.toUpperCase() }))}
-                    maxLength={10}
-                    placeholder="COM"
+                    onChange={(e) =>
+                      setEmitForm((f) => ({
+                        ...f,
+                        prefijo: e.target.value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 5),
+                      }))
+                    }
+                    maxLength={5}
+                    placeholder="TCK"
                     className={`${inputCls} font-mono`}
                   />
                 </div>
               </Field>
 
               {/* Live Preview of Code */}
-              <div className="rounded-md border border-tanque/20 bg-tanque/5 p-3 text-xs">
-                <span className="text-acero block font-medium">Previsualización del código que se generará:</span>
-                <span className="font-mono text-sm font-bold text-tanque">
-                  {(emitForm.prefijo.trim() || 'COM').toUpperCase()}-{new Date().getFullYear()}-XXXXXX
-                </span>
+              <div className="rounded-lg border border-tanque/20 bg-tanque/5 p-3.5 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-acero font-medium">Previsualización del código que se generará:</span>
+                  <span className="rounded bg-tanque/10 px-2 py-0.5 font-mono text-[10px] font-bold text-tanque">
+                    Secuencia correlativa: #{formattedNextSeq}
+                  </span>
+                </div>
+                <div className="font-mono text-base font-bold text-tanque">
+                  {(emitForm.prefijo.trim() || 'TCK').toUpperCase()}-{new Date().getFullYear()}-{formattedNextSeq}
+                </div>
+                <p className="text-[11px] text-acero/80">
+                  El sistema asigna e incrementa el número secuencial correlativo de 6 dígitos automáticamente al emitir el ticket.
+                </p>
               </div>
             </div>
 
@@ -455,13 +493,13 @@ export default function TicketsPage() {
               <svg className="w-5 h-5 text-exito flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>Código QR y firma ECDSA P-256 criptográfica generados y listos para validación de despacho en el PDF oficial.</span>
+              <span>Ticket verificado con código QR oficial listo para validación y despacho de combustible.</span>
             </div>
 
             {/* Modal Actions */}
             <div className="border-t border-acero/20 pt-3 flex flex-wrap items-center justify-between gap-2">
               <div>
-                {ESTADOS_NO_TERMINALES.includes(detailTicket.estado) && (
+                {ESTADOS_NO_TERMINALES.includes(detailTicket.estado) && canEmit && (
                   <button
                     type="button"
                     onClick={() => {
@@ -481,7 +519,7 @@ export default function TicketsPage() {
               </div>
 
               <div className="flex gap-2">
-                {ESTADOS_NO_TERMINALES.includes(detailTicket.estado) && (
+                {ESTADOS_NO_TERMINALES.includes(detailTicket.estado) && canEmit && (
                   <button
                     type="button"
                     onClick={() => handleEnviar(detailTicket)}

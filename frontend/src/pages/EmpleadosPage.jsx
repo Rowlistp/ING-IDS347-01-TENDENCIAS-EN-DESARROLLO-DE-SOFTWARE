@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react'
+import ConfirmModal from '../components/ConfirmModal'
 import Field, { inputCls, inputClsError } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
+import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
+import { useAuth } from '../hooks/useAuth'
 import { useDepartamentos } from '../hooks/useDepartamentos'
 import { useUsuarios } from '../hooks/useUsuarios'
 import apiRequest from '../services/api'
+import { canManageCatalogs } from '../utils/rbac'
 import {
   validateCedula,
   formatCedula,
   validateTelefonoRD,
   formatTelefonoRD,
+  normalizeTelefonoE164,
   validateEmail,
   validateCodigoEmpleado,
   validateTextoMinimo,
@@ -29,6 +34,9 @@ const EMPTY_FORM = {
 }
 
 export default function EmpleadosPage() {
+  const { user } = useAuth()
+  const canManage = canManageCatalogs(user)
+  const esAdministrador = user?.roles?.includes('Administrador') ?? false
   const [empleados, setEmpleados] = useState([])
   const departamentos = useDepartamentos()
   const usuarios = useUsuarios()
@@ -43,6 +51,7 @@ export default function EmpleadosPage() {
   const [formError, setFormError] = useState(null)
 
   const [deactivatingId, setDeactivatingId] = useState(null)
+  const [confirmEmp, setConfirmEmp] = useState(null)
   const [actionError, setActionError] = useState(null)
 
   const [vinculoModalEmp, setVinculoModalEmp] = useState(null)
@@ -199,7 +208,7 @@ export default function EmpleadosPage() {
       cedula: form.cedula.replace(/[\s-]/g, ''),
       cargo: form.cargo.trim(),
       correo: form.correo.trim().toLowerCase(),
-      telefono: form.telefono.replace(/[\s()+-]/g, ''),
+      telefono: normalizeTelefonoE164(form.telefono),
       departamentoId: Number(form.departamentoId),
       activo: form.activo,
       usuarioId: form.usuarioId ? Number(form.usuarioId) : null,
@@ -226,15 +235,23 @@ export default function EmpleadosPage() {
     }
   }
 
-  async function handleDeactivate(emp) {
-    if (!window.confirm(`¿Desactivar a ${emp.nombreCompleto}?`)) return
+  function handleDeactivate(emp) {
+    setActionError(null)
+    setConfirmEmp(emp)
+  }
+
+  async function handleConfirmDeactivate() {
+    if (!confirmEmp) return
+    const emp = confirmEmp
     setActionError(null)
     setDeactivatingId(emp.id)
     try {
       await apiRequest(`/empleados/${emp.id}`, { method: 'DELETE' })
       await cargarEmpleados()
+      setConfirmEmp(null)
     } catch (e) {
       setActionError(e.message)
+      setConfirmEmp(null)
     } finally {
       setDeactivatingId(null)
     }
@@ -242,110 +259,142 @@ export default function EmpleadosPage() {
 
   return (
     <PageContainer title="Empleados">
-      <div className="mb-4 flex justify-end">
-        <button
-          type="button"
-          onClick={openCreate}
-          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          + Nuevo empleado
-        </button>
-      </div>
+      {canManage && (
+        <div className="mb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-md bg-tanque px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-tanque/90 active:scale-[0.98]"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Nuevo empleado
+          </button>
+        </div>
+      )}
 
       {loading && <p className="text-sm text-acero">Cargando...</p>}
       {error && <p className="text-sm text-peligro">{error}</p>}
       {actionError && <p className="text-sm text-peligro">{actionError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-sm border border-acero/20">
-          <table className="min-w-full divide-y divide-acero/20 text-sm">
-            <thead className="bg-fondo">
-              <tr>
-                {['Código', 'Nombre completo', 'Cédula', 'Departamento', 'Cargo', 'Correo', 'Teléfono', 'Usuario', 'Estado', 'Acciones'].map(
-                  (h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
-                      {h}
-                    </th>
-                  )
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-acero/10 bg-white">
-              {empleados.length === 0 && (
-                <tr>
-                  <td colSpan={10} className="px-4 py-6 text-center text-acero/70">
-                    Sin empleados registrados.
-                  </td>
-                </tr>
+        <ResponsiveTable
+          data={empleados}
+          keyField="id"
+          emptyMessage="Sin empleados registrados."
+          columns={[
+            {
+              key: 'nombreCompleto',
+              label: 'Nombre completo',
+              primary: true,
+              priority: 'high',
+              render: (emp) => (
+                <div>
+                  <div className="font-semibold text-tinta">{emp.nombreCompleto}</div>
+                  <div className="text-xs font-mono text-acero sm:hidden">{emp.codigo}</div>
+                </div>
+              ),
+            },
+            {
+              key: 'codigo',
+              label: 'Código',
+              priority: 'low',
+              render: (emp) => <span className="font-mono text-acero">{emp.codigo}</span>,
+            },
+            {
+              key: 'cedula',
+              label: 'Cédula',
+              priority: 'med',
+              render: (emp) => <span className="font-mono text-acero">{formatCedula(emp.cedula)}</span>,
+            },
+            {
+              key: 'departamentoNombre',
+              label: 'Departamento',
+              priority: 'high',
+              render: (emp) => <span className="text-acero">{emp.departamentoNombre}</span>,
+            },
+            {
+              key: 'cargo',
+              label: 'Cargo',
+              priority: 'med',
+              render: (emp) => <span className="text-acero">{emp.cargo}</span>,
+            },
+            {
+              key: 'correo',
+              label: 'Correo',
+              priority: 'low',
+              render: (emp) => <span className="text-acero">{emp.correo}</span>,
+            },
+            {
+              key: 'telefono',
+              label: 'Teléfono',
+              priority: 'low',
+              render: (emp) => <span className="font-mono text-acero">{formatTelefonoRD(emp.telefono)}</span>,
+            },
+            {
+              key: 'usuarioNombre',
+              label: 'Usuario',
+              priority: 'med',
+              render: (emp) =>
+                emp.usuarioNombre ? (
+                  <span className="inline-flex items-center gap-1 font-mono text-xs font-medium text-tanque bg-tanque/10 border border-tanque/20 px-2 py-0.5 rounded">
+                    👤 {emp.usuarioNombre}
+                  </span>
+                ) : (
+                  <span className="text-xs text-acero/60 italic">Sin vincular</span>
+                ),
+            },
+            {
+              key: 'activo',
+              label: 'Estado',
+              priority: 'high',
+              render: (emp) => <StatusBadge active={emp.activo} />,
+            },
+          ]}
+          actions={canManage ? (emp) => (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => openEdit(emp)}
+                className="flex min-h-[38px] items-center gap-1.5 rounded-sm border border-acero/30 bg-white px-3 py-1.5 text-xs font-medium text-tinta shadow-xs transition-colors hover:border-tanque hover:bg-fondo active:scale-[0.98]"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                  <path d="m15 5 4 4" />
+                </svg>
+                Editar
+              </button>
+              <button
+                type="button"
+                onClick={() => openVinculo(emp)}
+                title="Vincular o cambiar cuenta de usuario"
+                className="flex min-h-[38px] items-center gap-1.5 rounded-sm border border-acero/30 bg-white px-3 py-1.5 text-xs font-medium text-tinta shadow-xs transition-colors hover:border-tanque hover:bg-fondo active:scale-[0.98]"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M19 8v6m3-3h-6" />
+                </svg>
+                {emp.usuarioId ? 'Usuario' : 'Vincular'}
+              </button>
+              {emp.activo && esAdministrador && (
+                <button
+                  type="button"
+                  onClick={() => handleDeactivate(emp)}
+                  disabled={deactivatingId === emp.id}
+                  className="flex min-h-[38px] items-center gap-1.5 rounded-sm bg-peligro/10 border border-peligro/30 px-3 py-1.5 text-xs font-medium text-peligro shadow-xs transition-colors hover:bg-peligro hover:text-white disabled:opacity-50 active:scale-[0.98]"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                  </svg>
+                  {deactivatingId === emp.id ? 'Desactivando...' : 'Desactivar'}
+                </button>
               )}
-              {empleados.map((emp) => (
-                <tr key={emp.id} className="hover:bg-fondo transition-colors">
-                  <td className="px-4 py-3.5 font-mono text-acero">{emp.codigo}</td>
-                  <td className="px-4 py-3.5 font-medium text-tinta">{emp.nombreCompleto}</td>
-                  <td className="px-4 py-3.5 font-mono text-acero">{formatCedula(emp.cedula)}</td>
-                  <td className="px-4 py-3.5 text-acero">{emp.departamentoNombre}</td>
-                  <td className="px-4 py-3.5 text-acero">{emp.cargo}</td>
-                  <td className="px-4 py-3.5 text-acero">{emp.correo}</td>
-                  <td className="px-4 py-3.5 font-mono text-acero">{formatTelefonoRD(emp.telefono)}</td>
-                  <td className="px-4 py-3.5">
-                    {emp.usuarioNombre ? (
-                      <span className="inline-flex items-center gap-1 font-mono text-xs font-medium text-tanque bg-tanque/10 border border-tanque/20 px-2 py-0.5 rounded">
-                        👤 {emp.usuarioNombre}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-acero/60 italic">Sin vincular</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <StatusBadge active={emp.activo} />
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(emp)}
-                        className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-acero/30 bg-white px-3 py-1.5 text-sm font-medium text-tinta transition-colors hover:border-tanque hover:bg-fondo"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                          <path d="m15 5 4 4" />
-                        </svg>
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openVinculo(emp)}
-                        title="Vincular o cambiar cuenta de usuario"
-                        className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-acero/30 bg-white px-3 py-1.5 text-sm font-medium text-tinta transition-colors hover:border-tanque hover:bg-fondo"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                          <circle cx="9" cy="7" r="4" />
-                          <path d="M19 8v6m3-3h-6" />
-                        </svg>
-                        {emp.usuarioId ? 'Usuario' : 'Vincular'}
-                      </button>
-                      {emp.activo && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeactivate(emp)}
-                          disabled={deactivatingId === emp.id}
-                          className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-peligro/30 bg-white px-3 py-1.5 text-sm font-medium text-peligro transition-colors hover:border-peligro hover:bg-peligro/10 disabled:opacity-50"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-                          </svg>
-                          {deactivatingId === emp.id ? 'Desactivando...' : 'Desactivar'}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          ) : undefined}
+        />
       )}
 
       {showForm && (
@@ -539,7 +588,7 @@ export default function EmpleadosPage() {
         >
           <form onSubmit={handleVinculoSubmit} className="space-y-4">
             <p className="text-sm text-acero">
-              Al vincular a <strong className="text-tinta">{vinculoModalEmp.nombreCompleto}</strong> con un usuario del sistema, el filtrado de seguridad <code className="rounded bg-fondo px-1 py-0.5 text-xs font-mono font-semibold text-tanque">OwnerFilter</code> permitirá que un Solicitante acceda y opere de forma segura exclusivamente sobre sus propios tickets y solicitudes.
+              Al vincular a <strong className="text-tinta">{vinculoModalEmp.nombreCompleto}</strong> con una cuenta de usuario del sistema, el colaborador podrá iniciar sesión como Solicitante y visualizar exclusivamente sus propios tickets y solicitudes.
             </p>
 
             <Field
@@ -586,6 +635,28 @@ export default function EmpleadosPage() {
           </form>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={Boolean(confirmEmp)}
+        title="¿Desactivar empleado?"
+        message={
+          <>
+            Está a punto de desactivar a{' '}
+            <strong className="font-semibold text-tinta">{confirmEmp?.nombreCompleto}</strong>{' '}
+            <span className="font-mono text-acero">({confirmEmp?.codigo})</span>.
+          </>
+        }
+        consequences={[
+          'El empleado no podrá realizar solicitudes de combustible ni ser asignado a nuevos vehículos.',
+          'Su usuario asociado (si tiene) quedará inhabilitado para operaciones de combustible.',
+        ]}
+        type="danger"
+        confirmText="Desactivar empleado"
+        cancelText="Cancelar"
+        isLoading={Boolean(deactivatingId)}
+        onConfirm={handleConfirmDeactivate}
+        onClose={() => setConfirmEmp(null)}
+      />
     </PageContainer>
   )
 }

@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
+import ResponsiveTable from '../components/ResponsiveTable'
 import apiRequest from '../services/api'
 import { useTanques } from '../hooks/useTanques'
 import { useProveedores } from '../hooks/useProveedores'
 import { validateCapacidadCombustible, validateTextoMinimo, formatRNC } from '../utils/validators'
+import { imprimirComprobanteRecepcion, descargarComprobanteHtml } from '../utils/download'
 
 const EMPTY_FORM = { proveedorId: '', tanqueId: '', numeroFactura: '', volumenRecibido: '', fecha: '' }
 
@@ -200,7 +202,7 @@ export default function RecepcionesPage() {
         </div>
       </div>
 
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-tinta">Historial de Descargas y Recepciones</h2>
           <p className="text-xs text-acero">Registro de conduces y facturas de combustible ingresado a tanques</p>
@@ -208,7 +210,7 @@ export default function RecepcionesPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center gap-2 rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90 shadow-sm"
+          className="flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-md bg-tanque px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-tanque/90 active:scale-[0.98]"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -221,61 +223,73 @@ export default function RecepcionesPage() {
       {error && <p className="text-sm text-peligro">{error}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-sm border border-acero/20 shadow-sm">
-          <table className="min-w-full divide-y divide-acero/20 text-sm">
-            <thead className="bg-fondo">
-              <tr>
-                {['Proveedor', 'RNC', 'Factura / Conduce', 'Volumen Recibido', 'Fecha / Hora', 'Tanque', 'Acciones'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-acero uppercase tracking-wider">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-acero/10 bg-white">
-              {recepciones.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-acero/70">
-                    <svg className="mx-auto h-8 w-8 text-acero/40 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    Sin recepciones registradas. Pulsa en <strong>"+ Registrar recepción"</strong> para ingresar combustible.
-                  </td>
-                </tr>
-              )}
-              {recepciones.map((r) => (
-                <tr
-                  key={r.id}
-                  onClick={() => openDetalle(r.id)}
-                  className="cursor-pointer hover:bg-fondo/70 transition-colors"
-                >
-                  <td className="px-4 py-3 font-medium text-tinta">{r.proveedorNombre}</td>
-                  <td className="px-4 py-3 font-mono text-acero text-xs">
-                    {formatRNC(proveedorById[r.proveedorId]?.rnc) || '—'}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs font-medium text-tinta">{r.numeroFactura}</td>
-                  <td className="px-4 py-3 font-mono num font-semibold text-tinta">{r.volumenRecibido.toFixed(2)} gal</td>
-                  <td className="px-4 py-3 text-acero text-xs">{formatFecha(r.fecha)}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-acero">{r.tanqueIdentificacion}</td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      onClick={() => openDetalle(r.id)}
-                      className="inline-flex items-center gap-1.5 rounded border border-acero/30 bg-white px-2.5 py-1 text-xs font-medium text-tinta hover:bg-fondo transition-colors shadow-sm"
-                      title="Ver comprobante digital de recepción"
-                    >
-                      <svg className="h-3.5 w-3.5 text-acero" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      Comprobante
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ResponsiveTable
+          data={recepciones}
+          keyField="id"
+          onRowClick={(r) => openDetalle(r.id)}
+          emptyMessage="Sin recepciones registradas. Pulsa en '+ Registrar recepción' para ingresar combustible."
+          columns={[
+            {
+              key: 'proveedorNombre',
+              label: 'Proveedor',
+              primary: true,
+              priority: 'high',
+              render: (r) => (
+                <div>
+                  <div className="font-semibold text-tinta">{r.proveedorNombre}</div>
+                  <div className="text-xs font-mono text-acero sm:hidden">Factura: {r.numeroFactura}</div>
+                </div>
+              ),
+            },
+            {
+              key: 'numeroFactura',
+              label: 'Factura / Conduce',
+              priority: 'high',
+              render: (r) => <span className="font-mono text-xs font-medium text-tinta">{r.numeroFactura}</span>,
+            },
+            {
+              key: 'volumenRecibido',
+              label: 'Volumen Recibido',
+              priority: 'high',
+              render: (r) => <span className="font-mono num font-semibold text-tinta">{r.volumenRecibido.toFixed(2)} gal</span>,
+            },
+            {
+              key: 'fecha',
+              label: 'Fecha / Hora',
+              priority: 'med',
+              render: (r) => <span className="text-acero text-xs">{formatFecha(r.fecha)}</span>,
+            },
+            {
+              key: 'tanqueIdentificacion',
+              label: 'Tanque',
+              priority: 'high',
+              render: (r) => <span className="font-mono text-xs text-acero">{r.tanqueIdentificacion}</span>,
+            },
+            {
+              key: 'rnc',
+              label: 'RNC',
+              priority: 'low',
+              render: (r) => <span className="font-mono text-acero text-xs">{formatRNC(proveedorById[r.proveedorId]?.rnc) || '—'}</span>,
+            },
+          ]}
+          actions={(r) => (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                openDetalle(r.id)
+              }}
+              className="inline-flex min-h-[38px] items-center gap-1.5 rounded-sm border border-acero/30 bg-white px-3 py-1.5 text-xs font-medium text-tinta shadow-xs transition-colors hover:border-tanque hover:bg-fondo active:scale-[0.98]"
+              title="Ver comprobante digital de recepción"
+            >
+              <svg className="h-3.5 w-3.5 text-acero" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Comprobante
+            </button>
+          )}
+        />
       )}
 
       {showForm && (
@@ -348,8 +362,8 @@ export default function RecepcionesPage() {
                 value={form.volumenRecibido}
                 onChange={handleFormChange}
                 required
-                min="0.0001"
-                step="0.01"
+                min="0.01"
+                step="any"
                 placeholder="0.00"
                 className={inputCls}
               />
@@ -442,13 +456,24 @@ export default function RecepcionesPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex flex-wrap justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-acero/30 px-3.5 py-2 text-xs font-medium text-tinta hover:bg-fondo transition-colors"
+                  onClick={() => descargarComprobanteHtml(detalle, proveedorById[detalle.proveedorId]?.rnc)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-acero/30 bg-white px-3 py-2 text-xs font-medium text-tinta hover:bg-fondo transition-colors shadow-sm"
+                  title="Descargar comprobante en formato HTML imprimible para archivado"
                 >
                   <svg className="h-4 w-4 text-acero" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Descargar comprobante
+                </button>
+                <button
+                  type="button"
+                  onClick={() => imprimirComprobanteRecepcion(detalle, proveedorById[detalle.proveedorId]?.rnc)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-tanque bg-tanque/5 px-3 py-2 text-xs font-medium text-tanque hover:bg-tanque/10 transition-colors shadow-sm"
+                >
+                  <svg className="h-4 w-4 text-tanque" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                   </svg>
                   Imprimir comprobante
@@ -456,7 +481,7 @@ export default function RecepcionesPage() {
                 <button
                   type="button"
                   onClick={() => setDetalle(null)}
-                  className="rounded-md bg-tanque px-4 py-2 text-xs font-medium text-white hover:opacity-90 transition-colors"
+                  className="rounded-md bg-tanque px-4 py-2 text-xs font-medium text-white hover:opacity-90 transition-colors shadow-sm"
                 >
                   Cerrar
                 </button>

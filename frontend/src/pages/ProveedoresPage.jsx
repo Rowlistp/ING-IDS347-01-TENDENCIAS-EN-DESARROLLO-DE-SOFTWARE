@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import ConfirmModal from '../components/ConfirmModal'
 import { apiRequest } from '../services/api'
 import PageContainer from '../components/PageContainer'
+import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
 import Modal from '../components/Modal'
 import Field, { inputCls, inputClsError } from '../components/Field'
@@ -97,6 +99,7 @@ export default function ProveedoresPage() {
   const [formError, setFormError] = useState(null)
 
   const [deactivatingId, setDeactivatingId] = useState(null)
+  const [confirmProv, setConfirmProv] = useState(null)
   const [actionError, setActionError] = useState(null)
 
   // Búsqueda local
@@ -214,17 +217,25 @@ export default function ProveedoresPage() {
     }
   }
 
-  async function handleDeactivate(p) {
-    if (!window.confirm(`¿Desactivar el proveedor ${p.nombre}?`)) return
+  function handleDeactivate(p) {
+    setActionError(null)
+    setConfirmProv(p)
+  }
+
+  async function handleConfirmDeactivate() {
+    if (!confirmProv) return
+    const p = confirmProv
     setActionError(null)
     setDeactivatingId(p.id)
     try {
       await apiRequest(`/proveedores/${p.id}`, { method: 'DELETE' })
       await cargarProveedores()
+      setConfirmProv(null)
     } catch (e) {
       // El backend responde 409 PROVEEDOR_CON_RECEPCIONES si tiene recepciones
       // históricas — el mensaje ya viene claro desde el backend, se muestra tal cual.
       setActionError(e.message)
+      setConfirmProv(null)
     } finally {
       setDeactivatingId(null)
     }
@@ -261,7 +272,7 @@ export default function ProveedoresPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="flex min-h-[44px] items-center gap-2 rounded-lg bg-tanque px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+          className="flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-tanque px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="5" x2="12" y2="19" />
@@ -288,68 +299,61 @@ export default function ProveedoresPage() {
 
       {/* Data table */}
       {!loading && !error && proveedores.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-acero/20">
-          <table className="min-w-full divide-y divide-acero/20 text-sm">
-            <thead className="bg-fondo">
-              <tr>
-                {['RNC', 'Nombre', 'Estado', 'Acciones'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-acero">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-acero/10 bg-white">
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-acero">
-                    No se encontraron resultados para &ldquo;{search}&rdquo;
-                  </td>
-                </tr>
+        <ResponsiveTable
+          data={filtered}
+          keyField="id"
+          emptyMessage={`No se encontraron resultados para "${search}"`}
+          columns={[
+            {
+              key: 'rnc',
+              label: 'RNC',
+              priority: 'high',
+              render: (p) => <span className="font-mono text-tinta">{formatRnc(p.rnc)}</span>,
+            },
+            {
+              key: 'nombre',
+              label: 'Nombre',
+              primary: true,
+              priority: 'high',
+              render: (p) => <span className="font-semibold text-tinta">{p.nombre}</span>,
+            },
+            {
+              key: 'activo',
+              label: 'Estado',
+              priority: 'high',
+              render: (p) => <StatusBadge active={p.activo} />,
+            },
+          ]}
+          actions={(p) => (
+            <div className="flex flex-wrap gap-2.5">
+              <button
+                type="button"
+                onClick={() => openEdit(p)}
+                className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-acero/30 bg-white px-3.5 py-2 text-sm font-medium text-tinta shadow-xs transition-colors hover:border-tanque hover:bg-fondo active:scale-[0.98]"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                  <path d="m15 5 4 4" />
+                </svg>
+                Editar
+              </button>
+              {p.activo && (
+                <button
+                  type="button"
+                  onClick={() => handleDeactivate(p)}
+                  disabled={deactivatingId === p.id}
+                  className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-peligro/30 bg-white px-3.5 py-2 text-sm font-medium text-peligro shadow-xs transition-colors hover:border-peligro hover:bg-peligro/10 disabled:opacity-50 active:scale-[0.98]"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                  </svg>
+                  {deactivatingId === p.id ? 'Desactivando…' : 'Desactivar'}
+                </button>
               )}
-              {filtered.map((p) => (
-                <tr key={p.id} className="transition-colors hover:bg-fondo/60">
-                  <td className="px-4 py-3.5 font-mono text-tinta">{formatRnc(p.rnc)}</td>
-                  <td className="px-4 py-3.5 font-medium text-tinta">{p.nombre}</td>
-                  <td className="px-4 py-3.5">
-                    <StatusBadge active={p.activo} />
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex gap-2.5">
-                      {/* Botón Editar — estilo neutral secundario, Fitts-compliant */}
-                      <button
-                        type="button"
-                        onClick={() => openEdit(p)}
-                        className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-acero/30 bg-white px-3.5 py-2 text-sm font-medium text-tinta transition-colors hover:border-tanque hover:bg-fondo"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                          <path d="m15 5 4 4" />
-                        </svg>
-                        Editar
-                      </button>
-                      {/* Botón Desactivar — estilo destructivo atenuado, Fitts-compliant */}
-                      {p.activo && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeactivate(p)}
-                          disabled={deactivatingId === p.id}
-                          className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-peligro/30 bg-white px-3.5 py-2 text-sm font-medium text-peligro transition-colors hover:border-peligro hover:bg-peligro/10 disabled:opacity-50"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-                          </svg>
-                          {deactivatingId === p.id ? 'Desactivando…' : 'Desactivar'}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          )}
+        />
       )}
 
       {/* Empty state */}
@@ -424,6 +428,28 @@ export default function ProveedoresPage() {
           </form>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={Boolean(confirmProv)}
+        title="¿Desactivar proveedor suplidor?"
+        message={
+          <>
+            Está a punto de desactivar al suplidor{' '}
+            <strong className="font-semibold text-tinta">{confirmProv?.nombre}</strong>
+            {confirmProv?.rnc && <span className="font-mono text-acero"> (RNC: {formatRnc(confirmProv.rnc)})</span>}.
+          </>
+        }
+        consequences={[
+          'El suplidor no aparecerá como opción para registrar nuevas recepciones de combustible.',
+          'Las recepciones y descargas históricas se conservarán intactas para auditoría.',
+        ]}
+        type="danger"
+        confirmText="Desactivar proveedor"
+        cancelText="Cancelar"
+        isLoading={Boolean(deactivatingId)}
+        onConfirm={handleConfirmDeactivate}
+        onClose={() => setConfirmProv(null)}
+      />
     </PageContainer>
   )
 }

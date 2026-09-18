@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react'
 import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
+import ResponsiveTable from '../components/ResponsiveTable'
+import { useAuth } from '../hooks/useAuth'
 import apiRequest, { apiDownload } from '../services/api'
+import { getSequentialFilename, downloadBlob } from '../utils/download'
+import { canCreateDailyClose } from '../utils/rbac'
 
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10)
@@ -13,6 +17,8 @@ function formatFechaHora(value) {
 }
 
 export default function CierreDiarioPage() {
+  const { user } = useAuth()
+  const canCreateClose = canCreateDailyClose(user)
   const [cierres, setCierres] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -87,14 +93,9 @@ export default function CierreDiarioPage() {
     setDownloadingId(cierre.id)
     try {
       const { blob } = await apiDownload(`/cierres-diarios/${cierre.id}/pdf`)
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `cierre-diario-${cierre.fecha}.pdf`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
+      const basePrefix = `cierre-diario-${cierre.fecha}-ID${cierre.id}`
+      const filename = getSequentialFilename(basePrefix, 'pdf')
+      downloadBlob(blob, filename)
     } catch (e) {
       setDownloadError(e.message)
     } finally {
@@ -167,21 +168,23 @@ export default function CierreDiarioPage() {
         </div>
       </div>
 
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-tinta">Historial de Cierres Diarios</h2>
           <p className="text-xs text-acero">Consolidación de despachos, inventarios y actas emitidas</p>
         </div>
-        <button
-          type="button"
-          onClick={openGenerar}
-          className="inline-flex items-center gap-2 rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90 shadow-sm"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-          </svg>
-          Generar nuevo cierre
-        </button>
+        {canCreateClose && (
+          <button
+            type="button"
+            onClick={openGenerar}
+            className="flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-md bg-tanque px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-tanque/90 active:scale-[0.98]"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Generar nuevo cierre
+          </button>
+        )}
       </div>
 
       {loading && <p className="text-sm text-acero">Cargando...</p>}
@@ -189,79 +192,88 @@ export default function CierreDiarioPage() {
       {downloadError && <p className="text-sm text-peligro">{downloadError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-sm border border-acero/20 shadow-sm">
-          <table className="min-w-full divide-y divide-acero/20 text-sm">
-            <thead className="bg-fondo">
-              <tr>
-                {['Fecha', 'Despachos', 'Volumen despachado', 'Inventario final', 'Diferencias', 'Responsable', 'Acciones'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-acero uppercase tracking-wider">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-acero/10 bg-white">
-              {cierres.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-acero/70">
-                    <svg className="mx-auto h-8 w-8 text-acero/40 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Sin cierres generados todavía. Haz clic en <strong>"+ Generar nuevo cierre"</strong> para conciliar una fecha.
-                  </td>
-                </tr>
-              )}
-              {cierres.map((c) => (
-                <tr key={c.id} onClick={() => setDetalle(c)} className="cursor-pointer hover:bg-fondo/70 transition-colors">
-                  <td className="px-4 py-3 font-medium font-mono text-tinta">{c.fecha}</td>
-                  <td className="px-4 py-3 font-mono num text-acero">{c.totalDespachos}</td>
-                  <td className="px-4 py-3 font-mono num font-semibold text-tinta">{c.totalVolumenDespachado.toFixed(2)} gal</td>
-                  <td className="px-4 py-3 font-mono num text-acero">{c.totalInventarioFinal.toFixed(2)} gal</td>
-                  <td className="px-4 py-3">
-                    {c.totalDiferencias === 0 ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-exito/10 border border-exito/20 px-2 py-0.5 text-xs font-mono font-medium text-exito">
-                        0.00 gal
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-peligro/10 border border-peligro/20 px-2 py-0.5 text-xs font-mono font-semibold text-peligro">
-                        {c.totalDiferencias.toFixed(2)} gal
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-acero">{c.creadoPorNombre}</td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setDetalle(c)}
-                        className="inline-flex items-center gap-1.5 rounded border border-acero/30 bg-white px-2.5 py-1 text-xs font-medium text-tinta hover:bg-fondo transition-colors shadow-sm"
-                        title="Ver balance y desglose por tanque"
-                      >
-                        <svg className="h-3.5 w-3.5 text-acero" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        Detalle
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDescargarPdf(c)}
-                        disabled={downloadingId === c.id}
-                        className="inline-flex items-center gap-1.5 rounded bg-tanque px-2.5 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50 transition-colors shadow-sm"
-                        title="Descargar Acta Oficial en PDF"
-                      >
-                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        {downloadingId === c.id ? 'Descargando...' : 'Acta PDF'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ResponsiveTable
+          data={cierres}
+          keyField="id"
+          onRowClick={(c) => setDetalle(c)}
+          emptyMessage="Sin cierres generados todavía. Haz clic en '+ Generar nuevo cierre' para conciliar una fecha."
+          columns={[
+            {
+              key: 'fecha',
+              label: 'Fecha',
+              primary: true,
+              priority: 'high',
+              render: (c) => <span className="font-semibold font-mono text-tanque">{c.fecha}</span>,
+            },
+            {
+              key: 'totalDespachos',
+              label: 'Despachos',
+              priority: 'high',
+              render: (c) => <span className="font-mono num text-acero">{c.totalDespachos}</span>,
+            },
+            {
+              key: 'totalVolumenDespachado',
+              label: 'Volumen despachado',
+              priority: 'high',
+              render: (c) => <span className="font-mono num font-semibold text-tinta">{c.totalVolumenDespachado.toFixed(2)} gal</span>,
+            },
+            {
+              key: 'totalInventarioFinal',
+              label: 'Inventario final',
+              priority: 'med',
+              render: (c) => <span className="font-mono num text-acero">{c.totalInventarioFinal.toFixed(2)} gal</span>,
+            },
+            {
+              key: 'totalDiferencias',
+              label: 'Diferencias',
+              priority: 'high',
+              render: (c) =>
+                c.totalDiferencias === 0 ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-exito/10 border border-exito/20 px-2 py-0.5 text-xs font-mono font-medium text-exito">
+                    0.00 gal
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-peligro/10 border border-peligro/20 px-2 py-0.5 text-xs font-mono font-semibold text-peligro">
+                    {c.totalDiferencias.toFixed(2)} gal
+                  </span>
+                ),
+            },
+            {
+              key: 'creadoPorNombre',
+              label: 'Responsable',
+              priority: 'low',
+              render: (c) => <span className="text-acero">{c.creadoPorNombre}</span>,
+            },
+          ]}
+          actions={(c) => (
+            <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => setDetalle(c)}
+                className="inline-flex min-h-[38px] items-center gap-1.5 rounded-sm border border-acero/30 bg-white px-3 py-1.5 text-xs font-medium text-tinta shadow-xs transition-colors hover:border-tanque hover:bg-fondo active:scale-[0.98]"
+                title="Ver balance y desglose por tanque"
+              >
+                <svg className="h-3.5 w-3.5 text-acero" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Detalle
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDescargarPdf(c)}
+                disabled={downloadingId === c.id}
+                className="inline-flex min-h-[38px] items-center gap-1.5 rounded-sm bg-tanque px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-tanque/90 disabled:opacity-50 active:scale-[0.98]"
+                title="Descargar Acta Oficial en PDF"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                {downloadingId === c.id ? 'Descargando...' : 'Acta PDF'}
+              </button>
+            </div>
+          )}
+        />
       )}
 
       {showGenerar && (
@@ -330,7 +342,7 @@ export default function CierreDiarioPage() {
       {detalle && (
         <Modal title={`Acta de Cierre Diario — ${detalle.fecha}`} onClose={() => setDetalle(null)}>
           <div className="space-y-4 text-sm">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-lg border border-acero/15 bg-fondo/50 p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 rounded-lg border border-acero/15 bg-fondo/50 p-4">
               <div>
                 <p className="text-xs text-acero font-medium">Total Despachos</p>
                 <p className="font-mono num font-semibold text-tinta text-base">{detalle.totalDespachos}</p>
