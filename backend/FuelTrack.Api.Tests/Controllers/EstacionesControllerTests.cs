@@ -109,7 +109,7 @@ public sealed class EstacionesControllerTests
     }
 
     [TestMethod]
-    public async Task GetAll_ReturnsEstacionesActivas_CuandoExisten()
+    public async Task GetAll_ReturnsActivasEInactivas_CuandoExisten()
     {
         _db.Estaciones.AddRange(
             new Estacion { Nombre = "Estación Norte", Activo = true },
@@ -119,8 +119,9 @@ public sealed class EstacionesControllerTests
         var result = await _controller.GetAll(CancellationToken.None);
         var ok = result.Result as OkObjectResult;
         var list = ok!.Value as List<EstacionDto>;
-        Assert.AreEqual(1, list!.Count);
-        Assert.AreEqual("Estación Norte", list[0].Nombre);
+        Assert.AreEqual(2, list!.Count);
+        Assert.IsTrue(list.Any(e => e.Nombre == "Estación Norte" && e.Activo));
+        Assert.IsTrue(list.Any(e => e.Nombre == "Estación Inactiva" && !e.Activo));
     }
 
     // ── GetById ─────────────────────────────────────────────────────────────
@@ -184,6 +185,59 @@ public sealed class EstacionesControllerTests
         var dto = ok!.Value as EstacionDto;
         Assert.AreEqual("Estación Nueva", dto!.Nombre);
         Assert.IsFalse(dto.Activo);
+    }
+
+    [TestMethod]
+    public async Task Update_Returns409_CuandoDesactivaConDespachosAsociados()
+    {
+        var est = new Estacion { Nombre = "Estación Con Historial", Activo = true };
+        _db.Estaciones.Add(est);
+        await _db.SaveChangesAsync();
+
+        await CreateDespachoAsync(est.Id);
+
+        var req = new SaveEstacionRequest("Estación Con Historial", false);
+        var result = await _controller.Update(est.Id, req, CancellationToken.None);
+        var conflict = result.Result as ConflictObjectResult;
+        Assert.IsNotNull(conflict, "Esperaba 409 Conflict");
+
+        var body = conflict.Value!;
+        var code = body.GetType().GetProperty("code")?.GetValue(body)?.ToString();
+        Assert.AreEqual("ESTACION_CON_DESPACHOS", code);
+
+        await _db.Entry(est).ReloadAsync();
+        Assert.IsTrue(est.Activo);
+    }
+
+    [TestMethod]
+    public async Task Update_PermiteEditarNombre_SinDesactivar_AunConDespachos()
+    {
+        var est = new Estacion { Nombre = "Estación Con Historial", Activo = true };
+        _db.Estaciones.Add(est);
+        await _db.SaveChangesAsync();
+
+        await CreateDespachoAsync(est.Id);
+
+        var req = new SaveEstacionRequest("Estación Renombrada", true);
+        var result = await _controller.Update(est.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as EstacionDto;
+        Assert.AreEqual("Estación Renombrada", dto!.Nombre);
+        Assert.IsTrue(dto.Activo);
+    }
+
+    [TestMethod]
+    public async Task Update_PermiteReactivar_EstacionDesactivada()
+    {
+        var est = new Estacion { Nombre = "Estación Reactivable", Activo = false };
+        _db.Estaciones.Add(est);
+        await _db.SaveChangesAsync();
+
+        var req = new SaveEstacionRequest("Estación Reactivable", true);
+        var result = await _controller.Update(est.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as EstacionDto;
+        Assert.IsTrue(dto!.Activo);
     }
 
     // ── Deactivate ──────────────────────────────────────────────────────────

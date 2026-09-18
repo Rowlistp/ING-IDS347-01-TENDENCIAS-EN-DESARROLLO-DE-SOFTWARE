@@ -17,7 +17,6 @@ public sealed class EstacionesController(AppDbContext db) : ControllerBase
     {
         var list = await db.Estaciones
             .AsNoTracking()
-            .Where(e => e.Activo)
             .OrderBy(e => e.Nombre)
             .Select(e => new EstacionDto(e.Id, e.Nombre, e.Activo))
             .ToListAsync(ct);
@@ -52,6 +51,14 @@ public sealed class EstacionesController(AppDbContext db) : ControllerBase
     {
         var entity = await db.Estaciones.FindAsync([id], ct);
         if (entity is null) return NotFound();
+
+        if (entity.Activo && !req.Activo && await db.Despachos.AnyAsync(d => d.EstacionId == id, ct))
+            return Conflict(new
+            {
+                code = "ESTACION_CON_DESPACHOS",
+                message = "No se puede desactivar la estación porque tiene despachos asociados."
+            });
+
         entity.Nombre = req.Nombre;
         entity.Activo = req.Activo;
         await db.SaveChangesAsync(ct);
