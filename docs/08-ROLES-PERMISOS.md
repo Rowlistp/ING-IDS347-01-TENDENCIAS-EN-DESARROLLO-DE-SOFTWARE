@@ -50,10 +50,22 @@ PostgreSQL después de resolver al usuario activo.
 | Registrar recepción | Sí | Sí | No | No | No | No |
 | Ajustar inventario | Sí | Sí | No | No | No | No |
 | Consultar inventario | Sí | Sí | Según necesidad | Sí | Alcance pendiente | No |
-| Cierre diario | Según política | Sí | Sí | Lectura | Lectura pendiente | No |
-| Consultar reportes | Sí | Sí | Limitado | Sí | Alcance pendiente | Limitado |
-| Exportar reportes | Sí | Sí | No | Sí | No | No |
+| Cierre diario | Sí | Sí | No | Lectura | No | No |
+| Consultar reportes | Sí | No | No | Sí | No | No |
+| Exportar reportes | Sí | No | No | Sí | No | No |
 | Consultar auditoría | Sí | No | No | Sí | No | No |
+
+> Cierre diario, Consultar/Exportar reportes: corregidas 2026-09-18 para que
+> coincidan con `CierresDiariosController`/`ReportesController` (implementados
+> el 06 y 17-sep, después de esta matriz, sin actualizarla). El código excluye
+> a Despachador de Cierre diario — lo cual además calza con la separación de
+> funciones de la sección 5 (quien despacha no debería ser quien concilia el
+> día) — y excluye a Supervisor de Reportes, dejándolo como función de control
+> (Admin/Auditor). Se documenta aquí el comportamiento actual; si el equipo
+> quería lo contrario, es el código el que hay que cambiar, no esta tabla.
+> Antes de asumir cualquier otra celda de esta matriz como vigente, verificar
+> contra el `[Authorize]` real del controller: es un documento de
+> planificación y ya divergió del código en estos tres casos.
 
 ## 4. Principio de mínimo privilegio
 
