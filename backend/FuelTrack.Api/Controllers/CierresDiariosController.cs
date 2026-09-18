@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace FuelTrack.Api.Controllers;
 
 [ApiController, Route("api/v1/cierres-diarios")]
-[Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor},{Roles.Auditor}")]
+[Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor},{Roles.Despachador},{Roles.Auditor}")]
 public sealed class CierresDiariosController(CierreDiarioService service) : ControllerBase
 {
     [HttpGet]
@@ -34,7 +34,7 @@ public sealed class CierresDiariosController(CierreDiarioService service) : Cont
     }
 
     [HttpPost]
-    [Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor}")]
+    [Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor},{Roles.Despachador}")]
     public async Task<ActionResult<CierreDiarioResponse>> Crear(
         [FromBody] CierreDiarioRequest request, CancellationToken ct)
     {
