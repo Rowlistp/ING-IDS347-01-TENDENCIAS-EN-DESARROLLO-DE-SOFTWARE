@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import apiRequest from '../services/api'
 import { saveSession } from '../services/auth'
+import { landingRouteForRoles } from '../routes/accessMatrix'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -21,7 +22,10 @@ export default function LoginPage() {
         body: JSON.stringify({ nombreUsuario, contrasena }),
       })
       saveSession(auth)
-      navigate('/dashboard', { replace: true })
+      // No todos los roles tienen acceso a /dashboard (ver accessMatrix.js) —
+      // ir ahí directo mandaría a la mayoría de roles a "acceso no autorizado"
+      // apenas inician sesión.
+      navigate(landingRouteForRoles(auth.roles), { replace: true })
     } catch (err) {
       setError(
         err instanceof TypeError

@@ -7,6 +7,7 @@ import { useDepartamentos } from '../hooks/useDepartamentos'
 import { useEmpleados } from '../hooks/useEmpleados'
 import { useVehiculos } from '../hooks/useVehiculos'
 import apiRequest from '../services/api'
+import { getUser } from '../services/auth'
 
 const ESTADO_VARIANT = {
   Pendiente: 'yellow',
@@ -30,6 +31,13 @@ function nowLocalInputValue() {
 }
 
 export default function SolicitudesPage() {
+  // POST /solicitudes (crear) solo permite Administrador/Supervisor/Solicitante,
+  // y /aprobar-/rechazar solo Administrador/Supervisor (SolicitudesController.cs).
+  // El resto de roles con acceso a esta pantalla (Despachador, Auditor, Consulta)
+  // solo consultan — el backend ya les filtra el listado si aplica (Solicitante).
+  const userRoles = getUser()?.roles ?? []
+  const puedeCrear = userRoles.some((r) => ['Administrador', 'Supervisor', 'Solicitante'].includes(r))
+  const puedeAprobar = userRoles.some((r) => ['Administrador', 'Supervisor'].includes(r))
   const [solicitudes, setSolicitudes] = useState([])
   const empleados = useEmpleados()
   const vehiculos = useVehiculos()
@@ -142,19 +150,21 @@ export default function SolicitudesPage() {
 
   return (
     <PageContainer title="Solicitudes de Combustible">
-      <div className="mb-4 flex justify-end">
-        <button
-          type="button"
-          onClick={() => {
-            setForm(EMPTY_FORM)
-            setFormError(null)
-            setShowCreate(true)
-          }}
-          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          + Nueva solicitud
-        </button>
-      </div>
+      {puedeCrear && (
+        <div className="mb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setForm(EMPTY_FORM)
+              setFormError(null)
+              setShowCreate(true)
+            }}
+            className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          >
+            + Nueva solicitud
+          </button>
+        </div>
+      )}
 
       {loading && <p className="text-sm text-acero">Cargando...</p>}
       {error && <p className="text-sm text-peligro">{error}</p>}
@@ -199,7 +209,7 @@ export default function SolicitudesPage() {
                     {s.fechaVencimiento ? new Date(s.fechaVencimiento).toLocaleDateString() : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    {s.estado === 'Pendiente' && (
+                    {s.estado === 'Pendiente' && puedeAprobar && (
                       <div className="flex gap-2">
                         <button
                           type="button"

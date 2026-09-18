@@ -1,4 +1,6 @@
 import { NavLink } from 'react-router-dom'
+import { getUser } from '../services/auth'
+import { rolesAllowRoute } from '../routes/accessMatrix'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
@@ -23,13 +25,18 @@ const navItems = [
 ]
 
 export default function Sidebar() {
+  // Unión de lo que permite cada rol del usuario: si al menos uno de sus
+  // roles tiene acceso a la pantalla, el link se muestra.
+  const userRoles = getUser()?.roles ?? []
+  const visibleItems = navItems.filter((item) => rolesAllowRoute(userRoles, item.to))
+
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-acero/30 bg-tanque">
       <div className="border-b border-white/10 px-4 py-5">
         <span className="text-lg font-bold tracking-tight text-white">FuelTrack</span>
       </div>
       <nav className="flex flex-col gap-0.5 px-2 py-3">
-        {navItems.map((item) => (
+        {visibleItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

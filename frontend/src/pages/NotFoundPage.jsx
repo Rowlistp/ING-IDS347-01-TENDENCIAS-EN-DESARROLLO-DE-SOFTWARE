@@ -1,8 +1,13 @@
 import { Link } from 'react-router-dom'
 import Layout from '../components/Layout'
-import { isAuthenticated } from '../services/auth'
+import { getUser, isAuthenticated } from '../services/auth'
+import { landingRouteForRoles } from '../routes/accessMatrix'
 
 function NotFoundContent() {
+  // No todos los roles tienen acceso a /dashboard (ver accessMatrix.js), así
+  // que el botón de vuelta apunta a la pantalla de aterrizaje del rol actual,
+  // no a una ruta fija.
+  const destino = landingRouteForRoles(getUser()?.roles)
   return (
     <div className="flex min-h-full items-center justify-center py-20 text-center">
       <div>
@@ -10,10 +15,10 @@ function NotFoundContent() {
         <h1 className="mt-2 text-xl font-semibold text-tinta">Página no encontrada</h1>
         <p className="mt-1 text-sm text-acero">La ruta que buscas no existe o fue movida.</p>
         <Link
-          to="/dashboard"
+          to={destino}
           className="mt-6 inline-block rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
-          Volver al Dashboard
+          Volver al inicio
         </Link>
       </div>
     </div>

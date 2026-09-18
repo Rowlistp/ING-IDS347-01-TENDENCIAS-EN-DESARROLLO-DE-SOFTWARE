@@ -4,6 +4,7 @@ import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
 import StatusBadge from '../components/StatusBadge'
 import apiRequest, { apiDownload } from '../services/api'
+import { getUser } from '../services/auth'
 
 const ESTADO_LABEL = {
   Creado: 'Creado',
@@ -34,6 +35,11 @@ function formatFecha(value) {
 }
 
 export default function TicketsPage() {
+  // Emitir/enviar/anular ticket son ManagementRoles en TicketsController.cs:
+  // solo Administrador/Supervisor. El resto de roles con acceso a esta
+  // pantalla (Despachador, Auditor, Consulta, Solicitante) solo consultan
+  // (Solicitante ve únicamente sus propios tickets vía OwnerFilter).
+  const puedeGestionar = getUser()?.roles?.some((r) => ['Administrador', 'Supervisor'].includes(r)) ?? false
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -160,15 +166,17 @@ export default function TicketsPage() {
 
   return (
     <PageContainer title="Tickets">
-      <div className="mb-4 flex justify-end">
-        <button
-          type="button"
-          onClick={openEmitModal}
-          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          + Emitir ticket
-        </button>
-      </div>
+      {puedeGestionar && (
+        <div className="mb-4 flex justify-end">
+          <button
+            type="button"
+            onClick={openEmitModal}
+            className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          >
+            + Emitir ticket
+          </button>
+        </div>
+      )}
 
       {loading && <p className="text-sm text-acero">Cargando...</p>}
       {error && <p className="text-sm text-peligro">{error}</p>}
@@ -228,7 +236,7 @@ export default function TicketsPage() {
                       >
                         {downloadingId === t.id ? 'Descargando...' : 'PDF'}
                       </button>
-                      {ESTADOS_NO_TERMINALES.includes(t.estado) && (
+                      {ESTADOS_NO_TERMINALES.includes(t.estado) && puedeGestionar && (
                         <>
                           <button
                             type="button"
