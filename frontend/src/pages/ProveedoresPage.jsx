@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import Field, { inputCls } from '../components/Field'
-import Modal from '../components/Modal'
+import { apiRequest } from '../services/api'
 import PageContainer from '../components/PageContainer'
 import StatusBadge from '../components/StatusBadge'
-import apiRequest from '../services/api'
+import Modal from '../components/Modal'
+import Field, { inputCls, inputClsError } from '../components/Field'
+import { validateRnc, formatRnc, validateTextoMinimo } from '../utils/validators'
 
 const EMPTY_FORM = {
   rnc: '',
@@ -91,6 +92,7 @@ export default function ProveedoresPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [fieldErrors, setFieldErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
 
@@ -127,14 +129,37 @@ export default function ProveedoresPage() {
     return p.nombre.toLowerCase().includes(q) || p.rnc.toLowerCase().includes(q)
   })
 
+  function validateAllFields(currentForm) {
+    const errors = {}
+    const rncErr = validateRnc(currentForm.rnc)
+    if (rncErr) errors.rnc = rncErr
+
+    const nomErr = validateTextoMinimo(currentForm.nombre, 'El nombre', 3)
+    if (nomErr) errors.nombre = nomErr
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   function handleFormChange(e) {
     const { name, value, type, checked } = e.target
-    setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
+    const newVal = type === 'checkbox' ? checked : value
+    setForm((f) => ({ ...f, [name]: newVal }))
+
+    // Validación inline al escribir
+    if (name === 'rnc') {
+      const err = validateRnc(newVal)
+      setFieldErrors((prev) => ({ ...prev, rnc: err }))
+    } else if (name === 'nombre') {
+      const err = validateTextoMinimo(newVal, 'El nombre', 3)
+      setFieldErrors((prev) => ({ ...prev, nombre: err }))
+    }
   }
 
   function openCreate() {
     setEditingId(null)
     setForm(EMPTY_FORM)
+    setFieldErrors({})
     setFormError(null)
     setShowForm(true)
   }
@@ -146,19 +171,24 @@ export default function ProveedoresPage() {
       nombre: p.nombre,
       activo: p.activo,
     })
+    setFieldErrors({})
     setFormError(null)
     setShowForm(true)
   }
 
-  const requiredFieldsFilled = form.rnc.trim() && form.nombre.trim()
+  const requiredFieldsFilled = form.rnc.trim() && form.nombre.trim() && !fieldErrors.rnc && !fieldErrors.nombre
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (!validateAllFields(form)) {
+      return
+    }
+
     setSubmitting(true)
     setFormError(null)
 
     const payload = {
-      rnc: form.rnc.trim(),
+      rnc: form.rnc.replace(/[\s-]/g, ''),
       nombre: form.nombre.trim(),
       activo: form.activo,
     }
@@ -279,7 +309,7 @@ export default function ProveedoresPage() {
               )}
               {filtered.map((p) => (
                 <tr key={p.id} className="transition-colors hover:bg-fondo/60">
-                  <td className="px-4 py-3.5 font-mono text-tinta">{p.rnc}</td>
+                  <td className="px-4 py-3.5 font-mono text-tinta">{formatRnc(p.rnc)}</td>
                   <td className="px-4 py-3.5 font-medium text-tinta">{p.nombre}</td>
                   <td className="px-4 py-3.5">
                     <StatusBadge active={p.activo} />
@@ -304,8 +334,12 @@ export default function ProveedoresPage() {
                           type="button"
                           onClick={() => handleDeactivate(p)}
                           disabled={deactivatingId === p.id}
-                          className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-peligro/30 bg-peligro/10 px-3.5 py-2 text-sm font-medium text-peligro transition-colors hover:bg-peligro hover:text-white disabled:opacity-50"
+                          className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-peligro/30 bg-white px-3.5 py-2 text-sm font-medium text-peligro transition-colors hover:border-peligro hover:bg-peligro/10 disabled:opacity-50"
                         >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                          </svg>
                           {deactivatingId === p.id ? 'Desactivando…' : 'Desactivar'}
                         </button>
                       )}
@@ -326,19 +360,30 @@ export default function ProveedoresPage() {
       {showForm && (
         <Modal title={editingId ? 'Editar proveedor' : 'Nuevo proveedor'} onClose={() => setShowForm(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Field label="RNC">
+            <Field
+              label="RNC"
+              required
+              error={fieldErrors.rnc}
+              hint="9 dígitos (empresa) u 11 dígitos (persona física/cédula)"
+            >
               <input
                 type="text"
                 name="rnc"
                 value={form.rnc}
                 onChange={handleFormChange}
                 required
-                maxLength={20}
-                className={`${inputCls} font-mono`}
+                maxLength={13}
+                placeholder="101000001 o 00100000001"
+                className={`${fieldErrors.rnc ? inputClsError : inputCls} font-mono`}
               />
             </Field>
 
-            <Field label="Nombre">
+            <Field
+              label="Nombre del Proveedor"
+              required
+              error={fieldErrors.nombre}
+              hint="Mínimo 3 caracteres"
+            >
               <input
                 type="text"
                 name="nombre"
@@ -346,14 +391,15 @@ export default function ProveedoresPage() {
                 onChange={handleFormChange}
                 required
                 maxLength={150}
-                className={inputCls}
+                placeholder="Ej. Distribuidora Nacional de Combustibles"
+                className={fieldErrors.nombre ? inputClsError : inputCls}
               />
             </Field>
 
             {editingId && (
-              <label className="flex items-center gap-2 text-sm text-tinta">
-                <input type="checkbox" name="activo" checked={form.activo} onChange={handleFormChange} />
-                Activo
+              <label className="flex items-center gap-2 text-sm text-tinta cursor-pointer">
+                <input type="checkbox" name="activo" checked={form.activo} onChange={handleFormChange} className="rounded text-tanque focus:ring-tanque" />
+                <span>Proveedor activo en el sistema</span>
               </label>
             )}
 
@@ -370,7 +416,7 @@ export default function ProveedoresPage() {
               <button
                 type="submit"
                 disabled={submitting || !requiredFieldsFilled}
-                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
+                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50 font-medium"
               >
                 {submitting ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Crear proveedor'}
               </button>

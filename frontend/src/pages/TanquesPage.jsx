@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react'
-import Field, { inputCls } from '../components/Field'
+import Field, { inputCls, inputClsError } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
 import StatusBadge from '../components/StatusBadge'
 import apiRequest from '../services/api'
 import { useTiposCombustible } from '../hooks/useTiposCombustible'
+import {
+  validateCapacidadTanque,
+  validateNivelCriticoTanque,
+  validateIdentificacionTanque,
+  suggestTanqueIdentificacion,
+} from '../utils/validators'
 
 const EMPTY_FORM = {
   identificacion: '',
@@ -23,6 +29,7 @@ export default function TanquesPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [fieldErrors, setFieldErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
 
@@ -49,14 +56,61 @@ export default function TanquesPage() {
     return () => { cancelado = true }
   }, [])
 
+  function validateAllFields(f) {
+    const errs = {}
+    const idErr = validateIdentificacionTanque(f.identificacion)
+    if (idErr) errs.identificacion = idErr
+
+    if (!f.tipoCombustibleId) {
+      errs.tipoCombustibleId = 'Debe seleccionar un tipo de combustible.'
+    }
+
+    const capErr = validateCapacidadTanque(f.capacidad)
+    if (capErr) errs.capacidad = capErr
+
+    const critErr = validateNivelCriticoTanque(f.nivelCritico, f.capacidad)
+    if (critErr) errs.nivelCritico = critErr
+
+    setFieldErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
   function handleFormChange(e) {
     const { name, value, type, checked } = e.target
-    setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
+    const newVal = type === 'checkbox' ? checked : value
+    setForm((f) => ({ ...f, [name]: newVal }))
+
+    // Inline validation
+    if (name === 'identificacion') {
+      setFieldErrors((prev) => ({ ...prev, identificacion: validateIdentificacionTanque(newVal) }))
+    } else if (name === 'capacidad') {
+      setFieldErrors((prev) => ({
+        ...prev,
+        capacidad: validateCapacidadTanque(newVal),
+        nivelCritico: validateNivelCriticoTanque(form.nivelCritico, newVal),
+      }))
+    } else if (name === 'nivelCritico') {
+      setFieldErrors((prev) => ({
+        ...prev,
+        nivelCritico: validateNivelCriticoTanque(newVal, form.capacidad),
+      }))
+    } else if (name === 'tipoCombustibleId') {
+      setFieldErrors((prev) => ({ ...prev, tipoCombustibleId: newVal ? null : 'Debe seleccionar un combustible.' }))
+    }
+  }
+
+  function handleSuggestNomenclature() {
+    const tipo = tiposCombustible.find((t) => String(t.id) === String(form.tipoCombustibleId))
+    const count = tanques.filter((t) => String(t.tipoCombustibleId) === String(form.tipoCombustibleId)).length + 1
+    const suggested = suggestTanqueIdentificacion(tipo ? tipo.nombre : '', count)
+    setForm((f) => ({ ...f, identificacion: suggested }))
+    setFieldErrors((prev) => ({ ...prev, identificacion: null }))
   }
 
   function openCreate() {
     setEditingId(null)
     setForm(EMPTY_FORM)
+    setFieldErrors({})
     setFormError(null)
     setShowForm(true)
   }
@@ -69,20 +123,29 @@ export default function TanquesPage() {
       nivelCritico: String(t.nivelCritico),
       tipoCombustibleId: String(t.tipoCombustibleId),
     })
+    setFieldErrors({})
     setFormError(null)
     setShowForm(true)
   }
 
   const requiredFieldsFilled =
-    form.identificacion.trim() && form.capacidad && form.nivelCritico !== '' && form.tipoCombustibleId
+    form.identificacion.trim() &&
+    form.capacidad &&
+    form.nivelCritico !== '' &&
+    form.tipoCombustibleId &&
+    Object.values(fieldErrors).every((err) => !err)
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (!validateAllFields(form)) {
+      return
+    }
+
     setSubmitting(true)
     setFormError(null)
 
     const payload = {
-      identificacion: form.identificacion.trim(),
+      identificacion: form.identificacion.trim().toUpperCase(),
       capacidad: Number(form.capacidad),
       nivelCritico: Number(form.nivelCritico),
       tipoCombustibleId: Number(form.tipoCombustibleId),
@@ -171,13 +234,17 @@ export default function TanquesPage() {
                   <td className="px-4 py-3">
                     <StatusBadge active={t.activo} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5">
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => openEdit(t)}
-                        className="rounded bg-tanque px-2 py-1 text-xs text-white hover:opacity-90"
+                        className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-acero/30 bg-white px-3 py-1.5 text-sm font-medium text-tinta transition-colors hover:border-tanque hover:bg-fondo"
                       >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                          <path d="m15 5 4 4" />
+                        </svg>
                         Editar
                       </button>
                       {t.activo && (
@@ -185,8 +252,12 @@ export default function TanquesPage() {
                           type="button"
                           onClick={() => handleDeactivate(t)}
                           disabled={deactivatingId === t.id}
-                          className="rounded bg-peligro px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
+                          className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-peligro/30 bg-white px-3 py-1.5 text-sm font-medium text-peligro transition-colors hover:border-peligro hover:bg-peligro/10 disabled:opacity-50"
                         >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                          </svg>
                           {deactivatingId === t.id ? 'Desactivando...' : 'Desactivar'}
                         </button>
                       )}
@@ -202,25 +273,17 @@ export default function TanquesPage() {
       {showForm && (
         <Modal title={editingId ? 'Editar tanque' : 'Nuevo tanque'} onClose={() => setShowForm(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Field label="Identificación">
-              <input
-                type="text"
-                name="identificacion"
-                value={form.identificacion}
-                onChange={handleFormChange}
-                required
-                maxLength={50}
-                className={`${inputCls} font-mono`}
-              />
-            </Field>
-
-            <Field label="Tipo de combustible">
+            <Field
+              label="Tipo de combustible"
+              required
+              error={fieldErrors.tipoCombustibleId}
+            >
               <select
                 name="tipoCombustibleId"
                 value={form.tipoCombustibleId}
                 onChange={handleFormChange}
                 required
-                className={inputCls}
+                className={fieldErrors.tipoCombustibleId ? inputClsError : inputCls}
               >
                 <option value="">Seleccione un tipo de combustible</option>
                 {tiposCombustible.map((t) => (
@@ -229,31 +292,79 @@ export default function TanquesPage() {
               </select>
             </Field>
 
-            <Field label="Capacidad (galones)">
-              <input
-                type="number"
-                name="capacidad"
-                value={form.capacidad}
-                onChange={handleFormChange}
-                required
-                min="0.0001"
-                step="0.0001"
-                className={inputCls}
-              />
+            <Field
+              label="Identificación del tanque"
+              required
+              error={fieldErrors.identificacion}
+              hint="Código alfanumérico único (ej: TNQ-DSL-01, TNQ-GPR-01)"
+            >
+              <div className="space-y-1.5">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    name="identificacion"
+                    value={form.identificacion}
+                    onChange={handleFormChange}
+                    required
+                    maxLength={25}
+                    placeholder="TNQ-DSL-01"
+                    className={`${fieldErrors.identificacion ? inputClsError : inputCls} font-mono flex-1`}
+                  />
+                  {form.tipoCombustibleId && (
+                    <button
+                      type="button"
+                      onClick={handleSuggestNomenclature}
+                      className="px-3 py-2 text-xs font-semibold rounded-md border border-acero/30 bg-fondo hover:bg-acero/10 text-acero transition-colors"
+                      title="Generar código estándar según el combustible seleccionado"
+                    >
+                      Autogenerar
+                    </button>
+                  )}
+                </div>
+              </div>
             </Field>
 
-            <Field label="Nivel crítico (galones)">
-              <input
-                type="number"
-                name="nivelCritico"
-                value={form.nivelCritico}
-                onChange={handleFormChange}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field
+                label="Capacidad total (galones)"
                 required
-                min="0"
-                step="0.0001"
-                className={inputCls}
-              />
-            </Field>
+                error={fieldErrors.capacidad}
+                hint="Rango: 50 a 100,000 gal"
+              >
+                <input
+                  type="number"
+                  name="capacidad"
+                  value={form.capacidad}
+                  onChange={handleFormChange}
+                  required
+                  min="50"
+                  max="100000"
+                  step="0.01"
+                  placeholder="Ej. 10000"
+                  className={`${fieldErrors.capacidad ? inputClsError : inputCls} font-mono`}
+                />
+              </Field>
+
+              <Field
+                label="Nivel crítico (galones)"
+                required
+                error={fieldErrors.nivelCritico}
+                hint="Debe ser menor a la capacidad"
+              >
+                <input
+                  type="number"
+                  name="nivelCritico"
+                  value={form.nivelCritico}
+                  onChange={handleFormChange}
+                  required
+                  min="1"
+                  max="100000"
+                  step="0.01"
+                  placeholder="Ej. 1000"
+                  className={`${fieldErrors.nivelCritico ? inputClsError : inputCls} font-mono`}
+                />
+              </Field>
+            </div>
 
             {formError && <p className="text-sm text-peligro">{formError}</p>}
 
@@ -268,7 +379,7 @@ export default function TanquesPage() {
               <button
                 type="submit"
                 disabled={submitting || !requiredFieldsFilled}
-                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
+                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50 font-medium"
               >
                 {submitting ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear tanque'}
               </button>

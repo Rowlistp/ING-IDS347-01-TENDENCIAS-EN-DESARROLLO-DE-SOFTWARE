@@ -5,6 +5,7 @@ import PageContainer from '../components/PageContainer'
 import StatusBadge from '../components/StatusBadge'
 import apiRequest from '../services/api'
 import { getUser } from '../services/auth'
+import { validateTextoMinimo } from '../utils/validators'
 
 const EMPTY_FORM = { nombre: '' }
 
@@ -21,6 +22,7 @@ export default function EstacionesPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
 
@@ -54,12 +56,17 @@ export default function EstacionesPage() {
   }, [])
 
   function handleFormChange(e) {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setForm((f) => ({ ...f, [name]: value }))
+    if (errors[name]) {
+      setErrors((errs) => ({ ...errs, [name]: null }))
+    }
   }
 
   function openCreate() {
     setEditingId(null)
     setForm(EMPTY_FORM)
+    setErrors({})
     setFormError(null)
     setShowForm(true)
   }
@@ -67,14 +74,19 @@ export default function EstacionesPage() {
   function openEdit(e) {
     setEditingId(e.id)
     setForm({ nombre: e.nombre })
+    setErrors({})
     setFormError(null)
     setShowForm(true)
   }
 
-  const requiredFieldsFilled = form.nombre.trim()
-
   async function handleSubmit(e) {
     e.preventDefault()
+    const nombreErr = validateTextoMinimo(form.nombre, 3, 'El nombre de la estación')
+    if (nombreErr) {
+      setErrors({ nombre: nombreErr })
+      return
+    }
+
     setSubmitting(true)
     setFormError(null)
     try {
@@ -143,9 +155,12 @@ export default function EstacionesPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="inline-flex items-center gap-2 rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90 shadow-sm"
         >
-          + Nueva estación
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Nueva estación
         </button>
       </div>
 
@@ -154,12 +169,12 @@ export default function EstacionesPage() {
       {actionError && <p className="text-sm text-peligro">{actionError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-sm border border-acero/20">
+        <div className="overflow-x-auto rounded-sm border border-acero/20 shadow-sm">
           <table className="min-w-full divide-y divide-acero/20 text-sm">
             <thead className="bg-fondo">
               <tr>
                 {['Nombre', 'Estado', 'Acciones'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-acero uppercase tracking-wider">
                     {h}
                   </th>
                 ))}
@@ -174,7 +189,7 @@ export default function EstacionesPage() {
                 </tr>
               )}
               {estaciones.map((e) => (
-                <tr key={e.id} className="hover:bg-fondo">
+                <tr key={e.id} className="hover:bg-fondo/70 transition-colors">
                   <td className="px-4 py-3 font-medium text-tinta">{e.nombre}</td>
                   <td className="px-4 py-3">
                     <StatusBadge active={e.activo} />
@@ -184,8 +199,11 @@ export default function EstacionesPage() {
                       <button
                         type="button"
                         onClick={() => openEdit(e)}
-                        className="rounded bg-tanque px-2 py-1 text-xs text-white hover:opacity-90"
+                        className="inline-flex items-center gap-1.5 rounded border border-acero/30 bg-white px-2.5 py-1 text-xs font-medium text-tinta hover:bg-fondo transition-colors shadow-sm"
                       >
+                        <svg className="h-3.5 w-3.5 text-acero" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
                         Editar
                       </button>
                       {e.activo && esAdministrador && (
@@ -193,8 +211,11 @@ export default function EstacionesPage() {
                           type="button"
                           onClick={() => handleDesactivar(e)}
                           disabled={cambiandoEstadoId === e.id}
-                          className="rounded bg-peligro px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 rounded bg-peligro/10 border border-peligro/30 px-2.5 py-1 text-xs font-medium text-peligro hover:bg-peligro hover:text-white transition-colors disabled:opacity-50 shadow-sm"
                         >
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                          </svg>
                           {cambiandoEstadoId === e.id ? 'Desactivando...' : 'Desactivar'}
                         </button>
                       )}
@@ -203,8 +224,11 @@ export default function EstacionesPage() {
                           type="button"
                           onClick={() => handleReactivar(e)}
                           disabled={cambiandoEstadoId === e.id}
-                          className="rounded bg-exito px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 rounded bg-exito/10 border border-exito/30 px-2.5 py-1 text-xs font-medium text-exito hover:bg-exito hover:text-white transition-colors disabled:opacity-50 shadow-sm"
                         >
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
                           {cambiandoEstadoId === e.id ? 'Guardando...' : 'Reactivar'}
                         </button>
                       )}
@@ -220,7 +244,7 @@ export default function EstacionesPage() {
       {showForm && (
         <Modal title={editingId ? 'Editar estación' : 'Nueva estación'} onClose={() => setShowForm(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Field label="Nombre">
+            <Field label="Nombre de la Estación" required error={errors.nombre} hint="Ej. Estación Central, Bomba Principal, Dispensador Norte">
               <input
                 type="text"
                 name="nombre"
@@ -228,6 +252,7 @@ export default function EstacionesPage() {
                 onChange={handleFormChange}
                 required
                 maxLength={100}
+                placeholder="Ej. Estación Central de Despacho"
                 className={inputCls}
               />
             </Field>
@@ -244,8 +269,8 @@ export default function EstacionesPage() {
               </button>
               <button
                 type="submit"
-                disabled={submitting || !requiredFieldsFilled}
-                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
+                disabled={submitting}
+                className="inline-flex items-center gap-2 rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 shadow-sm"
               >
                 {submitting ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear estación'}
               </button>

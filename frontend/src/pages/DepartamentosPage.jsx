@@ -4,6 +4,7 @@ import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
 import StatusBadge from '../components/StatusBadge'
 import apiRequest from '../services/api'
+import { validateTextoMinimo } from '../utils/validators'
 
 const EMPTY_FORM = {
   nombre: '',
@@ -18,6 +19,7 @@ export default function DepartamentosPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
 
@@ -47,11 +49,15 @@ export default function DepartamentosPage() {
   function handleFormChange(e) {
     const { name, value, type, checked } = e.target
     setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
+    if (errors[name]) {
+      setErrors((errs) => ({ ...errs, [name]: null }))
+    }
   }
 
   function openCreate() {
     setEditingId(null)
     setForm(EMPTY_FORM)
+    setErrors({})
     setFormError(null)
     setShowForm(true)
   }
@@ -62,14 +68,19 @@ export default function DepartamentosPage() {
       nombre: dep.nombre,
       activo: dep.activo,
     })
+    setErrors({})
     setFormError(null)
     setShowForm(true)
   }
 
-  const requiredFieldsFilled = form.nombre.trim()
-
   async function handleSubmit(e) {
     e.preventDefault()
+    const nombreErr = validateTextoMinimo(form.nombre, 3, 'El nombre del departamento')
+    if (nombreErr) {
+      setErrors({ nombre: nombreErr })
+      return
+    }
+
     setSubmitting(true)
     setFormError(null)
 
@@ -119,9 +130,12 @@ export default function DepartamentosPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="inline-flex items-center gap-2 rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90 shadow-sm"
         >
-          + Nuevo departamento
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Nuevo departamento
         </button>
       </div>
 
@@ -130,12 +144,12 @@ export default function DepartamentosPage() {
       {actionError && <p className="text-sm text-peligro">{actionError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-sm border border-acero/20">
+        <div className="overflow-x-auto rounded-sm border border-acero/20 shadow-sm">
           <table className="min-w-full divide-y divide-acero/20 text-sm">
             <thead className="bg-fondo">
               <tr>
                 {['Nombre', 'Estado', 'Acciones'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-acero uppercase tracking-wider">
                     {h}
                   </th>
                 ))}
@@ -150,7 +164,7 @@ export default function DepartamentosPage() {
                 </tr>
               )}
               {departamentos.map((dep) => (
-                <tr key={dep.id} className="hover:bg-fondo">
+                <tr key={dep.id} className="hover:bg-fondo/70 transition-colors">
                   <td className="px-4 py-3 font-medium text-tinta">{dep.nombre}</td>
                   <td className="px-4 py-3">
                     <StatusBadge active={dep.activo} />
@@ -160,8 +174,11 @@ export default function DepartamentosPage() {
                       <button
                         type="button"
                         onClick={() => openEdit(dep)}
-                        className="rounded bg-tanque px-2 py-1 text-xs text-white hover:opacity-90"
+                        className="inline-flex items-center gap-1.5 rounded border border-acero/30 bg-white px-2.5 py-1 text-xs font-medium text-tinta hover:bg-fondo transition-colors shadow-sm"
                       >
+                        <svg className="h-3.5 w-3.5 text-acero" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
                         Editar
                       </button>
                       {dep.activo && (
@@ -169,8 +186,11 @@ export default function DepartamentosPage() {
                           type="button"
                           onClick={() => handleDeactivate(dep)}
                           disabled={deactivatingId === dep.id}
-                          className="rounded bg-peligro px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 rounded bg-peligro/10 border border-peligro/30 px-2.5 py-1 text-xs font-medium text-peligro hover:bg-peligro hover:text-white transition-colors disabled:opacity-50 shadow-sm"
                         >
+                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                          </svg>
                           {deactivatingId === dep.id ? 'Desactivando...' : 'Desactivar'}
                         </button>
                       )}
@@ -186,7 +206,7 @@ export default function DepartamentosPage() {
       {showForm && (
         <Modal title={editingId ? 'Editar departamento' : 'Nuevo departamento'} onClose={() => setShowForm(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Field label="Nombre">
+            <Field label="Nombre del Departamento" required error={errors.nombre} hint="Ej. Operaciones, Logística, Mantenimiento">
               <input
                 type="text"
                 name="nombre"
@@ -194,6 +214,7 @@ export default function DepartamentosPage() {
                 onChange={handleFormChange}
                 required
                 maxLength={100}
+                placeholder="Ej. Logística y Distribución"
                 className={inputCls}
               />
             </Field>
@@ -217,8 +238,8 @@ export default function DepartamentosPage() {
               </button>
               <button
                 type="submit"
-                disabled={submitting || !requiredFieldsFilled}
-                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
+                disabled={submitting}
+                className="inline-flex items-center gap-2 rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 shadow-sm"
               >
                 {submitting ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear departamento'}
               </button>

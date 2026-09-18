@@ -23,18 +23,11 @@ const EMPTY_FORM = {
   fechaVencimiento: '',
 }
 
-function nowLocalInputValue() {
-  const now = new Date()
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
-}
-
 export default function SolicitudesPage() {
   const [solicitudes, setSolicitudes] = useState([])
   const empleados = useEmpleados()
   const vehiculos = useVehiculos()
   const departamentos = useDepartamentos()
-  const [tipos, setTipos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -198,37 +191,44 @@ export default function SolicitudesPage() {
                   <td className="px-4 py-3 text-acero">
                     {s.fechaVencimiento ? new Date(s.fechaVencimiento).toLocaleDateString() : '—'}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5">
                     {s.estado === 'Pendiente' && (
                       <div className="flex gap-2">
                         <button
                           type="button"
                           onClick={() => {
-                            setAprobarModal({ id: s.id })
+                            setAprobarModal(s)
                             setCantidadAutorizada(String(s.cantidadSolicitada))
                             setActionError(null)
                           }}
-                          className="rounded bg-exito px-2 py-1 text-xs text-white hover:opacity-90"
+                          className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-exito/30 bg-exito/10 px-3 py-1.5 text-xs font-semibold text-exito transition-colors hover:bg-exito hover:text-white"
                         >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
                           Aprobar
                         </button>
                         <button
                           type="button"
                           onClick={() => {
-                            setRechazarModal({ id: s.id })
+                            setRechazarModal(s)
                             setMotivoRechazo('')
                             setActionError(null)
                           }}
-                          className="rounded bg-peligro px-2 py-1 text-xs text-white hover:opacity-90"
+                          className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-peligro/30 bg-white px-3 py-1.5 text-xs font-semibold text-peligro transition-colors hover:border-peligro hover:bg-peligro/10"
                         >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
                           Rechazar
                         </button>
                       </div>
                     )}
                     {s.estado === 'Rechazada' && s.motivoRechazo && (
-                      <span className="text-xs text-acero/70" title={s.motivoRechazo}>
-                        · {s.motivoRechazo.slice(0, 30)}
-                        {s.motivoRechazo.length > 30 ? '…' : ''}
+                      <span className="text-xs text-acero/80" title={s.motivoRechazo}>
+                        Motivo: {s.motivoRechazo.slice(0, 25)}
+                        {s.motivoRechazo.length > 25 ? '…' : ''}
                       </span>
                     )}
                   </td>
@@ -240,30 +240,50 @@ export default function SolicitudesPage() {
       )}
 
       {showCreate && (
-        <Modal title="Nueva solicitud manual" onClose={() => setShowCreate(false)}>
+        <Modal title="Nueva solicitud de combustible" onClose={() => setShowCreate(false)}>
           <form onSubmit={handleCreate} className="space-y-4">
-            <Field label="Empleado">
-              <select name="empleadoId" value={form.empleadoId} onChange={handleFormChange} required className={inputCls}>
+            <Field label="Empleado" required>
+              <select
+                name="empleadoId"
+                value={form.empleadoId}
+                onChange={handleFormChange}
+                required
+                className={inputCls}
+              >
                 <option value="">Seleccionar...</option>
                 {empleados.map((e) => (
                   <option key={e.id} value={e.id}>
-                    {e.nombreCompleto}
+                    {e.nombreCompleto} ({e.codigo})
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Vehículo">
-              <select name="vehiculoId" value={form.vehiculoId} onChange={handleFormChange} required className={inputCls}>
+
+            <Field label="Vehículo" required>
+              <select
+                name="vehiculoId"
+                value={form.vehiculoId}
+                onChange={handleFormChange}
+                required
+                className={inputCls}
+              >
                 <option value="">Seleccionar...</option>
                 {vehiculos.map((v) => (
                   <option key={v.id} value={v.id}>
-                    {v.placa} — {v.marca} {v.modelo}
+                    {v.placa} — {v.marca} {v.modelo} ({v.ficha})
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Departamento">
-              <select name="departamentoId" value={form.departamentoId} onChange={handleFormChange} required className={inputCls}>
+
+            <Field label="Departamento" required>
+              <select
+                name="departamentoId"
+                value={form.departamentoId}
+                onChange={handleFormChange}
+                required
+                className={inputCls}
+              >
                 <option value="">Seleccionar...</option>
                 {departamentos.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -272,17 +292,25 @@ export default function SolicitudesPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Tipo de combustible">
-              <select name="tipoCombustibleId" value={form.tipoCombustibleId} onChange={handleFormChange} required className={inputCls}>
+
+            <Field label="Tipo de combustible" required>
+              <select
+                name="tipoCombustibleId"
+                value={form.tipoCombustibleId}
+                onChange={handleFormChange}
+                required
+                className={inputCls}
+              >
                 <option value="">Seleccionar...</option>
-                {tipos.map((t) => (
+                {tiposCombustible.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.nombre}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Cantidad solicitada">
+
+            <Field label="Cantidad solicitada (galones)" required hint="Rango permitido: 1 a 500 galones">
               <input
                 type="number"
                 name="cantidadSolicitada"
@@ -291,22 +319,25 @@ export default function SolicitudesPage() {
                 min="0.0001"
                 step="0.0001"
                 required
-                className={inputCls}
-                placeholder="0.00"
+                className={`${inputCls} font-mono`}
               />
             </Field>
-            <Field label="Fecha de vencimiento">
+
+            <Field label="Días de vigencia">
               <input
-                type="datetime-local"
-                name="fechaVencimiento"
-                value={form.fechaVencimiento}
+                type="number"
+                name="diasVigencia"
+                value={form.diasVigencia}
                 onChange={handleFormChange}
-                required
-                min={nowLocalInputValue()}
+                min="1"
+                max="365"
+                placeholder="7 (por defecto)"
                 className={inputCls}
               />
             </Field>
+
             {formError && <p className="text-sm text-peligro">{formError}</p>}
+
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -318,7 +349,7 @@ export default function SolicitudesPage() {
               <button
                 type="submit"
                 disabled={submitting || !requiredFieldsFilled}
-                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
+                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50 font-medium"
               >
                 {submitting ? 'Guardando...' : 'Crear solicitud'}
               </button>
@@ -328,20 +359,102 @@ export default function SolicitudesPage() {
       )}
 
       {aprobarModal && (
-        <Modal title="Aprobar solicitud" onClose={() => setAprobarModal(null)}>
+        <Modal title="Aprobación de Solicitud de Combustible" onClose={() => setAprobarModal(null)}>
           <form onSubmit={handleAprobar} className="space-y-4">
-            <Field label="Cantidad autorizada">
+            {/* Context Card */}
+            <div className="rounded-md border border-tanque/20 bg-tanque/5 p-3.5 text-sm space-y-2">
+              <div className="flex justify-between items-center border-b border-tanque/10 pb-2">
+                <span className="font-semibold text-tanque">Solicitud #{aprobarModal.id}</span>
+                <span className="text-xs bg-tanque/10 text-tanque px-2 py-0.5 rounded font-mono">
+                  {aprobarModal.departamentoNombre}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-acero block">Empleado:</span>
+                  <span className="font-medium text-tinta">{aprobarModal.empleadoNombre}</span>
+                </div>
+                <div>
+                  <span className="text-acero block">Vehículo:</span>
+                  <span className="font-medium font-mono text-tinta">{aprobarModal.vehiculoPlaca}</span>
+                </div>
+                <div>
+                  <span className="text-acero block">Combustible:</span>
+                  <span className="font-medium text-tinta">{aprobarModal.tipoCombustibleNombre}</span>
+                </div>
+                <div>
+                  <span className="text-acero block">Cantidad Solicitada:</span>
+                  <span className="font-bold font-mono text-tanque">{aprobarModal.cantidadSolicitada} galones</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Percentage Presets */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-acero">
+                Opciones rápidas de autorización
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCantidadAutorizada(String(aprobarModal.cantidadSolicitada))}
+                  className={`py-1.5 px-3 rounded text-xs font-semibold border transition-all ${
+                    Number(cantidadAutorizada) === Number(aprobarModal.cantidadSolicitada)
+                      ? 'bg-tanque text-white border-tanque'
+                      : 'bg-white text-tanque border-tanque/30 hover:bg-tanque/5'
+                  }`}
+                >
+                  100% ({aprobarModal.cantidadSolicitada} gal)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCantidadAutorizada(String(Number((aprobarModal.cantidadSolicitada * 0.75).toFixed(2))))}
+                  className={`py-1.5 px-3 rounded text-xs font-semibold border transition-all ${
+                    Number(cantidadAutorizada) === Number((aprobarModal.cantidadSolicitada * 0.75).toFixed(2))
+                      ? 'bg-tanque text-white border-tanque'
+                      : 'bg-white text-tanque border-tanque/30 hover:bg-tanque/5'
+                  }`}
+                >
+                  75% ({(aprobarModal.cantidadSolicitada * 0.75).toFixed(2)} gal)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCantidadAutorizada(String(Number((aprobarModal.cantidadSolicitada * 0.5).toFixed(2))))}
+                  className={`py-1.5 px-3 rounded text-xs font-semibold border transition-all ${
+                    Number(cantidadAutorizada) === Number((aprobarModal.cantidadSolicitada * 0.5).toFixed(2))
+                      ? 'bg-tanque text-white border-tanque'
+                      : 'bg-white text-tanque border-tanque/30 hover:bg-tanque/5'
+                  }`}
+                >
+                  50% ({(aprobarModal.cantidadSolicitada * 0.5).toFixed(2)} gal)
+                </button>
+              </div>
+            </div>
+
+            <Field
+              label="Cantidad autorizada definitiva (galones)"
+              required
+              hint={`No puede ser mayor a los ${aprobarModal.cantidadSolicitada} galones solicitados`}
+            >
               <input
                 type="number"
                 value={cantidadAutorizada}
                 onChange={(e) => setCantidadAutorizada(e.target.value)}
-                min="0.0001"
-                step="0.0001"
+                min="0.01"
+                max={aprobarModal.cantidadSolicitada}
+                step="0.01"
                 required
-                className={inputCls}
+                className={`${inputCls} font-mono text-base font-bold`}
               />
             </Field>
+
+            <div className="rounded-md border border-advertencia/40 bg-advertencia/10 p-3 text-xs text-tinta">
+              <span className="font-semibold block mb-0.5">Aviso de emisión:</span>
+              Al aprobar esta solicitud, quedará disponible para emisión de ticket. Asegúrese de que el volumen asignado sea el correcto.
+            </div>
+
             {actionError && <p className="text-sm text-peligro">{actionError}</p>}
+
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -350,8 +463,12 @@ export default function SolicitudesPage() {
               >
                 Cancelar
               </button>
-              <button type="submit" className="rounded-md bg-exito px-4 py-2 text-sm text-white hover:opacity-90">
-                Aprobar
+              <button
+                type="submit"
+                disabled={!cantidadAutorizada || Number(cantidadAutorizada) <= 0 || Number(cantidadAutorizada) > aprobarModal.cantidadSolicitada}
+                className="rounded-md bg-exito px-5 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              >
+                Confirmar y aprobar
               </button>
             </div>
           </form>
@@ -361,7 +478,13 @@ export default function SolicitudesPage() {
       {rechazarModal && (
         <Modal title="Rechazar solicitud" onClose={() => setRechazarModal(null)}>
           <form onSubmit={handleRechazar} className="space-y-4">
-            <Field label="Motivo de rechazo">
+            <div className="rounded-md border border-peligro/20 bg-peligro/5 p-3 text-xs text-tinta space-y-1">
+              <p><strong className="text-peligro">Solicitud #{rechazarModal.id}</strong></p>
+              <p>Empleado: <span className="font-medium">{rechazarModal.empleadoNombre}</span> · Vehículo: <span className="font-mono">{rechazarModal.vehiculoPlaca}</span></p>
+              <p>Volumen: <span className="font-medium">{rechazarModal.cantidadSolicitada} galones</span> de {rechazarModal.tipoCombustibleNombre}</p>
+            </div>
+
+            <Field label="Motivo de rechazo" required hint="Explique al solicitante por qué se deniega la autorización">
               <textarea
                 value={motivoRechazo}
                 onChange={(e) => setMotivoRechazo(e.target.value)}
@@ -369,10 +492,12 @@ export default function SolicitudesPage() {
                 maxLength={500}
                 rows={3}
                 className={inputCls}
-                placeholder="Indique el motivo..."
+                placeholder="Ej. Cuota mensual del departamento agotada, vehículo en mantenimiento..."
               />
             </Field>
+
             {actionError && <p className="text-sm text-peligro">{actionError}</p>}
+
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -381,8 +506,12 @@ export default function SolicitudesPage() {
               >
                 Cancelar
               </button>
-              <button type="submit" className="rounded-md bg-peligro px-4 py-2 text-sm text-white hover:opacity-90">
-                Rechazar
+              <button
+                type="submit"
+                disabled={!motivoRechazo.trim()}
+                className="rounded-md bg-peligro px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              >
+                Confirmar rechazo
               </button>
             </div>
           </form>

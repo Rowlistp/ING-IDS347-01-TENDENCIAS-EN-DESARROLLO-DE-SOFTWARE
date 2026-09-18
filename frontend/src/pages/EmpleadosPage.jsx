@@ -1,10 +1,19 @@
 import { useEffect, useState } from 'react'
-import Field, { inputCls } from '../components/Field'
+import Field, { inputCls, inputClsError } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
 import StatusBadge from '../components/StatusBadge'
 import { useDepartamentos } from '../hooks/useDepartamentos'
 import apiRequest from '../services/api'
+import {
+  validateCedula,
+  formatCedula,
+  validateTelefonoRD,
+  formatTelefonoRD,
+  validateEmail,
+  validateCodigoEmpleado,
+  validateTextoMinimo,
+} from '../utils/validators'
 
 const EMPTY_FORM = {
   codigo: '',
@@ -26,6 +35,7 @@ export default function EmpleadosPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [fieldErrors, setFieldErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
 
@@ -52,14 +62,61 @@ export default function EmpleadosPage() {
     return () => { cancelado = true }
   }, [])
 
+  function validateAllFields(f) {
+    const errs = {}
+    const codErr = validateCodigoEmpleado(f.codigo)
+    if (codErr) errs.codigo = codErr
+
+    const nomErr = validateTextoMinimo(f.nombreCompleto, 'El nombre completo', 3)
+    if (nomErr) errs.nombreCompleto = nomErr
+
+    const cedErr = validateCedula(f.cedula)
+    if (cedErr) errs.cedula = cedErr
+
+    const carErr = validateTextoMinimo(f.cargo, 'El cargo', 2)
+    if (carErr) errs.cargo = carErr
+
+    const corErr = validateEmail(f.correo)
+    if (corErr) errs.correo = corErr
+
+    const telErr = validateTelefonoRD(f.telefono)
+    if (telErr) errs.telefono = telErr
+
+    if (!f.departamentoId) {
+      errs.departamentoId = 'Debe seleccionar un departamento.'
+    }
+
+    setFieldErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
   function handleFormChange(e) {
     const { name, value, type, checked } = e.target
-    setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
+    const newVal = type === 'checkbox' ? checked : value
+    setForm((f) => ({ ...f, [name]: newVal }))
+
+    // Inline validation
+    if (name === 'codigo') {
+      setFieldErrors((prev) => ({ ...prev, codigo: validateCodigoEmpleado(newVal) }))
+    } else if (name === 'nombreCompleto') {
+      setFieldErrors((prev) => ({ ...prev, nombreCompleto: validateTextoMinimo(newVal, 'El nombre completo', 3) }))
+    } else if (name === 'cedula') {
+      setFieldErrors((prev) => ({ ...prev, cedula: validateCedula(newVal) }))
+    } else if (name === 'correo') {
+      setFieldErrors((prev) => ({ ...prev, correo: validateEmail(newVal) }))
+    } else if (name === 'telefono') {
+      setFieldErrors((prev) => ({ ...prev, telefono: validateTelefonoRD(newVal) }))
+    } else if (name === 'cargo') {
+      setFieldErrors((prev) => ({ ...prev, cargo: validateTextoMinimo(newVal, 'El cargo', 2) }))
+    } else if (name === 'departamentoId') {
+      setFieldErrors((prev) => ({ ...prev, departamentoId: newVal ? null : 'Debe seleccionar un departamento.' }))
+    }
   }
 
   function openCreate() {
     setEditingId(null)
     setForm(EMPTY_FORM)
+    setFieldErrors({})
     setFormError(null)
     setShowForm(true)
   }
@@ -76,6 +133,7 @@ export default function EmpleadosPage() {
       departamentoId: emp.departamentoId,
       activo: emp.activo,
     })
+    setFieldErrors({})
     setFormError(null)
     setShowForm(true)
   }
@@ -87,20 +145,25 @@ export default function EmpleadosPage() {
     form.cargo.trim() &&
     form.correo.trim() &&
     form.telefono.trim() &&
-    form.departamentoId
+    form.departamentoId &&
+    Object.values(fieldErrors).every((err) => !err)
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (!validateAllFields(form)) {
+      return
+    }
+
     setSubmitting(true)
     setFormError(null)
 
     const payload = {
-      codigo: form.codigo.trim(),
+      codigo: form.codigo.trim().toUpperCase(),
       nombreCompleto: form.nombreCompleto.trim(),
-      cedula: form.cedula.trim(),
+      cedula: form.cedula.replace(/[\s-]/g, ''),
       cargo: form.cargo.trim(),
-      correo: form.correo.trim(),
-      telefono: form.telefono.trim(),
+      correo: form.correo.trim().toLowerCase(),
+      telefono: form.telefono.replace(/[\s()+-]/g, ''),
       departamentoId: Number(form.departamentoId),
       activo: form.activo,
     }
@@ -179,24 +242,28 @@ export default function EmpleadosPage() {
                 </tr>
               )}
               {empleados.map((emp) => (
-                <tr key={emp.id} className="hover:bg-fondo">
-                  <td className="px-4 py-3 text-acero">{emp.codigo}</td>
-                  <td className="px-4 py-3 font-medium text-tinta">{emp.nombreCompleto}</td>
-                  <td className="px-4 py-3 text-acero">{emp.cedula}</td>
-                  <td className="px-4 py-3 text-acero">{emp.departamentoNombre}</td>
-                  <td className="px-4 py-3 text-acero">{emp.cargo}</td>
-                  <td className="px-4 py-3 text-acero">{emp.correo}</td>
-                  <td className="px-4 py-3 text-acero">{emp.telefono}</td>
-                  <td className="px-4 py-3">
+                <tr key={emp.id} className="hover:bg-fondo transition-colors">
+                  <td className="px-4 py-3.5 font-mono text-acero">{emp.codigo}</td>
+                  <td className="px-4 py-3.5 font-medium text-tinta">{emp.nombreCompleto}</td>
+                  <td className="px-4 py-3.5 font-mono text-acero">{formatCedula(emp.cedula)}</td>
+                  <td className="px-4 py-3.5 text-acero">{emp.departamentoNombre}</td>
+                  <td className="px-4 py-3.5 text-acero">{emp.cargo}</td>
+                  <td className="px-4 py-3.5 text-acero">{emp.correo}</td>
+                  <td className="px-4 py-3.5 font-mono text-acero">{formatTelefonoRD(emp.telefono)}</td>
+                  <td className="px-4 py-3.5">
                     <StatusBadge active={emp.activo} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5">
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => openEdit(emp)}
-                        className="rounded bg-tanque px-2 py-1 text-xs text-white hover:opacity-90"
+                        className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-acero/30 bg-white px-3 py-1.5 text-sm font-medium text-tinta transition-colors hover:border-tanque hover:bg-fondo"
                       >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                          <path d="m15 5 4 4" />
+                        </svg>
                         Editar
                       </button>
                       {emp.activo && (
@@ -204,8 +271,12 @@ export default function EmpleadosPage() {
                           type="button"
                           onClick={() => handleDeactivate(emp)}
                           disabled={deactivatingId === emp.id}
-                          className="rounded bg-peligro px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
+                          className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-peligro/30 bg-white px-3 py-1.5 text-sm font-medium text-peligro transition-colors hover:border-peligro hover:bg-peligro/10 disabled:opacity-50"
                         >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                          </svg>
                           {deactivatingId === emp.id ? 'Desactivando...' : 'Desactivar'}
                         </button>
                       )}
@@ -221,7 +292,12 @@ export default function EmpleadosPage() {
       {showForm && (
         <Modal title={editingId ? 'Editar empleado' : 'Nuevo empleado'} onClose={() => setShowForm(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Field label="Código">
+            <Field
+              label="Código de empleado"
+              required
+              error={fieldErrors.codigo}
+              hint="Formato oficial: EMP-0042 o similar"
+            >
               <input
                 type="text"
                 name="codigo"
@@ -229,10 +305,17 @@ export default function EmpleadosPage() {
                 onChange={handleFormChange}
                 required
                 maxLength={20}
-                className={inputCls}
+                placeholder="EMP-0042"
+                className={`${fieldErrors.codigo ? inputClsError : inputCls} font-mono`}
               />
             </Field>
-            <Field label="Nombre completo">
+
+            <Field
+              label="Nombre completo"
+              required
+              error={fieldErrors.nombreCompleto}
+              hint="Nombres y apellidos del empleado"
+            >
               <input
                 type="text"
                 name="nombreCompleto"
@@ -240,21 +323,34 @@ export default function EmpleadosPage() {
                 onChange={handleFormChange}
                 required
                 maxLength={150}
-                className={inputCls}
+                placeholder="Juan Carlos Pérez"
+                className={fieldErrors.nombreCompleto ? inputClsError : inputCls}
               />
             </Field>
-            <Field label="Cédula">
+
+            <Field
+              label="Cédula de Identidad"
+              required
+              error={fieldErrors.cedula}
+              hint="11 dígitos numéricos (ej: 001-1234567-8)"
+            >
               <input
                 type="text"
                 name="cedula"
                 value={form.cedula}
                 onChange={handleFormChange}
                 required
-                maxLength={20}
-                className={inputCls}
+                maxLength={15}
+                placeholder="00112345678"
+                className={`${fieldErrors.cedula ? inputClsError : inputCls} font-mono`}
               />
             </Field>
-            <Field label="Cargo">
+
+            <Field
+              label="Cargo / Puesto"
+              required
+              error={fieldErrors.cargo}
+            >
               <input
                 type="text"
                 name="cargo"
@@ -262,10 +358,17 @@ export default function EmpleadosPage() {
                 onChange={handleFormChange}
                 required
                 maxLength={100}
-                className={inputCls}
+                placeholder="Ej. Chofer de Operaciones"
+                className={fieldErrors.cargo ? inputClsError : inputCls}
               />
             </Field>
-            <Field label="Correo">
+
+            <Field
+              label="Correo electrónico corporativo"
+              required
+              error={fieldErrors.correo}
+              hint="Se utilizará para notificaciones de tickets de combustible"
+            >
               <input
                 type="email"
                 name="correo"
@@ -273,10 +376,17 @@ export default function EmpleadosPage() {
                 onChange={handleFormChange}
                 required
                 maxLength={150}
-                className={inputCls}
+                placeholder="jperez@empresa.com"
+                className={fieldErrors.correo ? inputClsError : inputCls}
               />
             </Field>
-            <Field label="Teléfono">
+
+            <Field
+              label="Teléfono móvil"
+              required
+              error={fieldErrors.telefono}
+              hint="Código de área dominicano: 809, 829 u 849"
+            >
               <input
                 type="text"
                 name="telefono"
@@ -284,18 +394,24 @@ export default function EmpleadosPage() {
                 onChange={handleFormChange}
                 required
                 maxLength={20}
-                className={inputCls}
+                placeholder="8095551234"
+                className={`${fieldErrors.telefono ? inputClsError : inputCls} font-mono`}
               />
             </Field>
-            <Field label="Departamento">
+
+            <Field
+              label="Departamento"
+              required
+              error={fieldErrors.departamentoId}
+            >
               <select
                 name="departamentoId"
                 value={form.departamentoId}
                 onChange={handleFormChange}
                 required
-                className={inputCls}
+                className={fieldErrors.departamentoId ? inputClsError : inputCls}
               >
-                <option value="">Seleccionar...</option>
+                <option value="">Seleccionar departamento...</option>
                 {departamentos.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.nombre}
@@ -305,9 +421,9 @@ export default function EmpleadosPage() {
             </Field>
 
             {editingId && (
-              <label className="flex items-center gap-2 text-sm text-tinta">
-                <input type="checkbox" name="activo" checked={form.activo} onChange={handleFormChange} />
-                Activo
+              <label className="flex items-center gap-2 text-sm text-tinta cursor-pointer">
+                <input type="checkbox" name="activo" checked={form.activo} onChange={handleFormChange} className="rounded text-tanque focus:ring-tanque" />
+                <span>Empleado activo en la organización</span>
               </label>
             )}
 
@@ -324,7 +440,7 @@ export default function EmpleadosPage() {
               <button
                 type="submit"
                 disabled={submitting || !requiredFieldsFilled}
-                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
+                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50 font-medium"
               >
                 {submitting ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear empleado'}
               </button>
