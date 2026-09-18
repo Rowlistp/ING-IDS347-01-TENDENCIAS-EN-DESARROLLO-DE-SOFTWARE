@@ -109,6 +109,7 @@ public sealed class TanquesController : ControllerBase
         tanque.Capacidad         = req.Capacidad;
         tanque.NivelCritico      = req.NivelCritico;
         tanque.TipoCombustibleId = req.TipoCombustibleId;
+        tanque.Activo            = req.Activo;
         await _db.SaveChangesAsync(ct);
 
         if (tipoCambio)

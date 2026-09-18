@@ -118,6 +118,7 @@ public sealed class VehiculosController : ControllerBase
         entity.CapacidadTanque = req.CapacidadTanque;
         entity.Odometro        = req.Odometro;
         entity.DepartamentoId  = req.DepartamentoId;
+        entity.Activo          = req.Activo;
         await _db.SaveChangesAsync(ct);
 
         if (entity.Departamento.Id != req.DepartamentoId)

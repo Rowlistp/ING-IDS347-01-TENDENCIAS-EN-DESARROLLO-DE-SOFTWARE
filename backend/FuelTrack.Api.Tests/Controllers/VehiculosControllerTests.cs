@@ -153,6 +153,42 @@ public sealed class VehiculosControllerTests
         Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
     }
 
+    // ── Update ──────────────────────────────────────────────────────────────
+
+    [TestMethod]
+    public async Task Update_Returns404_CuandoNoExiste()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var req = new SaveVehiculoRequest("H700001", "FV08", "Mazda", "BT-50",
+            2021, "Camioneta", dep.Id, 60m);
+        var result = await _controller.Update(999, req, CancellationToken.None);
+        Assert.IsInstanceOfType<NotFoundResult>(result.Result);
+    }
+
+    [TestMethod]
+    public async Task Update_PermiteReactivar_VehiculoDesactivado()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var veh = new Vehiculo
+        {
+            Placa = "H700001", Ficha = "FV08", Marca = "Mazda", Modelo = "BT-50",
+            Año = 2021, Tipo = "Camioneta", CapacidadTanque = 60, Odometro = 0,
+            Activo = false, DepartamentoId = dep.Id
+        };
+        _db.Vehiculos.Add(veh);
+        await _db.SaveChangesAsync();
+
+        var req = new SaveVehiculoRequest("H700001", "FV08", "Mazda", "BT-50",
+            2021, "Camioneta", dep.Id, 60m, Odometro: 0, Activo: true);
+        var result = await _controller.Update(veh.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as VehiculoDto;
+        Assert.IsTrue(dto!.Activo);
+
+        await _db.Entry(veh).ReloadAsync();
+        Assert.IsTrue(veh.Activo);
+    }
+
     // ── Deactivate ──────────────────────────────────────────────────────────
 
     [TestMethod]

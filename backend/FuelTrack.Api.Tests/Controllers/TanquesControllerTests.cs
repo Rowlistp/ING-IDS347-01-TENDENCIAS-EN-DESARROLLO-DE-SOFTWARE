@@ -261,6 +261,29 @@ public sealed class TanquesControllerTests
     }
 
     [TestMethod]
+    public async Task Update_PermiteReactivar_TanqueDesactivado()
+    {
+        var tipo = await CrearTipoCombustibleAsync();
+        var tanque = new Tanque
+        {
+            Identificacion = "T-01", Capacidad = 5000m,
+            NivelActual = 0, NivelCritico = 500m,
+            TipoCombustibleId = tipo.Id, Activo = false
+        };
+        _db.Tanques.Add(tanque);
+        await _db.SaveChangesAsync();
+
+        var req = new SaveTanqueRequest("T-01", 5000m, 500m, tipo.Id, Activo: true);
+        var result = await _controller.Update(tanque.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as TanqueDto;
+        Assert.IsTrue(dto!.Activo);
+
+        await _db.Entry(tanque).ReloadAsync();
+        Assert.IsTrue(tanque.Activo);
+    }
+
+    [TestMethod]
     public async Task GetById_NivelActual_ReflexaInventario_NoElCampoStale()
     {
         var tipo = await CrearTipoCombustibleAsync();
