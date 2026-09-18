@@ -137,8 +137,9 @@ public sealed class EmpleadosController : ControllerBase
             HttpContext.Connection.RemoteIpAddress?.ToString(),
             new { entity.Codigo, entity.DepartamentoId, entity.Activo }, ct);
 
-        if (entity.Departamento.Id != req.DepartamentoId)
-            await _db.Entry(entity).Reference(e => e.Departamento).LoadAsync(ct);
+        await _db.Entry(entity)
+    .Reference(e => e.Departamento)
+    .LoadAsync(ct);
 
         return Ok(new EmpleadoDto(
             entity.Id, entity.Codigo, entity.NombreCompleto, entity.Cedula, entity.Cargo,
