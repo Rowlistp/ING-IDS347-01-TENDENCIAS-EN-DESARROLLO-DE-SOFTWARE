@@ -1,4 +1,4 @@
-import { getToken } from './auth'
+import { getToken, clearSession } from './auth'
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -19,6 +19,12 @@ export async function apiRequest(endpoint, options = {}) {
   })
 
   if (!response.ok) {
+    if (response.status === 401 && endpoint !== '/auth/login') {
+      clearSession()
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+    }
     const error = await response.json().catch(() => ({}))
     throw new Error(error.message || `Error ${response.status}`)
   }
@@ -40,6 +46,12 @@ export async function apiDownload(endpoint) {
   const response = await fetch(`${API_URL}${endpoint}`, { headers })
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearSession()
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+    }
     const error = await response.json().catch(() => ({}))
     throw new Error(error.message || `Error ${response.status}`)
   }
