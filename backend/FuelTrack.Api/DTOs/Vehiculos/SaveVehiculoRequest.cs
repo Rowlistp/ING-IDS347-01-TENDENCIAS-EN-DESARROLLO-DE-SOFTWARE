@@ -11,5 +11,6 @@ public record SaveVehiculoRequest(
     [Required, MaxLength(50)]  string Tipo,
     [Required]                 int DepartamentoId,
     [Range(0.0001, 9999.9999)] decimal CapacidadTanque,
-    decimal Odometro = 0
+    decimal Odometro = 0,
+    bool? Activo = null
 );

@@ -9,7 +9,7 @@ import { useDepartamentos } from '../hooks/useDepartamentos'
 import { useEmpleados } from '../hooks/useEmpleados'
 import { useVehiculos } from '../hooks/useVehiculos'
 import apiRequest from '../services/api'
-import { canApproveRequests, isReadOnlyRole } from '../utils/rbac'
+import { canApproveRequests, isReadOnlyRole, ROLES } from '../utils/rbac'
 
 const ESTADO_VARIANT = {
   Pendiente: 'yellow',
@@ -39,9 +39,9 @@ export default function SolicitudesPage() {
   const [error, setError] = useState(null)
 
   const isSolicitanteOnly =
-    user?.roles?.includes('Solicitante') &&
-    !user?.roles?.includes('Administrador') &&
-    !user?.roles?.includes('Supervisor')
+    user?.roles?.includes(ROLES.SOLICITANTE) &&
+    !user?.roles?.includes(ROLES.ADMINISTRADOR) &&
+    !user?.roles?.includes(ROLES.SUPERVISOR)
   const miEmpleado = empleados.find((e) => e.usuarioId === user?.usuarioId)
 
   const [showCreate, setShowCreate] = useState(false)

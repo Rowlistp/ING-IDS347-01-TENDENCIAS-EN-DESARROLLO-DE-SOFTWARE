@@ -1,7 +1,10 @@
+using System.Security.Claims;
 using FuelTrack.Api.Controllers;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Tanques;
 using FuelTrack.Api.Models;
+using FuelTrack.Api.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +17,7 @@ public sealed class TanquesControllerTests
     private SqliteConnection _connection = null!;
     private AppDbContext _db = null!;
     private TanquesController _controller = null!;
+    private int _usuarioActorId;
 
     [TestInitialize]
     public async Task Setup()
@@ -25,7 +29,21 @@ public sealed class TanquesControllerTests
             .Options;
         _db = new AppDbContext(options);
         await _db.Database.EnsureCreatedAsync();
-        _controller = new TanquesController(_db);
+        var usuarioActor = new Usuario { NombreUsuario = "test.actor", PasswordHash = "hash", Activo = true };
+        _db.Usuarios.Add(usuarioActor);
+        await _db.SaveChangesAsync();
+        _usuarioActorId = usuarioActor.Id;
+        _controller = new TanquesController(_db, new AuditService(_db))
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString())], "Test"))
+                }
+            }
+        };
     }
 
     [TestCleanup]
@@ -81,6 +99,19 @@ public sealed class TanquesControllerTests
         Assert.IsNotNull(inventario);
         Assert.AreEqual(0m, inventario.ExistenciaActual);
         Assert.AreEqual(0m, inventario.Disponibilidad);
+    }
+
+    [TestMethod]
+    public async Task Create_RegistraAuditoria()
+    {
+        var tipo = await CrearTipoCombustibleAsync();
+        var req = new SaveTanqueRequest("T-01", 5000m, 500m, tipo.Id);
+        await _controller.Create(req, CancellationToken.None);
+
+        var auditoria = await _db.Auditorias.FirstOrDefaultAsync(a => a.Evento == "TANQUE_CREADO");
+        Assert.IsNotNull(auditoria);
+        Assert.AreEqual("Tanque", auditoria.EntidadAfectada);
+        Assert.AreEqual(_usuarioActorId, auditoria.UsuarioId);
     }
 
     [TestMethod]
@@ -258,6 +289,110 @@ public sealed class TanquesControllerTests
         var req = new SaveTanqueRequest("T-01", 5000m, 500m, 999);
         var result = await _controller.Update(tanque.Id, req, CancellationToken.None);
         Assert.IsInstanceOfType<BadRequestObjectResult>(result.Result);
+    }
+
+    [TestMethod]
+    public async Task Update_PermiteReactivar_TanqueDesactivado()
+    {
+        var tipo = await CrearTipoCombustibleAsync();
+        var tanque = new Tanque
+        {
+            Identificacion = "T-01", Capacidad = 5000m,
+            NivelActual = 0, NivelCritico = 500m,
+            TipoCombustibleId = tipo.Id, Activo = false
+        };
+        _db.Tanques.Add(tanque);
+        await _db.SaveChangesAsync();
+
+        var req = new SaveTanqueRequest("T-01", 5000m, 500m, tipo.Id, Activo: true);
+        var result = await _controller.Update(tanque.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as TanqueDto;
+        Assert.IsTrue(dto!.Activo);
+
+        await _db.Entry(tanque).ReloadAsync();
+        Assert.IsTrue(tanque.Activo);
+    }
+
+    [TestMethod]
+    public async Task Update_NoTocaActivo_CuandoElCampoNoVieneEnElRequest()
+    {
+        // Regresión: un caller (como el frontend actual, que no envía "activo" en el
+        // payload de edición) no debe reactivar ni desactivar el tanque sin querer.
+        var tipo = await CrearTipoCombustibleAsync();
+        var tanque = new Tanque
+        {
+            Identificacion = "T-01", Capacidad = 5000m,
+            NivelActual = 0, NivelCritico = 500m,
+            TipoCombustibleId = tipo.Id, Activo = false
+        };
+        _db.Tanques.Add(tanque);
+        await _db.SaveChangesAsync();
+
+        var req = new SaveTanqueRequest("T-01-MOD", 5000m, 500m, tipo.Id);
+        var result = await _controller.Update(tanque.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as TanqueDto;
+        Assert.IsFalse(dto!.Activo);
+
+        await _db.Entry(tanque).ReloadAsync();
+        Assert.IsFalse(tanque.Activo);
+    }
+
+    [TestMethod]
+    public async Task Update_Returns409_CuandoDesactivaConInventarioConStock()
+    {
+        var tipo = await CrearTipoCombustibleAsync();
+        var tanque = new Tanque
+        {
+            Identificacion = "T-STOCK", Capacidad = 5000m,
+            NivelActual = 1000m, NivelCritico = 500m,
+            TipoCombustibleId = tipo.Id, Activo = true
+        };
+        _db.Tanques.Add(tanque);
+        await _db.SaveChangesAsync();
+        _db.Inventarios.Add(new Inventario
+        {
+            TanqueId = tanque.Id, ExistenciaActual = 1000m,
+            Disponibilidad = 1000m, UltimaActualizacion = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        var req = new SaveTanqueRequest("T-STOCK", 5000m, 500m, tipo.Id, Activo: false);
+        var result = await _controller.Update(tanque.Id, req, CancellationToken.None);
+        var conflict = result.Result as ConflictObjectResult;
+        Assert.IsNotNull(conflict, "Esperaba 409 Conflict");
+
+        var code = conflict.Value!.GetType().GetProperty("code")?.GetValue(conflict.Value)?.ToString();
+        Assert.AreEqual("TANQUE_CON_INVENTARIO", code);
+
+        await _db.Entry(tanque).ReloadAsync();
+        Assert.IsTrue(tanque.Activo);
+    }
+
+    [TestMethod]
+    public async Task Update_PermiteEditarDatos_SinDesactivar_AunConInventario()
+    {
+        var tipo = await CrearTipoCombustibleAsync();
+        var tanque = new Tanque
+        {
+            Identificacion = "T-STOCK2", Capacidad = 5000m,
+            NivelActual = 1000m, NivelCritico = 500m,
+            TipoCombustibleId = tipo.Id, Activo = true
+        };
+        _db.Tanques.Add(tanque);
+        await _db.SaveChangesAsync();
+        _db.Inventarios.Add(new Inventario
+        {
+            TanqueId = tanque.Id, ExistenciaActual = 1000m,
+            Disponibilidad = 1000m, UltimaActualizacion = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        var req = new SaveTanqueRequest("T-STOCK2-MOD", 6000m, 500m, tipo.Id, Activo: true);
+        var result = await _controller.Update(tanque.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        Assert.IsNotNull(ok);
     }
 
     [TestMethod]

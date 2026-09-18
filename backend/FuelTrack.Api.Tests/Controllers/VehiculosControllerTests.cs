@@ -1,8 +1,11 @@
+using System.Security.Claims;
 using FuelTrack.Api.Controllers;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Vehiculos;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
+using FuelTrack.Api.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +18,7 @@ public sealed class VehiculosControllerTests
     private SqliteConnection _connection = null!;
     private AppDbContext _db = null!;
     private VehiculosController _controller = null!;
+    private int _usuarioActorId;
 
     [TestInitialize]
     public async Task Setup()
@@ -26,7 +30,21 @@ public sealed class VehiculosControllerTests
             .Options;
         _db = new AppDbContext(options);
         await _db.Database.EnsureCreatedAsync();
-        _controller = new VehiculosController(_db);
+        var usuarioActor = new Usuario { NombreUsuario = "test.actor", PasswordHash = "hash", Activo = true };
+        _db.Usuarios.Add(usuarioActor);
+        await _db.SaveChangesAsync();
+        _usuarioActorId = usuarioActor.Id;
+        _controller = new VehiculosController(_db, new AuditService(_db))
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString())], "Test"))
+                }
+            }
+        };
     }
 
     [TestCleanup]
@@ -127,6 +145,20 @@ public sealed class VehiculosControllerTests
     }
 
     [TestMethod]
+    public async Task Create_RegistraAuditoria()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var req = new SaveVehiculoRequest("D300001", "FV03", "Toyota", "Hilux",
+            2022, "Camioneta", dep.Id, 60m);
+        await _controller.Create(req, CancellationToken.None);
+
+        var auditoria = await _db.Auditorias.FirstOrDefaultAsync(a => a.Evento == "VEHICULO_CREADO");
+        Assert.IsNotNull(auditoria);
+        Assert.AreEqual("Vehiculo", auditoria.EntidadAfectada);
+        Assert.AreEqual(_usuarioActorId, auditoria.UsuarioId);
+    }
+
+    [TestMethod]
     public async Task Create_Returns400_CuandoDepartamentoNoExiste()
     {
         var req = new SaveVehiculoRequest("E400001", "FV04", "Honda", "CRV",
@@ -151,6 +183,117 @@ public sealed class VehiculosControllerTests
             2022, "Sedan", dep.Id, 40m);
         var result = await _controller.Create(req, CancellationToken.None);
         Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
+    }
+
+    // ── Update ──────────────────────────────────────────────────────────────
+
+    [TestMethod]
+    public async Task Update_Returns404_CuandoNoExiste()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var req = new SaveVehiculoRequest("H700001", "FV08", "Mazda", "BT-50",
+            2021, "Camioneta", dep.Id, 60m);
+        var result = await _controller.Update(999, req, CancellationToken.None);
+        Assert.IsInstanceOfType<NotFoundResult>(result.Result);
+    }
+
+    [TestMethod]
+    public async Task Update_PermiteReactivar_VehiculoDesactivado()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var veh = new Vehiculo
+        {
+            Placa = "H700001", Ficha = "FV08", Marca = "Mazda", Modelo = "BT-50",
+            Año = 2021, Tipo = "Camioneta", CapacidadTanque = 60, Odometro = 0,
+            Activo = false, DepartamentoId = dep.Id
+        };
+        _db.Vehiculos.Add(veh);
+        await _db.SaveChangesAsync();
+
+        var req = new SaveVehiculoRequest("H700001", "FV08", "Mazda", "BT-50",
+            2021, "Camioneta", dep.Id, 60m, Odometro: 0, Activo: true);
+        var result = await _controller.Update(veh.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as VehiculoDto;
+        Assert.IsTrue(dto!.Activo);
+
+        await _db.Entry(veh).ReloadAsync();
+        Assert.IsTrue(veh.Activo);
+    }
+
+    [TestMethod]
+    public async Task Update_NoTocaActivo_CuandoElCampoNoVieneEnElRequest()
+    {
+        // Regresión: un caller (como el frontend actual, que no envía "activo" en el
+        // payload de edición) no debe reactivar ni desactivar el vehículo sin querer.
+        var dep = await CrearDepartamentoAsync();
+        var veh = new Vehiculo
+        {
+            Placa = "J900001", Ficha = "FV09", Marca = "Toyota", Modelo = "Hilux",
+            Año = 2021, Tipo = "Camioneta", CapacidadTanque = 60, Odometro = 0,
+            Activo = false, DepartamentoId = dep.Id
+        };
+        _db.Vehiculos.Add(veh);
+        await _db.SaveChangesAsync();
+
+        var req = new SaveVehiculoRequest("J900001", "FV09", "Toyota", "Hilux MOD",
+            2021, "Camioneta", dep.Id, 60m);
+        var result = await _controller.Update(veh.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as VehiculoDto;
+        Assert.IsFalse(dto!.Activo);
+
+        await _db.Entry(veh).ReloadAsync();
+        Assert.IsFalse(veh.Activo);
+    }
+
+    [TestMethod]
+    public async Task Update_Returns409_CuandoDesactivaConSolicitudPendiente()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (emp, veh, tipo) = await CrearDependenciasAsync(dep);
+
+        _db.SolicitudesCombustible.Add(new SolicitudCombustible
+        {
+            CantidadSolicitada = 40m, TipoSolicitud = "Manual",
+            Estado = EstadoSolicitud.Pendiente, FechaSolicitud = DateTime.UtcNow,
+            EmpleadoId = emp.Id, VehiculoId = veh.Id,
+            DepartamentoId = dep.Id, TipoCombustibleId = tipo.Id
+        });
+        await _db.SaveChangesAsync();
+
+        var req = new SaveVehiculoRequest(veh.Placa, veh.Ficha, veh.Marca, veh.Modelo,
+            veh.Año, veh.Tipo, dep.Id, veh.CapacidadTanque, Odometro: 0, Activo: false);
+        var result = await _controller.Update(veh.Id, req, CancellationToken.None);
+        var conflict = result.Result as ConflictObjectResult;
+        Assert.IsNotNull(conflict, "Esperaba 409 Conflict");
+
+        var code = conflict.Value!.GetType().GetProperty("code")?.GetValue(conflict.Value)?.ToString();
+        Assert.AreEqual("VEHICULO_CON_SOLICITUDES_ACTIVAS", code);
+
+        await _db.Entry(veh).ReloadAsync();
+        Assert.IsTrue(veh.Activo);
+    }
+
+    [TestMethod]
+    public async Task Update_PermiteEditarDatos_SinDesactivar_AunConSolicitudPendiente()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (emp, veh, tipo) = await CrearDependenciasAsync(dep);
+
+        _db.SolicitudesCombustible.Add(new SolicitudCombustible
+        {
+            CantidadSolicitada = 40m, TipoSolicitud = "Manual",
+            Estado = EstadoSolicitud.Pendiente, FechaSolicitud = DateTime.UtcNow,
+            EmpleadoId = emp.Id, VehiculoId = veh.Id,
+            DepartamentoId = dep.Id, TipoCombustibleId = tipo.Id
+        });
+        await _db.SaveChangesAsync();
+
+        var req = new SaveVehiculoRequest(veh.Placa, veh.Ficha, veh.Marca, "Ranger XL",
+            veh.Año, veh.Tipo, dep.Id, veh.CapacidadTanque, Odometro: 0, Activo: true);
+        var result = await _controller.Update(veh.Id, req, CancellationToken.None);
+        Assert.IsInstanceOfType<OkObjectResult>(result.Result);
     }
 
     // ── Deactivate ──────────────────────────────────────────────────────────

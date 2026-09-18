@@ -1,8 +1,10 @@
+using System.Security.Claims;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Vehiculos;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Security;
+using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,8 +17,16 @@ namespace FuelTrack.Api.Controllers;
 public sealed class VehiculosController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly AuditService _audit;
 
-    public VehiculosController(AppDbContext db) => _db = db;
+    public VehiculosController(AppDbContext db, AuditService audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
+
+    private bool TryGetCurrentUserId(out int userId)
+        => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 
     [HttpGet]
     public async Task<ActionResult<List<VehiculoDto>>> GetAll(CancellationToken ct)
@@ -51,6 +61,8 @@ public sealed class VehiculosController : ControllerBase
     public async Task<ActionResult<VehiculoDto>> Create(
         SaveVehiculoRequest req, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
+
         if (!await _db.Departamentos.AnyAsync(d => d.Id == req.DepartamentoId, ct))
             return BadRequest(new { code = "DEPARTAMENTO_NOT_FOUND",
                 message = "El departamento no existe." });
@@ -80,6 +92,10 @@ public sealed class VehiculosController : ControllerBase
         await _db.SaveChangesAsync(ct);
         await _db.Entry(entity).Reference(v => v.Departamento).LoadAsync(ct);
 
+        await _audit.WriteAsync("VEHICULO_CREADO", "Vehiculo", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            new { entity.Placa, entity.DepartamentoId, entity.Activo }, ct);
+
         var dto = new VehiculoDto(
             entity.Id, entity.Placa, entity.Ficha, entity.Marca, entity.Modelo, entity.Año,
             entity.Tipo, entity.CapacidadTanque, entity.Odometro,
@@ -92,6 +108,8 @@ public sealed class VehiculosController : ControllerBase
     public async Task<ActionResult<VehiculoDto>> Update(
         int id, SaveVehiculoRequest req, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
+
         var entity = await _db.Vehiculos
             .Include(v => v.Departamento)
             .FirstOrDefaultAsync(v => v.Id == id, ct);
@@ -109,6 +127,14 @@ public sealed class VehiculosController : ControllerBase
             return Conflict(new { code = "FICHA_DUPLICADA",
                 message = "La ficha ya está registrada." });
 
+        if (entity.Activo && req.Activo == false && await _db.SolicitudesCombustible.AnyAsync(s => s.VehiculoId == id &&
+            (s.Estado == EstadoSolicitud.Pendiente || s.Estado == EstadoSolicitud.Aprobada), ct))
+            return Conflict(new
+            {
+                code = "VEHICULO_CON_SOLICITUDES_ACTIVAS",
+                message = "No se puede desactivar el vehículo porque tiene solicitudes pendientes o aprobadas."
+            });
+
         entity.Placa           = req.Placa;
         entity.Ficha           = req.Ficha;
         entity.Marca           = req.Marca;
@@ -118,7 +144,12 @@ public sealed class VehiculosController : ControllerBase
         entity.CapacidadTanque = req.CapacidadTanque;
         entity.Odometro        = req.Odometro;
         entity.DepartamentoId  = req.DepartamentoId;
+        if (req.Activo.HasValue) entity.Activo = req.Activo.Value;
         await _db.SaveChangesAsync(ct);
+
+        await _audit.WriteAsync("VEHICULO_ACTUALIZADO", "Vehiculo", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            new { entity.Placa, entity.DepartamentoId, entity.Activo }, ct);
 
         if (entity.Departamento.Id != req.DepartamentoId)
             await _db.Entry(entity).Reference(v => v.Departamento).LoadAsync(ct);
@@ -133,6 +164,8 @@ public sealed class VehiculosController : ControllerBase
     [Authorize(Roles = Roles.Administrador)]
     public async Task<IActionResult> Deactivate(int id, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
+
         var entity = await _db.Vehiculos.FindAsync([id], ct);
         if (entity is null) return NotFound();
 
@@ -146,6 +179,10 @@ public sealed class VehiculosController : ControllerBase
 
         entity.Activo = false;
         await _db.SaveChangesAsync(ct);
+
+        await _audit.WriteAsync("VEHICULO_DESACTIVADO", "Vehiculo", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(), null, ct);
+
         return NoContent();
     }
 }

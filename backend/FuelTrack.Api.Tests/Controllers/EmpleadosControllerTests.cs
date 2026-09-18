@@ -1,8 +1,11 @@
+using System.Security.Claims;
 using FuelTrack.Api.Controllers;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Empleados;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
+using FuelTrack.Api.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +18,7 @@ public sealed class EmpleadosControllerTests
     private SqliteConnection _connection = null!;
     private AppDbContext _db = null!;
     private EmpleadosController _controller = null!;
+    private int _usuarioActorId;
 
     [TestInitialize]
     public async Task Setup()
@@ -26,7 +30,21 @@ public sealed class EmpleadosControllerTests
             .Options;
         _db = new AppDbContext(options);
         await _db.Database.EnsureCreatedAsync();
-        _controller = new EmpleadosController(_db);
+        var usuarioActor = new Usuario { NombreUsuario = "test.actor", PasswordHash = "hash", Activo = true };
+        _db.Usuarios.Add(usuarioActor);
+        await _db.SaveChangesAsync();
+        _usuarioActorId = usuarioActor.Id;
+        _controller = new EmpleadosController(_db, new AuditService(_db))
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString())], "Test"))
+                }
+            }
+        };
     }
 
     [TestCleanup]
@@ -124,6 +142,20 @@ public sealed class EmpleadosControllerTests
         Assert.AreEqual(201, created.StatusCode);
         var dto = created.Value as EmpleadoDto;
         Assert.AreEqual("EMP-001", dto!.Codigo);
+    }
+
+    [TestMethod]
+    public async Task Create_RegistraAuditoria()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var req = new SaveEmpleadoRequest("EMP-001", "María González", "001-0000003-3",
+            "Analista", "maria@test.com", "809-000-0003", dep.Id);
+        await _controller.Create(req, CancellationToken.None);
+
+        var auditoria = await _db.Auditorias.FirstOrDefaultAsync(a => a.Evento == "EMPLEADO_CREADO");
+        Assert.IsNotNull(auditoria);
+        Assert.AreEqual("Empleado", auditoria.EntidadAfectada);
+        Assert.AreEqual(_usuarioActorId, auditoria.UsuarioId);
     }
 
     [TestMethod]

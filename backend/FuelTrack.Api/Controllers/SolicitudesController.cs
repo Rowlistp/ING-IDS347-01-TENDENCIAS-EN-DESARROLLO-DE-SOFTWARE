@@ -15,51 +15,55 @@ namespace FuelTrack.Api.Controllers;
 [Authorize]
 public sealed class SolicitudesController : ControllerBase
 {
+    private static readonly string[] OperationalRoles =
+        [Roles.Administrador, Roles.Supervisor, Roles.Despachador, Roles.Auditor, Roles.Consulta];
+
     private readonly AppDbContext _db;
     public SolicitudesController(AppDbContext db) => _db = db;
 
     [HttpGet]
     public async Task<ActionResult<List<SolicitudDto>>> GetAll(CancellationToken ct)
     {
-        var query = _db.SolicitudesCombustible
+        if (!TryGetCurrentUserId(out var actorId))
+            return Unauthorized();
+        var ownerFilter = OwnerFilter(actorId);
+
+        var list = await _db.SolicitudesCombustible
             .AsNoTracking()
             .Include(s => s.Empleado)
             .Include(s => s.Vehiculo)
             .Include(s => s.Departamento)
             .Include(s => s.TipoCombustible)
-            .AsQueryable();
-
-        if (TryGetCurrentUserId(out var actorId))
-        {
-            var ownerId = OwnerFilter(actorId);
-            if (ownerId.HasValue)
-                query = query.Where(s => s.Empleado.UsuarioId == ownerId.Value);
-        }
-
-        var list = await query.ToListAsync(ct);
+            .Where(s => ownerFilter == null || s.Empleado.UsuarioId == ownerFilter)
+            .ToListAsync(ct);
         return Ok(list.ConvertAll(ToDto));
     }
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<SolicitudDto>> GetById(int id, CancellationToken ct)
     {
-        var query = _db.SolicitudesCombustible
+        if (!TryGetCurrentUserId(out var actorId))
+            return Unauthorized();
+        var ownerFilter = OwnerFilter(actorId);
+
+        var s = await _db.SolicitudesCombustible
             .AsNoTracking()
             .Include(s => s.Empleado)
             .Include(s => s.Vehiculo)
             .Include(s => s.Departamento)
             .Include(s => s.TipoCombustible)
-            .AsQueryable();
-
-        if (TryGetCurrentUserId(out var actorId))
-        {
-            var ownerId = OwnerFilter(actorId);
-            if (ownerId.HasValue)
-                query = query.Where(s => s.Empleado.UsuarioId == ownerId.Value);
-        }
-
-        var s = await query.FirstOrDefaultAsync(s => s.Id == id, ct);
+            .Where(s => ownerFilter == null || s.Empleado.UsuarioId == ownerFilter)
+            .FirstOrDefaultAsync(s => s.Id == id, ct);
         return s is null ? NotFound() : Ok(ToDto(s));
+    }
+
+    private int? OwnerFilter(int actorId)
+        => User is not null && OperationalRoles.Any(User.IsInRole) ? null : actorId;
+
+    private bool TryGetCurrentUserId(out int userId)
+    {
+        userId = 0;
+        return User is not null && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
     }
 
     [HttpPost]
@@ -168,16 +172,4 @@ public sealed class SolicitudesController : ControllerBase
         s.VehiculoId, s.Vehiculo.Placa,
         s.DepartamentoId, s.Departamento.Nombre,
         s.TipoCombustibleId, s.TipoCombustible.Nombre);
-
-    private const string OperationalRoles =
-        $"{Roles.Administrador},{Roles.Supervisor},{Roles.Despachador},{Roles.Auditor}";
-
-    private int? OwnerFilter(int actorId)
-        => User is not null && OperationalRoles.Split(',').Any(User.IsInRole) ? null : actorId;
-
-    private bool TryGetCurrentUserId(out int userId)
-    {
-        userId = 0;
-        return User is not null && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
-    }
 }

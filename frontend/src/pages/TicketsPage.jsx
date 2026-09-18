@@ -7,7 +7,7 @@ import StatusBadge from '../components/StatusBadge'
 import { useAuth } from '../hooks/useAuth'
 import apiRequest, { apiDownload } from '../services/api'
 import { getSequentialFilename, downloadBlob } from '../utils/download'
-import { canEmitTickets } from '../utils/rbac'
+import { canEmitTickets, ROLES } from '../utils/rbac'
 
 const ESTADO_LABEL = {
   Creado: 'Creado',
@@ -47,11 +47,11 @@ export default function TicketsPage() {
   const [successMessage, setSuccessMessage] = useState(null)
 
   const isSolicitanteOnly =
-    user?.roles?.includes('Solicitante') &&
-    !user?.roles?.includes('Administrador') &&
-    !user?.roles?.includes('Supervisor') &&
-    !user?.roles?.includes('Despachador') &&
-    !user?.roles?.includes('Auditor')
+    user?.roles?.includes(ROLES.SOLICITANTE) &&
+    !user?.roles?.includes(ROLES.ADMINISTRADOR) &&
+    !user?.roles?.includes(ROLES.SUPERVISOR) &&
+    !user?.roles?.includes(ROLES.DESPACHADOR) &&
+    !user?.roles?.includes(ROLES.AUDITOR)
 
   const [solicitudesAprobadas, setSolicitudesAprobadas] = useState([])
   const [showEmitModal, setShowEmitModal] = useState(false)
@@ -297,7 +297,7 @@ export default function TicketsPage() {
             },
           ]}
           actions={(t) => (
-            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
                 onClick={() => setDetailTicket(t)}
@@ -324,6 +324,31 @@ export default function TicketsPage() {
                 </svg>
                 {downloadingId === t.id ? 'Descargando…' : 'PDF'}
               </button>
+              {ESTADOS_NO_TERMINALES.includes(t.estado) && canEmit && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleEnviar(t)}
+                    disabled={sendingId === t.id}
+                    className="inline-flex min-h-[38px] items-center gap-1 rounded-md border border-acero/30 bg-white px-2.5 py-1.5 text-xs font-semibold text-tinta hover:border-tanque hover:bg-fondo transition-colors disabled:opacity-50 shadow-xs"
+                    title="Enviar notificación"
+                  >
+                    {sendingId === t.id ? 'Enviando…' : 'Enviar'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAnularModal({ id: t.id })
+                      setMotivoAnulacion('')
+                      setAnularError(null)
+                    }}
+                    className="inline-flex min-h-[38px] items-center gap-1 rounded-md border border-peligro/30 bg-white px-2.5 py-1.5 text-xs font-semibold text-peligro hover:bg-peligro/10 transition-colors shadow-xs"
+                    title="Anular ticket"
+                  >
+                    Anular
+                  </button>
+                </>
+              )}
             </div>
           )}
           emptyMessage="Sin tickets emitidos."

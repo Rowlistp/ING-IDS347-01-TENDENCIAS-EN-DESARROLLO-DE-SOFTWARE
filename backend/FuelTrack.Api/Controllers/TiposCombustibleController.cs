@@ -1,8 +1,10 @@
+using System.Security.Claims;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.TiposCombustible;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Security;
+using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,8 +17,16 @@ namespace FuelTrack.Api.Controllers;
 public sealed class TiposCombustibleController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly AuditService _audit;
 
-    public TiposCombustibleController(AppDbContext db) => _db = db;
+    public TiposCombustibleController(AppDbContext db, AuditService audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
+
+    private bool TryGetCurrentUserId(out int userId)
+        => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 
     [HttpGet]
     public async Task<ActionResult<List<TipoCombustibleDto>>> GetAll(CancellationToken ct)
@@ -42,6 +52,8 @@ public sealed class TiposCombustibleController : ControllerBase
     public async Task<ActionResult<TipoCombustibleDto>> Create(
         SaveTipoCombustibleRequest req, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
+
         if (await _db.TiposCombustible.AnyAsync(t => t.Nombre == req.Nombre, ct))
             return Conflict(new { code = "NOMBRE_DUPLICADO",
                 message = "Ya existe un tipo de combustible con ese nombre." });
@@ -49,6 +61,10 @@ public sealed class TiposCombustibleController : ControllerBase
         var entity = new TipoCombustible { Nombre = req.Nombre, Activo = req.Activo };
         _db.TiposCombustible.Add(entity);
         await _db.SaveChangesAsync(ct);
+
+        await _audit.WriteAsync("TIPO_COMBUSTIBLE_CREADO", "TipoCombustible", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(), new { entity.Nombre, entity.Activo }, ct);
+
         var dto = new TipoCombustibleDto(entity.Id, entity.Nombre, entity.Activo);
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, dto);
     }
@@ -58,6 +74,8 @@ public sealed class TiposCombustibleController : ControllerBase
     public async Task<ActionResult<TipoCombustibleDto>> Update(
         int id, SaveTipoCombustibleRequest req, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
+
         var entity = await _db.TiposCombustible.FindAsync([id], ct);
         if (entity is null) return NotFound();
 
@@ -68,6 +86,10 @@ public sealed class TiposCombustibleController : ControllerBase
         entity.Nombre = req.Nombre;
         entity.Activo = req.Activo;
         await _db.SaveChangesAsync(ct);
+
+        await _audit.WriteAsync("TIPO_COMBUSTIBLE_ACTUALIZADO", "TipoCombustible", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(), new { entity.Nombre, entity.Activo }, ct);
+
         return Ok(new TipoCombustibleDto(entity.Id, entity.Nombre, entity.Activo));
     }
 
@@ -75,6 +97,8 @@ public sealed class TiposCombustibleController : ControllerBase
     [Authorize(Roles = Roles.Administrador)]
     public async Task<IActionResult> Deactivate(int id, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
+
         var entity = await _db.TiposCombustible.FindAsync([id], ct);
         if (entity is null) return NotFound();
 
@@ -105,6 +129,10 @@ public sealed class TiposCombustibleController : ControllerBase
 
         entity.Activo = false;
         await _db.SaveChangesAsync(ct);
+
+        await _audit.WriteAsync("TIPO_COMBUSTIBLE_DESACTIVADO", "TipoCombustible", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(), null, ct);
+
         return NoContent();
     }
 }

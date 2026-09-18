@@ -1,8 +1,11 @@
+using System.Security.Claims;
 using FuelTrack.Api.Controllers;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.TiposCombustible;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
+using FuelTrack.Api.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +18,7 @@ public sealed class TiposCombustibleControllerTests
     private SqliteConnection _connection = null!;
     private AppDbContext _db = null!;
     private TiposCombustibleController _controller = null!;
+    private int _usuarioActorId;
 
     [TestInitialize]
     public async Task Setup()
@@ -26,7 +30,21 @@ public sealed class TiposCombustibleControllerTests
             .Options;
         _db = new AppDbContext(options);
         await _db.Database.EnsureCreatedAsync();
-        _controller = new TiposCombustibleController(_db);
+        var usuarioActor = new Usuario { NombreUsuario = "test.actor", PasswordHash = "hash", Activo = true };
+        _db.Usuarios.Add(usuarioActor);
+        await _db.SaveChangesAsync();
+        _usuarioActorId = usuarioActor.Id;
+        _controller = new TiposCombustibleController(_db, new AuditService(_db))
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString())], "Test"))
+                }
+            }
+        };
     }
 
     [TestCleanup]
@@ -93,6 +111,18 @@ public sealed class TiposCombustibleControllerTests
         Assert.AreEqual("Gasolina", dto!.Nombre);
         Assert.IsTrue(dto.Activo);
         Assert.IsTrue(dto.Id > 0);
+    }
+
+    [TestMethod]
+    public async Task Create_RegistraAuditoria()
+    {
+        var req = new SaveTipoCombustibleRequest("Gasolina");
+        await _controller.Create(req, CancellationToken.None);
+
+        var auditoria = await _db.Auditorias.FirstOrDefaultAsync(a => a.Evento == "TIPO_COMBUSTIBLE_CREADO");
+        Assert.IsNotNull(auditoria);
+        Assert.AreEqual("TipoCombustible", auditoria.EntidadAfectada);
+        Assert.AreEqual(_usuarioActorId, auditoria.UsuarioId);
     }
 
     [TestMethod]

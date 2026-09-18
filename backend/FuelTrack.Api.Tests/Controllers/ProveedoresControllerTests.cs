@@ -1,7 +1,10 @@
+using System.Security.Claims;
 using FuelTrack.Api.Controllers;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Proveedores;
 using FuelTrack.Api.Models;
+using FuelTrack.Api.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +17,7 @@ public sealed class ProveedoresControllerTests
     private SqliteConnection _connection = null!;
     private AppDbContext _db = null!;
     private ProveedoresController _controller = null!;
+    private int _usuarioActorId;
 
     [TestInitialize]
     public async Task Setup()
@@ -25,7 +29,21 @@ public sealed class ProveedoresControllerTests
             .Options;
         _db = new AppDbContext(options);
         await _db.Database.EnsureCreatedAsync();
-        _controller = new ProveedoresController(_db);
+        var usuarioActor = new Usuario { NombreUsuario = "test.actor", PasswordHash = "hash", Activo = true };
+        _db.Usuarios.Add(usuarioActor);
+        await _db.SaveChangesAsync();
+        _usuarioActorId = usuarioActor.Id;
+        _controller = new ProveedoresController(_db, new AuditService(_db))
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString())], "Test"))
+                }
+            }
+        };
     }
 
     [TestCleanup]
@@ -76,6 +94,18 @@ public sealed class ProveedoresControllerTests
         var dto = created.Value as ProveedorDto;
         Assert.AreEqual("101-12345-6", dto!.Rnc);
         Assert.IsTrue(dto.Activo);
+    }
+
+    [TestMethod]
+    public async Task Create_RegistraAuditoria()
+    {
+        var req = new SaveProveedorRequest("101-12345-6", "Petrobras RD");
+        await _controller.Create(req, CancellationToken.None);
+
+        var auditoria = await _db.Auditorias.FirstOrDefaultAsync(a => a.Evento == "PROVEEDOR_CREADO");
+        Assert.IsNotNull(auditoria);
+        Assert.AreEqual("Proveedor", auditoria.EntidadAfectada);
+        Assert.AreEqual(_usuarioActorId, auditoria.UsuarioId);
     }
 
     [TestMethod]
