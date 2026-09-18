@@ -1,7 +1,10 @@
+using System.Security.Claims;
 using FuelTrack.Api.Controllers;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Tanques;
 using FuelTrack.Api.Models;
+using FuelTrack.Api.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +17,7 @@ public sealed class TanquesControllerTests
     private SqliteConnection _connection = null!;
     private AppDbContext _db = null!;
     private TanquesController _controller = null!;
+    private int _usuarioActorId;
 
     [TestInitialize]
     public async Task Setup()
@@ -25,7 +29,21 @@ public sealed class TanquesControllerTests
             .Options;
         _db = new AppDbContext(options);
         await _db.Database.EnsureCreatedAsync();
-        _controller = new TanquesController(_db);
+        var usuarioActor = new Usuario { NombreUsuario = "test.actor", PasswordHash = "hash", Activo = true };
+        _db.Usuarios.Add(usuarioActor);
+        await _db.SaveChangesAsync();
+        _usuarioActorId = usuarioActor.Id;
+        _controller = new TanquesController(_db, new AuditService(_db))
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString())], "Test"))
+                }
+            }
+        };
     }
 
     [TestCleanup]
@@ -81,6 +99,19 @@ public sealed class TanquesControllerTests
         Assert.IsNotNull(inventario);
         Assert.AreEqual(0m, inventario.ExistenciaActual);
         Assert.AreEqual(0m, inventario.Disponibilidad);
+    }
+
+    [TestMethod]
+    public async Task Create_RegistraAuditoria()
+    {
+        var tipo = await CrearTipoCombustibleAsync();
+        var req = new SaveTanqueRequest("T-01", 5000m, 500m, tipo.Id);
+        await _controller.Create(req, CancellationToken.None);
+
+        var auditoria = await _db.Auditorias.FirstOrDefaultAsync(a => a.Evento == "TANQUE_CREADO");
+        Assert.IsNotNull(auditoria);
+        Assert.AreEqual("Tanque", auditoria.EntidadAfectada);
+        Assert.AreEqual(_usuarioActorId, auditoria.UsuarioId);
     }
 
     [TestMethod]

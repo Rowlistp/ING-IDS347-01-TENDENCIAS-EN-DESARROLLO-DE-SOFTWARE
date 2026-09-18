@@ -1,8 +1,10 @@
+using System.Security.Claims;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Empleados;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Security;
+using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,8 +17,16 @@ namespace FuelTrack.Api.Controllers;
 public sealed class EmpleadosController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly AuditService _audit;
 
-    public EmpleadosController(AppDbContext db) => _db = db;
+    public EmpleadosController(AppDbContext db, AuditService audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
+
+    private bool TryGetCurrentUserId(out int userId)
+        => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 
     [HttpGet]
     public async Task<ActionResult<List<EmpleadoDto>>> GetAll(CancellationToken ct)
@@ -49,6 +59,8 @@ public sealed class EmpleadosController : ControllerBase
     public async Task<ActionResult<EmpleadoDto>> Create(
         SaveEmpleadoRequest req, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
+
         if (!await _db.Departamentos.AnyAsync(d => d.Id == req.DepartamentoId, ct))
             return BadRequest(new { code = "DEPARTAMENTO_NOT_FOUND",
                 message = "El departamento no existe." });
@@ -76,6 +88,10 @@ public sealed class EmpleadosController : ControllerBase
         await _db.SaveChangesAsync(ct);
         await _db.Entry(entity).Reference(e => e.Departamento).LoadAsync(ct);
 
+        await _audit.WriteAsync("EMPLEADO_CREADO", "Empleado", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            new { entity.Codigo, entity.DepartamentoId, entity.Activo }, ct);
+
         var dto = new EmpleadoDto(
             entity.Id, entity.Codigo, entity.NombreCompleto, entity.Cedula, entity.Cargo,
             entity.Correo, entity.Telefono, entity.DepartamentoId,
@@ -88,6 +104,8 @@ public sealed class EmpleadosController : ControllerBase
     public async Task<ActionResult<EmpleadoDto>> Update(
         int id, SaveEmpleadoRequest req, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
+
         var entity = await _db.Empleados
             .Include(e => e.Departamento)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
@@ -115,6 +133,10 @@ public sealed class EmpleadosController : ControllerBase
         entity.Activo         = req.Activo;
         await _db.SaveChangesAsync(ct);
 
+        await _audit.WriteAsync("EMPLEADO_ACTUALIZADO", "Empleado", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            new { entity.Codigo, entity.DepartamentoId, entity.Activo }, ct);
+
         if (entity.Departamento.Id != req.DepartamentoId)
             await _db.Entry(entity).Reference(e => e.Departamento).LoadAsync(ct);
 
@@ -128,6 +150,8 @@ public sealed class EmpleadosController : ControllerBase
     [Authorize(Roles = Roles.Administrador)]
     public async Task<IActionResult> Deactivate(int id, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
+
         var entity = await _db.Empleados.FindAsync([id], ct);
         if (entity is null) return NotFound();
 
@@ -141,6 +165,10 @@ public sealed class EmpleadosController : ControllerBase
 
         entity.Activo = false;
         await _db.SaveChangesAsync(ct);
+
+        await _audit.WriteAsync("EMPLEADO_DESACTIVADO", "Empleado", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(), null, ct);
+
         return NoContent();
     }
 }
