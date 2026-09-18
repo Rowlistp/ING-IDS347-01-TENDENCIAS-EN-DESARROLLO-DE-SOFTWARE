@@ -182,7 +182,7 @@ export default function UsuariosPage() {
           <table className="min-w-full divide-y divide-acero/20 text-sm">
             <thead className="bg-fondo">
               <tr>
-                {['Usuario', 'Roles', 'Estado', 'Acciones'].map((h) => (
+                {['Usuario', 'Empleado vinculado', 'Roles', 'Estado', 'Acciones'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
                     {h}
                   </th>
@@ -192,7 +192,7 @@ export default function UsuariosPage() {
             <tbody className="divide-y divide-acero/10 bg-white">
               {usuarios.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-acero/70">
+                  <td colSpan={5} className="px-4 py-6 text-center text-acero/70">
                     Sin usuarios registrados.
                   </td>
                 </tr>
@@ -200,6 +200,15 @@ export default function UsuariosPage() {
               {usuarios.map((u) => (
                 <tr key={u.id} className="hover:bg-fondo">
                   <td className="px-4 py-3 font-medium text-tinta">{u.nombreUsuario}</td>
+                  <td className="px-4 py-3">
+                    {u.empleadoNombre ? (
+                      <span className="inline-flex items-center gap-1 font-medium text-xs text-tanque bg-tanque/10 px-2 py-0.5 rounded border border-tanque/20">
+                        🪪 {u.empleadoNombre}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-acero/60 italic">Sin empleado</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-acero">{u.roles.join(', ')}</td>
                   <td className="px-4 py-3">
                     <StatusBadge active={u.activo} />

@@ -24,6 +24,7 @@ public sealed class UserService
     {
         return await _db.Usuarios
             .AsNoTracking()
+            .Include(u => u.Empleado)
             .Include(u => u.UsuarioRoles)
             .ThenInclude(ur => ur.Rol)
             .OrderBy(u => u.NombreUsuario)
@@ -32,7 +33,9 @@ public sealed class UserService
                 Id = u.Id,
                 NombreUsuario = u.NombreUsuario,
                 Activo = u.Activo,
-                Roles = u.UsuarioRoles.Select(ur => ur.Rol.Nombre).OrderBy(r => r).ToArray()
+                Roles = u.UsuarioRoles.Select(ur => ur.Rol.Nombre).OrderBy(r => r).ToArray(),
+                EmpleadoId = u.Empleado != null ? u.Empleado.Id : null,
+                EmpleadoNombre = u.Empleado != null ? u.Empleado.NombreCompleto : null
             })
             .ToListAsync(cancellationToken);
     }
@@ -43,6 +46,7 @@ public sealed class UserService
     {
         return await _db.Usuarios
             .AsNoTracking()
+            .Include(u => u.Empleado)
             .Include(u => u.UsuarioRoles)
             .ThenInclude(ur => ur.Rol)
             .Where(u => u.Id == id)
@@ -51,7 +55,9 @@ public sealed class UserService
                 Id = u.Id,
                 NombreUsuario = u.NombreUsuario,
                 Activo = u.Activo,
-                Roles = u.UsuarioRoles.Select(ur => ur.Rol.Nombre).OrderBy(r => r).ToArray()
+                Roles = u.UsuarioRoles.Select(ur => ur.Rol.Nombre).OrderBy(r => r).ToArray(),
+                EmpleadoId = u.Empleado != null ? u.Empleado.Id : null,
+                EmpleadoNombre = u.Empleado != null ? u.Empleado.NombreCompleto : null
             })
             .SingleOrDefaultAsync(cancellationToken);
     }

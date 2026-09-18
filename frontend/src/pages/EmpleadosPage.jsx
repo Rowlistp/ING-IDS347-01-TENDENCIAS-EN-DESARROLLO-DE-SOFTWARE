@@ -4,6 +4,7 @@ import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
 import StatusBadge from '../components/StatusBadge'
 import { useDepartamentos } from '../hooks/useDepartamentos'
+import { useUsuarios } from '../hooks/useUsuarios'
 import apiRequest from '../services/api'
 import {
   validateCedula,
@@ -24,11 +25,13 @@ const EMPTY_FORM = {
   telefono: '',
   departamentoId: '',
   activo: true,
+  usuarioId: '',
 }
 
 export default function EmpleadosPage() {
   const [empleados, setEmpleados] = useState([])
   const departamentos = useDepartamentos()
+  const usuarios = useUsuarios()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -41,6 +44,11 @@ export default function EmpleadosPage() {
 
   const [deactivatingId, setDeactivatingId] = useState(null)
   const [actionError, setActionError] = useState(null)
+
+  const [vinculoModalEmp, setVinculoModalEmp] = useState(null)
+  const [selectedUsuarioId, setSelectedUsuarioId] = useState('')
+  const [vinculando, setVinculando] = useState(false)
+  const [vinculoError, setVinculoError] = useState(null)
 
   async function cargarEmpleados() {
     try {
@@ -132,10 +140,38 @@ export default function EmpleadosPage() {
       telefono: emp.telefono,
       departamentoId: emp.departamentoId,
       activo: emp.activo,
+      usuarioId: emp.usuarioId ? String(emp.usuarioId) : '',
     })
     setFieldErrors({})
     setFormError(null)
     setShowForm(true)
+  }
+
+  function openVinculo(emp) {
+    setVinculoModalEmp(emp)
+    setSelectedUsuarioId(emp.usuarioId ? String(emp.usuarioId) : '')
+    setVinculoError(null)
+  }
+
+  async function handleVinculoSubmit(e) {
+    e.preventDefault()
+    if (!vinculoModalEmp) return
+    setVinculando(true)
+    setVinculoError(null)
+    try {
+      await apiRequest(`/empleados/${vinculoModalEmp.id}/vincular-usuario`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          usuarioId: selectedUsuarioId ? Number(selectedUsuarioId) : null,
+        }),
+      })
+      setVinculoModalEmp(null)
+      await cargarEmpleados()
+    } catch (err) {
+      setVinculoError(err.message)
+    } finally {
+      setVinculando(false)
+    }
   }
 
   const requiredFieldsFilled =
@@ -166,6 +202,7 @@ export default function EmpleadosPage() {
       telefono: form.telefono.replace(/[\s()+-]/g, ''),
       departamentoId: Number(form.departamentoId),
       activo: form.activo,
+      usuarioId: form.usuarioId ? Number(form.usuarioId) : null,
     }
 
     try {
@@ -224,7 +261,7 @@ export default function EmpleadosPage() {
           <table className="min-w-full divide-y divide-acero/20 text-sm">
             <thead className="bg-fondo">
               <tr>
-                {['Código', 'Nombre completo', 'Cédula', 'Departamento', 'Cargo', 'Correo', 'Teléfono', 'Estado', 'Acciones'].map(
+                {['Código', 'Nombre completo', 'Cédula', 'Departamento', 'Cargo', 'Correo', 'Teléfono', 'Usuario', 'Estado', 'Acciones'].map(
                   (h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
                       {h}
@@ -236,7 +273,7 @@ export default function EmpleadosPage() {
             <tbody className="divide-y divide-acero/10 bg-white">
               {empleados.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-acero/70">
+                  <td colSpan={10} className="px-4 py-6 text-center text-acero/70">
                     Sin empleados registrados.
                   </td>
                 </tr>
@@ -250,6 +287,15 @@ export default function EmpleadosPage() {
                   <td className="px-4 py-3.5 text-acero">{emp.cargo}</td>
                   <td className="px-4 py-3.5 text-acero">{emp.correo}</td>
                   <td className="px-4 py-3.5 font-mono text-acero">{formatTelefonoRD(emp.telefono)}</td>
+                  <td className="px-4 py-3.5">
+                    {emp.usuarioNombre ? (
+                      <span className="inline-flex items-center gap-1 font-mono text-xs font-medium text-tanque bg-tanque/10 border border-tanque/20 px-2 py-0.5 rounded">
+                        👤 {emp.usuarioNombre}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-acero/60 italic">Sin vincular</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3.5">
                     <StatusBadge active={emp.activo} />
                   </td>
@@ -265,6 +311,19 @@ export default function EmpleadosPage() {
                           <path d="m15 5 4 4" />
                         </svg>
                         Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openVinculo(emp)}
+                        title="Vincular o cambiar cuenta de usuario"
+                        className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-acero/30 bg-white px-3 py-1.5 text-sm font-medium text-tinta transition-colors hover:border-tanque hover:bg-fondo"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                          <circle cx="9" cy="7" r="4" />
+                          <path d="M19 8v6m3-3h-6" />
+                        </svg>
+                        {emp.usuarioId ? 'Usuario' : 'Vincular'}
                       </button>
                       {emp.activo && (
                         <button
@@ -420,6 +479,30 @@ export default function EmpleadosPage() {
               </select>
             </Field>
 
+            <Field
+              label="Usuario del sistema (acceso y autoservicio)"
+              hint="Opcional. Vincula la cuenta de usuario para que pueda emitir solicitudes y ver sus tickets"
+            >
+              <select
+                name="usuarioId"
+                value={form.usuarioId}
+                onChange={handleFormChange}
+                className={inputCls}
+              >
+                <option value="">-- Sin usuario vinculado --</option>
+                {usuarios.filter((u) => u.activo).map((u) => {
+                  const vinculadoAOtro = empleados.some(
+                    (e) => e.usuarioId === u.id && e.id !== editingId
+                  )
+                  return (
+                    <option key={u.id} value={u.id} disabled={vinculadoAOtro}>
+                      {u.nombreUsuario} ({u.roles?.join(', ') || 'Sin roles'}) {vinculadoAOtro ? '— (Asignado a otro empleado)' : ''}
+                    </option>
+                  )
+                })}
+              </select>
+            </Field>
+
             {editingId && (
               <label className="flex items-center gap-2 text-sm text-tinta cursor-pointer">
                 <input type="checkbox" name="activo" checked={form.activo} onChange={handleFormChange} className="rounded text-tanque focus:ring-tanque" />
@@ -443,6 +526,61 @@ export default function EmpleadosPage() {
                 className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50 font-medium"
               >
                 {submitting ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Crear empleado'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {vinculoModalEmp && (
+        <Modal
+          title={`Vincular usuario a ${vinculoModalEmp.nombreCompleto}`}
+          onClose={() => setVinculoModalEmp(null)}
+        >
+          <form onSubmit={handleVinculoSubmit} className="space-y-4">
+            <p className="text-sm text-acero">
+              Al vincular a <strong className="text-tinta">{vinculoModalEmp.nombreCompleto}</strong> con un usuario del sistema, el filtrado de seguridad <code className="rounded bg-fondo px-1 py-0.5 text-xs font-mono font-semibold text-tanque">OwnerFilter</code> permitirá que un Solicitante acceda y opere de forma segura exclusivamente sobre sus propios tickets y solicitudes.
+            </p>
+
+            <Field
+              label="Cuenta de usuario a vincular"
+              hint="Seleccione una cuenta activa sin empleado asignado"
+            >
+              <select
+                value={selectedUsuarioId}
+                onChange={(e) => setSelectedUsuarioId(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">-- Ninguno (Desvincular cuenta) --</option>
+                {usuarios.filter((u) => u.activo).map((u) => {
+                  const vinculadoAOtro = empleados.some(
+                    (e) => e.usuarioId === u.id && e.id !== vinculoModalEmp.id
+                  )
+                  return (
+                    <option key={u.id} value={u.id} disabled={vinculadoAOtro}>
+                      {u.nombreUsuario} ({u.roles?.join(', ') || 'Sin roles'}) {vinculadoAOtro ? '— (Asignado a otro empleado)' : ''}
+                    </option>
+                  )
+                })}
+              </select>
+            </Field>
+
+            {vinculoError && <p className="text-sm text-peligro">{vinculoError}</p>}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setVinculoModalEmp(null)}
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={vinculando}
+                className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {vinculando ? 'Guardando...' : 'Guardar vínculo'}
               </button>
             </div>
           </form>

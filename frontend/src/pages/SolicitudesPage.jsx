@@ -3,6 +3,7 @@ import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
 import StatusBadge from '../components/StatusBadge'
+import { useAuth } from '../hooks/useAuth'
 import { useDepartamentos } from '../hooks/useDepartamentos'
 import { useEmpleados } from '../hooks/useEmpleados'
 import { useVehiculos } from '../hooks/useVehiculos'
@@ -24,12 +25,20 @@ const EMPTY_FORM = {
 }
 
 export default function SolicitudesPage() {
+  const { user } = useAuth()
   const [solicitudes, setSolicitudes] = useState([])
   const empleados = useEmpleados()
   const vehiculos = useVehiculos()
   const departamentos = useDepartamentos()
+  const [tiposCombustible, setTipos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  const isSolicitanteOnly =
+    user?.roles?.includes('Solicitante') &&
+    !user?.roles?.includes('Administrador') &&
+    !user?.roles?.includes('Supervisor')
+  const miEmpleado = empleados.find((e) => e.usuarioId === user?.usuarioId)
 
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -69,10 +78,20 @@ export default function SolicitudesPage() {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
   }
 
+  function openCreate() {
+    setForm({
+      ...EMPTY_FORM,
+      empleadoId: miEmpleado ? String(miEmpleado.id) : '',
+      departamentoId: miEmpleado ? String(miEmpleado.departamentoId) : '',
+    })
+    setFormError(null)
+    setShowCreate(true)
+  }
+
   const requiredFieldsFilled =
-    form.empleadoId &&
+    (isSolicitanteOnly ? Boolean(miEmpleado) : Boolean(form.empleadoId)) &&
     form.vehiculoId &&
-    form.departamentoId &&
+    (isSolicitanteOnly ? Boolean(miEmpleado) : Boolean(form.departamentoId)) &&
     form.tipoCombustibleId &&
     form.cantidadSolicitada &&
     form.fechaVencimiento
@@ -81,13 +100,17 @@ export default function SolicitudesPage() {
     e.preventDefault()
     setSubmitting(true)
     setFormError(null)
+
+    const empId = isSolicitanteOnly && miEmpleado ? miEmpleado.id : Number(form.empleadoId)
+    const deptoId = isSolicitanteOnly && miEmpleado ? miEmpleado.departamentoId : Number(form.departamentoId)
+
     try {
       await apiRequest('/solicitudes', {
         method: 'POST',
         body: JSON.stringify({
-          empleadoId: Number(form.empleadoId),
+          empleadoId: empId,
           vehiculoId: Number(form.vehiculoId),
-          departamentoId: Number(form.departamentoId),
+          departamentoId: deptoId,
           tipoCombustibleId: Number(form.tipoCombustibleId),
           cantidadSolicitada: Number(form.cantidadSolicitada),
           fechaVencimiento: new Date(form.fechaVencimiento).toISOString(),
@@ -138,16 +161,29 @@ export default function SolicitudesPage() {
       <div className="mb-4 flex justify-end">
         <button
           type="button"
-          onClick={() => {
-            setForm(EMPTY_FORM)
-            setFormError(null)
-            setShowCreate(true)
-          }}
+          onClick={openCreate}
           className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           + Nueva solicitud
         </button>
       </div>
+
+      {isSolicitanteOnly && !miEmpleado && (
+        <div className="mb-4 rounded-md border border-peligro/30 bg-peligro/10 p-3 text-sm text-peligro">
+          ⚠️ <strong>Cuenta no vinculada:</strong> Su usuario actual (<code>{user?.nombreUsuario}</code>) no está vinculado a ningún empleado. Comuníquese con un Administrador para asociar su cuenta desde el catálogo de Empleados.
+        </div>
+      )}
+
+      {isSolicitanteOnly && miEmpleado && (
+        <div className="mb-4 rounded-md border border-tanque/30 bg-tanque/10 p-3 text-sm text-tanque flex items-center justify-between">
+          <span>
+            👤 Sesión activa como Solicitante: <strong>{miEmpleado.nombreCompleto}</strong> ({miEmpleado.codigo} — {miEmpleado.departamentoNombre})
+          </span>
+          <span className="text-xs bg-tanque text-white px-2.5 py-0.5 rounded font-mono font-medium">
+            OwnerFilter Activo
+          </span>
+        </div>
+      )}
 
       {loading && <p className="text-sm text-acero">Cargando...</p>}
       {error && <p className="text-sm text-peligro">{error}</p>}
@@ -242,20 +278,43 @@ export default function SolicitudesPage() {
       {showCreate && (
         <Modal title="Nueva solicitud de combustible" onClose={() => setShowCreate(false)}>
           <form onSubmit={handleCreate} className="space-y-4">
-            <Field label="Empleado" required>
+            {isSolicitanteOnly && !miEmpleado && (
+              <div className="rounded-md border border-peligro/30 bg-peligro/10 p-3 text-sm text-peligro">
+                ⚠️ Su cuenta de usuario no está vinculada a ningún empleado. No puede emitir solicitudes hasta que un Administrador asocie su cuenta.
+              </div>
+            )}
+
+            <Field
+              label="Empleado solicitante"
+              required
+              hint={isSolicitanteOnly && miEmpleado ? `Registrando como: ${miEmpleado.nombreCompleto} (${miEmpleado.codigo})` : undefined}
+            >
               <select
                 name="empleadoId"
-                value={form.empleadoId}
+                value={isSolicitanteOnly && miEmpleado ? miEmpleado.id : form.empleadoId}
                 onChange={handleFormChange}
                 required
+                disabled={isSolicitanteOnly}
                 className={inputCls}
               >
-                <option value="">Seleccionar...</option>
-                {empleados.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.nombreCompleto} ({e.codigo})
-                  </option>
-                ))}
+                {isSolicitanteOnly ? (
+                  miEmpleado ? (
+                    <option value={miEmpleado.id}>
+                      {miEmpleado.nombreCompleto} ({miEmpleado.codigo})
+                    </option>
+                  ) : (
+                    <option value="">-- Sin empleado vinculado --</option>
+                  )
+                ) : (
+                  <>
+                    <option value="">Seleccionar...</option>
+                    {empleados.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.nombreCompleto} ({e.codigo}) {e.usuarioNombre ? `[Usuario: ${e.usuarioNombre}]` : ''}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </Field>
 

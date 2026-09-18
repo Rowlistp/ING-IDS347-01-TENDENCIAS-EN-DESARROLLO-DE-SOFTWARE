@@ -3,6 +3,7 @@ import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
 import StatusBadge from '../components/StatusBadge'
+import { useAuth } from '../hooks/useAuth'
 import apiRequest, { apiDownload } from '../services/api'
 
 const ESTADO_LABEL = {
@@ -34,11 +35,19 @@ function formatFecha(value) {
 }
 
 export default function TicketsPage() {
+  const { user } = useAuth()
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [actionError, setActionError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
+
+  const isSolicitanteOnly =
+    user?.roles?.includes('Solicitante') &&
+    !user?.roles?.includes('Administrador') &&
+    !user?.roles?.includes('Supervisor') &&
+    !user?.roles?.includes('Despachador') &&
+    !user?.roles?.includes('Auditor')
 
   const [solicitudesAprobadas, setSolicitudesAprobadas] = useState([])
   const [showEmitModal, setShowEmitModal] = useState(false)
@@ -168,6 +177,17 @@ export default function TicketsPage() {
 
   return (
     <PageContainer title="Tickets de Combustible">
+      {isSolicitanteOnly && (
+        <div className="mb-4 rounded-md border border-tanque/30 bg-tanque/10 p-3 text-sm text-tanque flex items-center justify-between">
+          <span>
+            👤 Vista de Solicitante (<code>{user?.nombreUsuario}</code>): Mostrando únicamente tickets autorizados a su nombre.
+          </span>
+          <span className="text-xs bg-tanque text-white px-2.5 py-0.5 rounded font-mono font-medium">
+            OwnerFilter Activo
+          </span>
+        </div>
+      )}
+
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           {!loading && !error && (

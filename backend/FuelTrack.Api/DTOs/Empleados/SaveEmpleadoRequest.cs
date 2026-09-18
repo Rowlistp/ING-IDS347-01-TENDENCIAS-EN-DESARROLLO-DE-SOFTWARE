@@ -10,5 +10,6 @@ public record SaveEmpleadoRequest(
     [Required, MaxLength(150), EmailAddress] string Correo,
     [Required, MaxLength(20)]               string Telefono,
     [Required]                              int DepartamentoId,
-    bool Activo = true
+    bool Activo = true,
+    int? UsuarioId = null
 );

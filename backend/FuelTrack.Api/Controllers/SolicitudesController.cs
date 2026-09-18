@@ -1,4 +1,4 @@
-// backend/FuelTrack.Api/Controllers/SolicitudesController.cs
+using System.Security.Claims;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Solicitudes;
 using FuelTrack.Api.Models;
@@ -21,26 +21,44 @@ public sealed class SolicitudesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<SolicitudDto>>> GetAll(CancellationToken ct)
     {
-        var list = await _db.SolicitudesCombustible
+        var query = _db.SolicitudesCombustible
             .AsNoTracking()
             .Include(s => s.Empleado)
             .Include(s => s.Vehiculo)
             .Include(s => s.Departamento)
             .Include(s => s.TipoCombustible)
-            .ToListAsync(ct);
+            .AsQueryable();
+
+        if (TryGetCurrentUserId(out var actorId))
+        {
+            var ownerId = OwnerFilter(actorId);
+            if (ownerId.HasValue)
+                query = query.Where(s => s.Empleado.UsuarioId == ownerId.Value);
+        }
+
+        var list = await query.ToListAsync(ct);
         return Ok(list.ConvertAll(ToDto));
     }
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<SolicitudDto>> GetById(int id, CancellationToken ct)
     {
-        var s = await _db.SolicitudesCombustible
+        var query = _db.SolicitudesCombustible
             .AsNoTracking()
             .Include(s => s.Empleado)
             .Include(s => s.Vehiculo)
             .Include(s => s.Departamento)
             .Include(s => s.TipoCombustible)
-            .FirstOrDefaultAsync(s => s.Id == id, ct);
+            .AsQueryable();
+
+        if (TryGetCurrentUserId(out var actorId))
+        {
+            var ownerId = OwnerFilter(actorId);
+            if (ownerId.HasValue)
+                query = query.Where(s => s.Empleado.UsuarioId == ownerId.Value);
+        }
+
+        var s = await query.FirstOrDefaultAsync(s => s.Id == id, ct);
         return s is null ? NotFound() : Ok(ToDto(s));
     }
 
@@ -48,6 +66,19 @@ public sealed class SolicitudesController : ControllerBase
     [Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor},{Roles.Solicitante}")]
     public async Task<ActionResult<SolicitudDto>> Create(CreateSolicitudRequest req, CancellationToken ct)
     {
+        if (TryGetCurrentUserId(out var actorId))
+        {
+            var ownerId = OwnerFilter(actorId);
+            if (ownerId.HasValue)
+            {
+                var empleadoEsPropio = await _db.Empleados.AnyAsync(
+                    e => e.Id == req.EmpleadoId && e.UsuarioId == ownerId.Value, ct);
+                if (!empleadoEsPropio)
+                    return StatusCode(StatusCodes.Status403Forbidden,
+                        new { code = "SOLICITANTE_EMPLEADO_NO_AUTORIZADO", message = "No tiene autorización para crear solicitudes a nombre de otro empleado." });
+            }
+        }
+
         if (!await _db.Empleados.AnyAsync(e => e.Id == req.EmpleadoId, ct))
             return BadRequest(new { code = "EMPLEADO_NOT_FOUND", message = "El empleado no existe." });
         if (!await _db.Vehiculos.AnyAsync(v => v.Id == req.VehiculoId, ct))
@@ -137,4 +168,16 @@ public sealed class SolicitudesController : ControllerBase
         s.VehiculoId, s.Vehiculo.Placa,
         s.DepartamentoId, s.Departamento.Nombre,
         s.TipoCombustibleId, s.TipoCombustible.Nombre);
+
+    private const string OperationalRoles =
+        $"{Roles.Administrador},{Roles.Supervisor},{Roles.Despachador},{Roles.Auditor}";
+
+    private int? OwnerFilter(int actorId)
+        => User is not null && OperationalRoles.Split(',').Any(User.IsInRole) ? null : actorId;
+
+    private bool TryGetCurrentUserId(out int userId)
+    {
+        userId = 0;
+        return User is not null && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
+    }
 }
