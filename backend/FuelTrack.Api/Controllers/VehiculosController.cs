@@ -109,6 +109,14 @@ public sealed class VehiculosController : ControllerBase
             return Conflict(new { code = "FICHA_DUPLICADA",
                 message = "La ficha ya está registrada." });
 
+        if (entity.Activo && !req.Activo && await _db.SolicitudesCombustible.AnyAsync(s => s.VehiculoId == id &&
+            (s.Estado == EstadoSolicitud.Pendiente || s.Estado == EstadoSolicitud.Aprobada), ct))
+            return Conflict(new
+            {
+                code = "VEHICULO_CON_SOLICITUDES_ACTIVAS",
+                message = "No se puede desactivar el vehículo porque tiene solicitudes pendientes o aprobadas."
+            });
+
         entity.Placa           = req.Placa;
         entity.Ficha           = req.Ficha;
         entity.Marca           = req.Marca;
@@ -118,6 +126,7 @@ public sealed class VehiculosController : ControllerBase
         entity.CapacidadTanque = req.CapacidadTanque;
         entity.Odometro        = req.Odometro;
         entity.DepartamentoId  = req.DepartamentoId;
+        entity.Activo          = req.Activo;
         await _db.SaveChangesAsync(ct);
 
         if (entity.Departamento.Id != req.DepartamentoId)
