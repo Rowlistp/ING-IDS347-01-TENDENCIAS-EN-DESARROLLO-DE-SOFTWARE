@@ -53,8 +53,11 @@ public sealed class RecepcionesController : ControllerBase
         if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId))
             return Unauthorized();
 
-        if (!await _db.Proveedores.AnyAsync(p => p.Id == req.ProveedorId, ct))
+        var proveedor = await _db.Proveedores.FirstOrDefaultAsync(p => p.Id == req.ProveedorId, ct);
+        if (proveedor is null)
             return BadRequest(new { code = "PROVEEDOR_NOT_FOUND", message = "El proveedor no existe." });
+        if (!proveedor.Activo)
+            return BadRequest(new { code = "PROVEEDOR_INACTIVO", message = "El proveedor no está activo." });
 
         var tanque = await _db.Tanques
             .Include(t => t.Inventario)

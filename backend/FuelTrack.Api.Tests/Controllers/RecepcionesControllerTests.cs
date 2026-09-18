@@ -192,6 +192,24 @@ public sealed class RecepcionesControllerTests
         Assert.IsTrue(bad.Value!.ToString()!.Contains("TANQUE_INACTIVO"));
     }
 
+    [TestMethod]
+    public async Task Create_Returns400_CuandoProveedorInactivo()
+    {
+        var (proveedorId, tanqueId, usuarioId) = await CrearDependenciasAsync();
+        var proveedor = await _db.Proveedores.FindAsync(proveedorId);
+        proveedor!.Activo = false;
+        await _db.SaveChangesAsync();
+
+        var ctrl = CrearController(usuarioId);
+        var req = new CreateRecepcionRequest(proveedorId, tanqueId, "FAC-006", 100m, DateTime.UtcNow);
+
+        var result = await ctrl.Create(req, CancellationToken.None);
+        var bad = result.Result as BadRequestObjectResult;
+
+        Assert.IsNotNull(bad);
+        Assert.IsTrue(bad.Value!.ToString()!.Contains("PROVEEDOR_INACTIVO"));
+    }
+
     // ── Auditoría (RS-06) ────────────────────────────────────────────────────
 
     [TestMethod]
