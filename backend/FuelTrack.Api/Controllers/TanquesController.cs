@@ -103,6 +103,10 @@ public sealed class TanquesController : ControllerBase
             return Conflict(new { code = "IDENTIFICACION_DUPLICADA",
                 message = "Ya existe un tanque con esa identificación." });
 
+        if (tanque.Activo && !req.Activo && (tanque.Inventario?.ExistenciaActual ?? 0m) > 0)
+            return Conflict(new { code = "TANQUE_CON_INVENTARIO",
+                message = "No se puede desactivar el tanque porque tiene combustible en inventario." });
+
         var tipoCambio = tanque.TipoCombustibleId != req.TipoCombustibleId;
 
         tanque.Identificacion    = req.Identificacion;

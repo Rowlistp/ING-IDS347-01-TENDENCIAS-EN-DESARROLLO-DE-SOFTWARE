@@ -284,6 +284,62 @@ public sealed class TanquesControllerTests
     }
 
     [TestMethod]
+    public async Task Update_Returns409_CuandoDesactivaConInventarioConStock()
+    {
+        var tipo = await CrearTipoCombustibleAsync();
+        var tanque = new Tanque
+        {
+            Identificacion = "T-STOCK", Capacidad = 5000m,
+            NivelActual = 1000m, NivelCritico = 500m,
+            TipoCombustibleId = tipo.Id, Activo = true
+        };
+        _db.Tanques.Add(tanque);
+        await _db.SaveChangesAsync();
+        _db.Inventarios.Add(new Inventario
+        {
+            TanqueId = tanque.Id, ExistenciaActual = 1000m,
+            Disponibilidad = 1000m, UltimaActualizacion = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        var req = new SaveTanqueRequest("T-STOCK", 5000m, 500m, tipo.Id, Activo: false);
+        var result = await _controller.Update(tanque.Id, req, CancellationToken.None);
+        var conflict = result.Result as ConflictObjectResult;
+        Assert.IsNotNull(conflict, "Esperaba 409 Conflict");
+
+        var code = conflict.Value!.GetType().GetProperty("code")?.GetValue(conflict.Value)?.ToString();
+        Assert.AreEqual("TANQUE_CON_INVENTARIO", code);
+
+        await _db.Entry(tanque).ReloadAsync();
+        Assert.IsTrue(tanque.Activo);
+    }
+
+    [TestMethod]
+    public async Task Update_PermiteEditarDatos_SinDesactivar_AunConInventario()
+    {
+        var tipo = await CrearTipoCombustibleAsync();
+        var tanque = new Tanque
+        {
+            Identificacion = "T-STOCK2", Capacidad = 5000m,
+            NivelActual = 1000m, NivelCritico = 500m,
+            TipoCombustibleId = tipo.Id, Activo = true
+        };
+        _db.Tanques.Add(tanque);
+        await _db.SaveChangesAsync();
+        _db.Inventarios.Add(new Inventario
+        {
+            TanqueId = tanque.Id, ExistenciaActual = 1000m,
+            Disponibilidad = 1000m, UltimaActualizacion = DateTime.UtcNow
+        });
+        await _db.SaveChangesAsync();
+
+        var req = new SaveTanqueRequest("T-STOCK2-MOD", 6000m, 500m, tipo.Id, Activo: true);
+        var result = await _controller.Update(tanque.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        Assert.IsNotNull(ok);
+    }
+
+    [TestMethod]
     public async Task GetById_NivelActual_ReflexaInventario_NoElCampoStale()
     {
         var tipo = await CrearTipoCombustibleAsync();

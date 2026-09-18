@@ -189,6 +189,55 @@ public sealed class VehiculosControllerTests
         Assert.IsTrue(veh.Activo);
     }
 
+    [TestMethod]
+    public async Task Update_Returns409_CuandoDesactivaConSolicitudPendiente()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (emp, veh, tipo) = await CrearDependenciasAsync(dep);
+
+        _db.SolicitudesCombustible.Add(new SolicitudCombustible
+        {
+            CantidadSolicitada = 40m, TipoSolicitud = "Manual",
+            Estado = EstadoSolicitud.Pendiente, FechaSolicitud = DateTime.UtcNow,
+            EmpleadoId = emp.Id, VehiculoId = veh.Id,
+            DepartamentoId = dep.Id, TipoCombustibleId = tipo.Id
+        });
+        await _db.SaveChangesAsync();
+
+        var req = new SaveVehiculoRequest(veh.Placa, veh.Ficha, veh.Marca, veh.Modelo,
+            veh.Año, veh.Tipo, dep.Id, veh.CapacidadTanque, Odometro: 0, Activo: false);
+        var result = await _controller.Update(veh.Id, req, CancellationToken.None);
+        var conflict = result.Result as ConflictObjectResult;
+        Assert.IsNotNull(conflict, "Esperaba 409 Conflict");
+
+        var code = conflict.Value!.GetType().GetProperty("code")?.GetValue(conflict.Value)?.ToString();
+        Assert.AreEqual("VEHICULO_CON_SOLICITUDES_ACTIVAS", code);
+
+        await _db.Entry(veh).ReloadAsync();
+        Assert.IsTrue(veh.Activo);
+    }
+
+    [TestMethod]
+    public async Task Update_PermiteEditarDatos_SinDesactivar_AunConSolicitudPendiente()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (emp, veh, tipo) = await CrearDependenciasAsync(dep);
+
+        _db.SolicitudesCombustible.Add(new SolicitudCombustible
+        {
+            CantidadSolicitada = 40m, TipoSolicitud = "Manual",
+            Estado = EstadoSolicitud.Pendiente, FechaSolicitud = DateTime.UtcNow,
+            EmpleadoId = emp.Id, VehiculoId = veh.Id,
+            DepartamentoId = dep.Id, TipoCombustibleId = tipo.Id
+        });
+        await _db.SaveChangesAsync();
+
+        var req = new SaveVehiculoRequest(veh.Placa, veh.Ficha, veh.Marca, "Ranger XL",
+            veh.Año, veh.Tipo, dep.Id, veh.CapacidadTanque, Odometro: 0, Activo: true);
+        var result = await _controller.Update(veh.Id, req, CancellationToken.None);
+        Assert.IsInstanceOfType<OkObjectResult>(result.Result);
+    }
+
     // ── Deactivate ──────────────────────────────────────────────────────────
 
     [TestMethod]
