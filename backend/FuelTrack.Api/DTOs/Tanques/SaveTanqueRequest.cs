@@ -7,5 +7,5 @@ public record SaveTanqueRequest(
     [Range(0.0001, 999999.9999)]     decimal Capacidad,
     [Range(0, 999999.9999)]          decimal NivelCritico,
     [Required]                        int TipoCombustibleId,
-    bool Activo = true
+    bool? Activo = null
 );

@@ -190,6 +190,32 @@ public sealed class VehiculosControllerTests
     }
 
     [TestMethod]
+    public async Task Update_NoTocaActivo_CuandoElCampoNoVieneEnElRequest()
+    {
+        // Regresión: un caller (como el frontend actual, que no envía "activo" en el
+        // payload de edición) no debe reactivar ni desactivar el vehículo sin querer.
+        var dep = await CrearDepartamentoAsync();
+        var veh = new Vehiculo
+        {
+            Placa = "J900001", Ficha = "FV09", Marca = "Toyota", Modelo = "Hilux",
+            Año = 2021, Tipo = "Camioneta", CapacidadTanque = 60, Odometro = 0,
+            Activo = false, DepartamentoId = dep.Id
+        };
+        _db.Vehiculos.Add(veh);
+        await _db.SaveChangesAsync();
+
+        var req = new SaveVehiculoRequest("J900001", "FV09", "Toyota", "Hilux MOD",
+            2021, "Camioneta", dep.Id, 60m);
+        var result = await _controller.Update(veh.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var dto = ok!.Value as VehiculoDto;
+        Assert.IsFalse(dto!.Activo);
+
+        await _db.Entry(veh).ReloadAsync();
+        Assert.IsFalse(veh.Activo);
+    }
+
+    [TestMethod]
     public async Task Update_Returns409_CuandoDesactivaConSolicitudPendiente()
     {
         var dep = await CrearDepartamentoAsync();

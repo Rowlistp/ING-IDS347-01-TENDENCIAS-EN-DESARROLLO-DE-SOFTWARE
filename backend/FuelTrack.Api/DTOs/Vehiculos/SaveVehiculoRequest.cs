@@ -12,5 +12,5 @@ public record SaveVehiculoRequest(
     [Required]                 int DepartamentoId,
     [Range(0.0001, 9999.9999)] decimal CapacidadTanque,
     decimal Odometro = 0,
-    bool Activo = true
+    bool? Activo = null
 );
