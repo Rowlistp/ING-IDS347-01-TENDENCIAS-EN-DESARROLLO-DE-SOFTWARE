@@ -23,7 +23,7 @@ const EMPTY_FORM = {
   departamentoId: '',
   tipoCombustibleId: '',
   cantidadSolicitada: '',
-  fechaVencimiento: '',
+  diasVigencia: '',
 }
 
 export default function SolicitudesPage() {
@@ -98,7 +98,8 @@ export default function SolicitudesPage() {
     (isSolicitanteOnly ? Boolean(miEmpleado) : Boolean(form.departamentoId)) &&
     form.tipoCombustibleId &&
     form.cantidadSolicitada &&
-    form.fechaVencimiento
+    form.diasVigencia
+
 
   async function handleCreate(e) {
     e.preventDefault()
@@ -117,7 +118,9 @@ export default function SolicitudesPage() {
           departamentoId: deptoId,
           tipoCombustibleId: Number(form.tipoCombustibleId),
           cantidadSolicitada: Number(form.cantidadSolicitada),
-          fechaVencimiento: new Date(form.fechaVencimiento).toISOString(),
+          fechaVencimiento: new Date(
+  Date.now() + Number(form.diasVigencia || 7) * 24 * 60 * 60 * 1000
+).toISOString(),
         }),
       })
       setShowCreate(false)
