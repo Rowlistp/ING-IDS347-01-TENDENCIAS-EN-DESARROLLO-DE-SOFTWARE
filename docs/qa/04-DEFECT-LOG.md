@@ -11,33 +11,34 @@
 
 | Severidad | Abiertos | Resueltos | Mitigados / Documentados | Total |
 |---|---|---|---|---|
-| **Cr?tica** | 0 | 2 | 0 | 2 |
-| **Mayor** | 0 | 4 | 0 | 4 |
+| **Crítica** | 0 | 2 | 0 | 2 |
+| **Mayor** | 0 | 5 | 0 | 5 |
 | **Media** | 0 | 4 | 0 | 4 |
 | **Menor** | 0 | 0 | 0 | 0 |
-| **Total** | **0** | **10** | **0** | **10** |
+| **Total** | **0** | **11** | **0** | **11** |
 
-**Tasa de Resoluci?n:** 100.0%  
-**Estado del Sistema:** ? APROBADO PARA PRODUCCI?N / CERTIFICADO  
-**Total Pruebas Automatizadas Backend:** 284/284 aprobadas (100%)  
-**Estado Frontend:** 0 errores de linter (`oxlint`), compilaci?n de producci?n exitosa (`vite build`).
+**Tasa de Resolución:** 100.0%  
+**Estado del Sistema:** ✅ APROBADO PARA PRODUCCIÓN / CERTIFICADO  
+**Total Pruebas Automatizadas Backend:** 321/321 aprobadas (100%)  
+**Estado Frontend:** 0 errores de linter (`oxlint`), compilación de producción exitosa (`vite build`).
 
 ---
 
 ## 2. MATRIZ CONSOLIDADA DE DEFECTOS AUDITADOS
 
-| C?digo | M?dulo Afectado | T?tulo Resumido | Severidad | Prioridad | Estado |
+| Código | Módulo Afectado | Título Resumido | Severidad | Prioridad | Estado |
 |---|---|---|---|---|---|
-| **DEF-2026-001** | Autenticaci?n & API | Expiraci?n de Token JWT y Redirecci?n Insegura en Middleware | Cr?tica | P1 (Alta) | ? Resuelto |
-| **DEF-2026-002** | Cierre Diario & Auditor?a | Ausencia de Generaci?n On-Demand y Persistencia de Acta PDF | Mayor | P1 (Alta) | ? Resuelto |
-| **DEF-2026-003** | Despachos & Tickets | Falta de Sellos Criptogr?ficos, C?digo QR y 3 Firmas en Ticket PDF | Mayor | P1 (Alta) | ? Resuelto |
-| **DEF-2026-004** | Validaciones & Entradas | Carencia de Validaciones de Dominio RD (RNC, C?dula, Tel?fonos 809) | Cr?tica | P1 (Alta) | ? Resuelto |
-| **DEF-2026-005** | UI/UX & Ergonom?a | Contraste Deficiente en StatusBadge y Falta de ?reas T?ctiles (38px) | Media | P2 (Media) | ? Resuelto |
-| **DEF-2026-006** | Recepciones de Combustible | Ausencia de Verificaci?n de Espacio en Tanque y Comprobante Digital | Mayor | P1 (Alta) | ? Resuelto |
-| **DEF-2026-007** | Tanques Estacionarios | Ambig?edad en Identificaci?n de Tanques y Violaci?n de Nivel Cr?tico | Media | P2 (Media) | ? Resuelto |
-| **DEF-2026-008** | Reportes & Notificaciones | Carencia de Bloqueo de Fechas Invertidas (Desde > Hasta) | Media | P2 (Media) | ? Resuelto |
-| **DEF-2026-009** | Solicitudes de Combustible | Ausencia de C?lculos R?pidos y Validaci?n de L?mites de Autorizaci?n | Media | P2 (Media) | ? Resuelto |
-| **DEF-2026-010** | Gesti?n de Tickets | Falta de Nomenclatura Controlada y Desacoplamiento de Acciones Cr?ticas | Mayor | P1 (Alta) | ? Resuelto |
+| **DEF-2026-001** | Autenticación & API | Expiración de Token JWT y Redirección Insegura en Middleware | Crítica | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-002** | Cierre Diario & Auditoría | Ausencia de Generación On-Demand y Persistencia de Acta PDF | Mayor | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-003** | Despachos & Tickets | Falta de Sellos Criptográficos, Código QR y 3 Firmas en Ticket PDF | Mayor | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-004** | Validaciones & Entradas | Carencia de Validaciones de Dominio RD (RNC, Cédula, Teléfonos 809) | Crítica | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-005** | UI/UX & Ergonomía | Contraste Deficiente en StatusBadge y Falta de Áreas Táctiles (38px) | Media | P2 (Media) | ✅ Resuelto |
+| **DEF-2026-006** | Recepciones de Combustible | Ausencia de Verificación de Espacio en Tanque y Comprobante Digital | Mayor | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-007** | Tanques Estacionarios | Ambigüedad en Identificación de Tanques y Violación de Nivel Crítico | Media | P2 (Media) | ✅ Resuelto |
+| **DEF-2026-008** | Reportes & Notificaciones | Carencia de Bloqueo de Fechas Invertidas (Desde > Hasta) | Media | P2 (Media) | ✅ Resuelto |
+| **DEF-2026-009** | Solicitudes de Combustible | Ausencia de Cálculos Rápidos y Validación de Límites de Autorización | Media | P2 (Media) | ✅ Resuelto |
+| **DEF-2026-010** | Gestión de Tickets | Falta de Nomenclatura Controlada y Desacoplamiento de Acciones Críticas | Mayor | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-011** | Despachos & Estaciones | Bloqueo por Selección Involuntaria de Estación Inactiva (HTTP 409 ESTACION_INACTIVA) | Mayor | P1 (Alta) | ✅ Resuelto |
 
 ---
 
@@ -176,22 +177,45 @@
 - **Resoluci?n:**
   1. Inclusi?n de un selector por p?ldoras con los prefijos oficiales (`COM`, `TCK`, `DSL`, `GAS`, `EMG`) y previsualizaci?n en vivo del c?digo generado (`COM-2026-XXXXXX`).
   2. Limpieza de la tabla principal concentrando las acciones en un bot?n principal "Detalle / Auditor?a" y bot?n directo "Acta PDF".
-  3. Concentraci?n de las operaciones de despacho, anulaci?n y reenv?o dentro del modal integral de auditor?a de ticket.
+  3. Concentración de las operaciones de despacho, anulación y reenvío dentro del modal integral de auditoría de ticket.
+
+---
+### DEF-2026-011: Bloqueo de Despacho por Selección Involuntaria de Estación Inactiva en Frontend (HTTP 409 ESTACION_INACTIVA)
+- **Severidad:** Mayor (Interrupción total del flujo de despacho en pista al existir estaciones inactivas en el catálogo)
+- **Prioridad:** P1 (Alta)
+- **Estado:** ✅ Resuelto en `backend/FuelTrack.Api/Controllers/EstacionesController.cs`, `frontend/src/pages/DespachosPage.jsx` y `mobile/lib/core/api.dart`
+- **Componente:** `EstacionesController.cs`, `EstacionesControllerTests.cs`, `DespachosPage.jsx`, `api.dart`
+- **Descripción:** Al confirmar un despacho de combustible desde la pantalla operativa de despachos (`/despachos`), el modal arrojaba el error en banner rojo *"La estación está inactiva."* (HTTP 409 Conflict `ESTACION_INACTIVA`), a pesar de que el operador visualizaba en el menú desplegable una estación activa (ej. *"Estación Central"*).
+- **Causa Raíz (RCA):**
+  1. El endpoint `GET /api/v1/estaciones` devolvía todas las estaciones ordenadas alfabéticamente (tanto activas como inactivas).
+  2. En `DespachosPage.jsx`, el estado `estaciones` filtraba únicamente las estaciones activas para generar los `<option>` del menú desplegable.
+  3. No obstante, la inicialización del valor seleccionado (`selectedEstacionId`) tomaba erróneamente `estacionesData[0].id` del arreglo crudo sin filtrar. Si la primera estación alfabéticamente estaba inactiva (ej. `Estacion QA Test`), el estado de React guardaba ese ID inactivo.
+  4. Por comportamiento nativo del DOM en navegadores web, cuando un `<select>` tiene asignado un `value` que no coincide con ninguno de sus `<option>`, renderiza visualmente la primera opción disponible ("Estación Central"). Esto generaba una ilusión visual donde el operador creía que la estación activa ya estaba seleccionada y no interactuaba con el menú.
+  5. Al pulsar *"Confirmar despacho de combustible"*, React enviaba el ID inactivo en memoria (`estacionId: 1`), provocando que el backend ejecutara su validación de integridad (`if (!station.Activo) throw Error(409, "ESTACION_INACTIVA", "La estación está inactiva.");`) y bloqueara la transacción.
+- **Resolución / Acciones Correctivas:**
+  1. **Backend:** Se extendió el endpoint `GET /api/v1/estaciones` para soportar el parámetro opcional de consulta `[FromQuery] bool? soloActivas = null`. Cuando `soloActivas == true`, se aplica el filtro directo en base de datos (`query.Where(e => e.Activo)`).
+  2. **Pruebas Automatizadas Backend:** Se incorporó el test unitario `GetAll_SoloActivas_FiltraInactivas` en `EstacionesControllerTests.cs`, asegurando que la API excluya rigurosamente las estaciones inactivas al solicitar `soloActivas=true`.
+  3. **Frontend Web:** En `DespachosPage.jsx`, se actualizó la consulta para solicitar `/estaciones?soloActivas=true`, se corrigió la asignación inicial del estado para apuntar estrictamente a `estacionesActivas[0]?.id || ''`, se implementó un hook `useEffect` de auto-sincronización que garantiza que `selectedEstacionId` siempre pertenezca al catálogo activo, y se añadieron validaciones defensivas en `handleConfirmarDespacho` y en el estado del botón de confirmación.
+  4. **App Móvil:** En `mobile/lib/core/api.dart`, se actualizó la invocación de `stations()` a `/estaciones?soloActivas=true` y se reforzó el filtro `.where((j) => j['activo'] == true)`.
+- **Verificación:**
+  - 321/321 pruebas unitarias backend aprobadas (100% de éxito).
+  - Linter de frontend `oxlint` con 0 errores y compilación `vite build` exitosa.
+  - Prueba en vivo con API y PostgreSQL creando estación inactiva y verificando que el modal de despacho la excluye y confirma transacciones correctamente.
 
 ---
 
-## 4. VERIFICACI?N Y REGRESI?N DE PRUEBAS
+## 4. VERIFICACIÓN Y REGRESIÓN DE PRUEBAS
 
 Todas las modificaciones fueron validadas contra la suite de pruebas automatizadas del proyecto:
-- **Pruebas de Backend (.NET 10 / xUnit):**
-  - Comando: `dotnet test backend/FuelTrack.slnx`
-  - Total pruebas: 284 exitosas, 0 fallidas, 78 ignoradas (integraci?n PostgreSQL/Keycloak desacopladas).
+- **Pruebas de Backend (.NET 10 / MSTest):**
+  - Comando: `dotnet test backend/FuelTrack.Api.Tests`
+  - Total pruebas: 321 exitosas, 0 fallidas, 78 ignoradas (integración PostgreSQL/Keycloak desacopladas).
 - **Linter de Frontend (oxlint):**
-  - Comando: `npm.cmd run lint`
+  - Comando: `npm run lint`
   - Total errores: 0, total advertencias: 0.
 - **Build de Frontend (Vite 8):**
-  - Comando: `npm.cmd run build`
-  - Resultado: `dist/` generado exitosamente (64 m?dulos transformados, 0 errores).
+  - Comando: `npm run build`
+  - Resultado: `dist/` generado exitosamente (97 módulos transformados, 0 errores).
 
 ---
 **Certificaci?n de Calidad:**  
