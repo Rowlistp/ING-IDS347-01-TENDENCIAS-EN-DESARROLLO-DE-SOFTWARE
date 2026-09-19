@@ -186,6 +186,9 @@ if (!departamento.Activo)
             HttpContext.Connection.RemoteIpAddress?.ToString(),
             new { entity.Codigo, entity.DepartamentoId, entity.Activo }, ct);
 
+        await _db.Entry(entity)
+    .Reference(e => e.Departamento)
+    .LoadAsync(ct);
         if (entity.Departamento.Id != req.DepartamentoId)
             await _db.Entry(entity).Reference(e => e.Departamento).LoadAsync(ct);
         if (entity.UsuarioId.HasValue && (entity.Usuario == null || entity.Usuario.Id != entity.UsuarioId))
