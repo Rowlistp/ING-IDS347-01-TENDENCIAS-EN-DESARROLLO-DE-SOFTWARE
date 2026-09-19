@@ -101,7 +101,8 @@ class HttpFuelTrackApi implements FuelTrackApi {
           .toList();
   @override
   Future<List<DispatchOption>> stations() async =>
-      (await request('/estaciones') as List)
+      (await request('/estaciones?soloActivas=true') as List)
+          .where((j) => j['activo'] == true)
           .map((j) => DispatchOption(j['id'] as int, j['nombre'] as String))
           .toList();
   @override

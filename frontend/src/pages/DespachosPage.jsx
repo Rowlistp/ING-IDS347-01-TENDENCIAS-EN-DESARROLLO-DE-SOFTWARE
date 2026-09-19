@@ -142,18 +142,48 @@ export default function DespachosPage() {
 
     try {
       const [estacionesData, tanquesData] = await Promise.all([
-        apiRequest('/estaciones'),
+        apiRequest('/estaciones?soloActivas=true'),
         apiRequest('/tanques'),
       ])
-      setEstaciones(estacionesData.filter((e) => e.activo))
-      setTanques(tanquesData.filter((t) => t.activo))
-      if (estacionesData.length > 0) {
-        setSelectedEstacionId(String(estacionesData[0].id))
+      const estacionesActivas = (estacionesData || []).filter((e) => e.activo)
+      const tanquesActivos = (tanquesData || []).filter((t) => t.activo)
+      setEstaciones(estacionesActivas)
+      setTanques(tanquesActivos)
+      if (estacionesActivas.length > 0) {
+        setSelectedEstacionId(String(estacionesActivas[0].id))
+      } else {
+        setSelectedEstacionId('')
       }
     } catch {
       // Ignorar si falla precarga de catálogos
     }
   }
+
+  // Garantiza que selectedEstacionId siempre sea el Id de una estación activa disponible
+  useEffect(() => {
+    if (estaciones.length > 0) {
+      if (!estaciones.some((e) => String(e.id) === String(selectedEstacionId))) {
+        setSelectedEstacionId(String(estaciones[0].id))
+      }
+    } else {
+      setSelectedEstacionId('')
+    }
+  }, [estaciones, selectedEstacionId])
+
+  // Garantiza que selectedTanqueId apunte a un tanque compatible activo
+  useEffect(() => {
+    if (!ticketValidado) return
+    const compatibles = tanques.filter(
+      (t) => t.activo && t.tipoCombustibleId === ticketValidado.tipoCombustibleId
+    )
+    if (compatibles.length > 0) {
+      if (!compatibles.some((t) => String(t.id) === String(selectedTanqueId))) {
+        setSelectedTanqueId(String(compatibles[0].id))
+      }
+    } else {
+      setSelectedTanqueId('')
+    }
+  }, [ticketValidado, tanques, selectedTanqueId])
 
   function closeCreateModal() {
     setShowCreateModal(false)
@@ -303,8 +333,8 @@ export default function DespachosPage() {
       setDispatchError('Debe seleccionar un tanque de suministro.')
       return
     }
-    if (!selectedEstacionId) {
-      setDispatchError('Debe seleccionar una estación de combustible.')
+    if (!selectedEstacionId || !estaciones.some((e) => String(e.id) === String(selectedEstacionId))) {
+      setDispatchError('Debe seleccionar una estación de servicio activa.')
       return
     }
     const galones = parseFloat(galonesServidos)
@@ -875,18 +905,31 @@ export default function DespachosPage() {
                 </div>
 
                 {/* Selección de Estación */}
-                <Field label="Estación de servicio / Bomba" required>
+                <Field
+                  label="Estación de servicio / Bomba"
+                  required
+                  hint={
+                    estaciones.length === 0
+                      ? 'No hay estaciones de servicio activas disponibles.'
+                      : undefined
+                  }
+                >
                   <select
                     value={selectedEstacionId}
                     onChange={(e) => setSelectedEstacionId(e.target.value)}
                     required
+                    disabled={estaciones.length === 0}
                     className={inputCls}
                   >
-                    {estaciones.map((est) => (
-                      <option key={est.id} value={est.id}>
-                        {est.nombre}
-                      </option>
-                    ))}
+                    {estaciones.length === 0 ? (
+                      <option value="">Sin estaciones activas disponibles</option>
+                    ) : (
+                      estaciones.map((est) => (
+                        <option key={est.id} value={est.id}>
+                          {est.nombre}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </Field>
 
@@ -980,6 +1023,8 @@ export default function DespachosPage() {
                       submittingDispatch ||
                       !selectedTanqueId ||
                       !selectedEstacionId ||
+                      estaciones.length === 0 ||
+                      tanquesCompatibles.length === 0 ||
                       !galonesServidos ||
                       parseFloat(galonesServidos) <= 0
                     }

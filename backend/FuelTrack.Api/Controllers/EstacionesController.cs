@@ -13,10 +13,17 @@ namespace FuelTrack.Api.Controllers;
 public sealed class EstacionesController(AppDbContext db) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<EstacionDto>>> GetAll(CancellationToken ct)
+    public async Task<ActionResult<List<EstacionDto>>> GetAll(
+        [FromQuery] bool? soloActivas = null,
+        CancellationToken ct = default)
     {
-        var list = await db.Estaciones
-            .AsNoTracking()
+        var query = db.Estaciones.AsNoTracking();
+        if (soloActivas == true)
+        {
+            query = query.Where(e => e.Activo);
+        }
+
+        var list = await query
             .OrderBy(e => e.Nombre)
             .Select(e => new EstacionDto(e.Id, e.Nombre, e.Activo))
             .ToListAsync(ct);

@@ -102,7 +102,7 @@ public sealed class EstacionesControllerTests
     [TestMethod]
     public async Task GetAll_ReturnsEmptyList_CuandoNoHayDatos()
     {
-        var result = await _controller.GetAll(CancellationToken.None);
+        var result = await _controller.GetAll(null, CancellationToken.None);
         var ok = result.Result as OkObjectResult;
         var list = ok!.Value as List<EstacionDto>;
         Assert.AreEqual(0, list!.Count);
@@ -116,12 +116,29 @@ public sealed class EstacionesControllerTests
             new Estacion { Nombre = "Estación Inactiva", Activo = false });
         await _db.SaveChangesAsync();
 
-        var result = await _controller.GetAll(CancellationToken.None);
+        var result = await _controller.GetAll(null, CancellationToken.None);
         var ok = result.Result as OkObjectResult;
         var list = ok!.Value as List<EstacionDto>;
         Assert.AreEqual(2, list!.Count);
         Assert.IsTrue(list.Any(e => e.Nombre == "Estación Norte" && e.Activo));
         Assert.IsTrue(list.Any(e => e.Nombre == "Estación Inactiva" && !e.Activo));
+    }
+
+    [TestMethod]
+    public async Task GetAll_SoloActivas_FiltraInactivas()
+    {
+        _db.Estaciones.AddRange(
+            new Estacion { Nombre = "Estación Activa 1", Activo = true },
+            new Estacion { Nombre = "Estación Inactiva 1", Activo = false },
+            new Estacion { Nombre = "Estación Activa 2", Activo = true });
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.GetAll(soloActivas: true, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        var list = ok!.Value as List<EstacionDto>;
+        Assert.AreEqual(2, list!.Count);
+        Assert.IsTrue(list.All(e => e.Activo));
+        Assert.IsFalse(list.Any(e => e.Nombre == "Estación Inactiva 1"));
     }
 
     // ── GetById ─────────────────────────────────────────────────────────────
