@@ -83,15 +83,76 @@ public sealed class SolicitudesController : ControllerBase
             }
         }
 
-        if (!await _db.Empleados.AnyAsync(e => e.Id == req.EmpleadoId, ct))
-            return BadRequest(new { code = "EMPLEADO_NOT_FOUND", message = "El empleado no existe." });
-        if (!await _db.Vehiculos.AnyAsync(v => v.Id == req.VehiculoId, ct))
-            return BadRequest(new { code = "VEHICULO_NOT_FOUND", message = "El vehículo no existe." });
-        if (!await _db.Departamentos.AnyAsync(d => d.Id == req.DepartamentoId, ct))
-            return BadRequest(new { code = "DEPARTAMENTO_NOT_FOUND", message = "El departamento no existe." });
-        if (!await _db.TiposCombustible.AnyAsync(t => t.Id == req.TipoCombustibleId, ct))
-            return BadRequest(new { code = "TIPO_COMBUSTIBLE_NOT_FOUND", message = "El tipo de combustible no existe." });
+        var empleado = await _db.Empleados
+    .FirstOrDefaultAsync(e => e.Id == req.EmpleadoId, ct);
 
+if (empleado is null)
+    return BadRequest(new
+    {
+        code = "EMPLEADO_NOT_FOUND",
+        message = "El empleado no existe."
+    });
+
+if (!empleado.Activo)
+    return BadRequest(new
+    {
+        code = "EMPLEADO_INACTIVO",
+        message = "No se puede crear una solicitud para un empleado inactivo."
+    });
+
+
+var vehiculo = await _db.Vehiculos
+    .FirstOrDefaultAsync(v => v.Id == req.VehiculoId, ct);
+
+if (vehiculo is null)
+    return BadRequest(new
+    {
+        code = "VEHICULO_NOT_FOUND",
+        message = "El vehículo no existe."
+    });
+
+if (!vehiculo.Activo)
+    return BadRequest(new
+    {
+        code = "VEHICULO_INACTIVO",
+        message = "No se puede crear una solicitud para un vehículo inactivo."
+    });
+
+
+var departamento = await _db.Departamentos
+    .FirstOrDefaultAsync(d => d.Id == req.DepartamentoId, ct);
+
+if (departamento is null)
+    return BadRequest(new
+    {
+        code = "DEPARTAMENTO_NOT_FOUND",
+        message = "El departamento no existe."
+    });
+
+if (!departamento.Activo)
+    return BadRequest(new
+    {
+        code = "DEPARTAMENTO_INACTIVO",
+        message = "No se puede crear una solicitud para un departamento inactivo."
+    });
+
+
+var tipoCombustible = await _db.TiposCombustible
+    .FirstOrDefaultAsync(t => t.Id == req.TipoCombustibleId, ct);
+
+if (tipoCombustible is null)
+    return BadRequest(new
+    {
+        code = "TIPO_COMBUSTIBLE_NOT_FOUND",
+        message = "El tipo de combustible no existe."
+    });
+
+if (!tipoCombustible.Activo)
+    return BadRequest(new
+    {
+        code = "TIPO_COMBUSTIBLE_INACTIVO",
+        message = "No se puede crear una solicitud con un tipo de combustible inactivo."
+    });
         var solicitud = new SolicitudCombustible
         {
             CantidadSolicitada = req.CantidadSolicitada,

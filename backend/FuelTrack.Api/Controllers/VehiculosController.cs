@@ -63,9 +63,22 @@ public sealed class VehiculosController : ControllerBase
     {
         if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
 
-        if (!await _db.Departamentos.AnyAsync(d => d.Id == req.DepartamentoId, ct))
-            return BadRequest(new { code = "DEPARTAMENTO_NOT_FOUND",
-                message = "El departamento no existe." });
+       var departamento = await _db.Departamentos
+    .FirstOrDefaultAsync(d => d.Id == req.DepartamentoId, ct);
+
+if (departamento is null)
+    return BadRequest(new
+    {
+        code = "DEPARTAMENTO_NOT_FOUND",
+        message = "El departamento no existe."
+    });
+
+if (!departamento.Activo)
+    return BadRequest(new
+    {
+        code = "DEPARTAMENTO_INACTIVO",
+        message = "No se puede asignar un vehículo a un departamento inactivo."
+    });
 
         if (await _db.Vehiculos.AnyAsync(v => v.Placa == req.Placa, ct))
             return Conflict(new { code = "PLACA_DUPLICADA",
@@ -115,9 +128,22 @@ public sealed class VehiculosController : ControllerBase
             .FirstOrDefaultAsync(v => v.Id == id, ct);
         if (entity is null) return NotFound();
 
-        if (!await _db.Departamentos.AnyAsync(d => d.Id == req.DepartamentoId, ct))
-            return BadRequest(new { code = "DEPARTAMENTO_NOT_FOUND",
-                message = "El departamento no existe." });
+        var departamento = await _db.Departamentos
+    .FirstOrDefaultAsync(d => d.Id == req.DepartamentoId, ct);
+
+if (departamento is null)
+    return BadRequest(new
+    {
+        code = "DEPARTAMENTO_NOT_FOUND",
+        message = "El departamento no existe."
+    });
+
+if (!departamento.Activo)
+    return BadRequest(new
+    {
+        code = "DEPARTAMENTO_INACTIVO",
+        message = "No se puede asignar un vehículo a un departamento inactivo."
+    });
 
         if (await _db.Vehiculos.AnyAsync(v => v.Placa == req.Placa && v.Id != id, ct))
             return Conflict(new { code = "PLACA_DUPLICADA",
