@@ -80,9 +80,22 @@ Flutter sin cambios; no eliminaciones de trabajo ajeno ni migraciones previas.
 
 ## Pendientes reales de despliegue
 
-Elegir proveedor SMS/gateway y validar credenciales reales; SMTP productivo,
-DNS/TLS/cuentas/remitente, red y políticas de logs. No se enviaron mensajes a
-destinatarios reales ni se acreditó entrega productiva.
-`TRANSPORT IMPLEMENTED — REAL PROVIDER CREDENTIAL GATE PENDING`.
+**Actualización:** SMTP validado con proveedor real (Gmail, cuenta dedicada del
+proyecto vía user-secrets local). Se detectó y corrigió un defecto real de
+`SmtpEmailSender`: MailKit rechazaba la conexión con `SslHandshakeException`
+porque la verificación de revocación (OCSP/CRL) del certificado no podía
+completarse en la red de prueba — un caso común detrás de firewalls/proxies
+corporativos. Corrección: `CheckCertificateRevocation = false` en el
+`SmtpClient`, que omite solo el chequeo de revocación sin afectar la
+validación de cadena/hostname del certificado. Envío real confirmado
+(notificación `INVENTARIO_BAJO`, estado `ENVIADA`, Message-Id de Gmail). El
+mismo transporte se usa para todas las notificaciones por email
+(`TICKET_EMITIDO`, `TICKET_PROXIMO_VENCER`, `TICKET_VENCIDO`,
+`INVENTARIO_BAJO`, `AJUSTE_INVENTARIO`, `INTEGRACION_FALLIDA`), no requiere
+cambios adicionales por tipo.
+
+SMS sigue pendiente: elegir proveedor/gateway y validar credenciales reales.
+No se enviaron SMS a destinatarios reales ni se acreditó entrega productiva de
+ese canal. `EMAIL TRANSPORT VALIDATED — SMS PROVIDER CREDENTIAL GATE PENDING`.
 La migración aborta ante duplicados históricos; revisión humana preservando
 historial antes de continuar, nunca borrado automático.
