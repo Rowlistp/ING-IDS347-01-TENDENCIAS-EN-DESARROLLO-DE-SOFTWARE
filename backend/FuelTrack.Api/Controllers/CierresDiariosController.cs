@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace FuelTrack.Api.Controllers;
 
 [ApiController, Route("api/v1/cierres-diarios")]
-[Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor},{Roles.Despachador},{Roles.Auditor}")]
+[Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor},{Roles.Auditor},{Roles.Despachador},{Roles.Consulta}")]
 public sealed class CierresDiariosController(CierreDiarioService service) : ControllerBase
 {
     [HttpGet]
@@ -30,7 +30,7 @@ public sealed class CierresDiariosController(CierreDiarioService service) : Cont
     public async Task<ActionResult> GetPdf(int id, CancellationToken ct)
     {
         var pdf = await service.GetPdfAsync(id, ct);
-        return pdf is null ? NotFound() : File(pdf, "application/pdf", $"cierre-{id}.pdf");
+        return pdf is null ? NotFound() : File(pdf, "application/pdf", $"cierre-diario-ID{id}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.pdf");
     }
 
     [HttpPost]

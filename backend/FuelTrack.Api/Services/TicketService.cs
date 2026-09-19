@@ -3,6 +3,7 @@ using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Tickets;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
+using FuelTrack.Api.Notifications;
 using FuelTrack.Api.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -250,7 +251,7 @@ public sealed class TicketService(
         if (!string.IsNullOrWhiteSpace(ticket.Empleado.Correo))
             pending.Add(CreateNotification(ticket, "EMAIL", ticket.Empleado.Correo));
         if (!string.IsNullOrWhiteSpace(ticket.Empleado.Telefono))
-            pending.Add(CreateNotification(ticket, "SMS", ticket.Empleado.Telefono));
+            pending.Add(CreateNotification(ticket, "SMS", NotificationOptions.NormalizePhone(ticket.Empleado.Telefono)));
         if (pending.Count == 0)
             throw Error(409, "DESTINATARIO_NO_DISPONIBLE", "El empleado no tiene correo ni teléfono disponible.");
 

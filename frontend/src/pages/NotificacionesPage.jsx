@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import PageContainer from '../components/PageContainer'
+import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
 import apiRequest from '../services/api'
+import { validateRangoFechas } from '../utils/validators'
 
 const TAMANO_PAGINA = 20
 
@@ -41,6 +43,7 @@ export default function NotificacionesPage() {
   const [pagina, setPagina] = useState(1)
   const [filtros, setFiltros] = useState(FILTROS_VACIOS)
   const [filtrosPendientes, setFiltrosPendientes] = useState(FILTROS_VACIOS)
+  const [filtroError, setFiltroError] = useState(null)
 
   const [respuesta, setRespuesta] = useState(null)
   const [claveCargada, setClaveCargada] = useState(null)
@@ -80,10 +83,17 @@ export default function NotificacionesPage() {
   function handleFiltroChange(e) {
     const { name, value } = e.target
     setFiltrosPendientes((f) => ({ ...f, [name]: value }))
+    if (filtroError) setFiltroError(null)
   }
 
   function handleAplicarFiltros(e) {
     e.preventDefault()
+    setFiltroError(null)
+    const err = validateRangoFechas(filtrosPendientes.fechaDesde, filtrosPendientes.fechaHasta)
+    if (err) {
+      setFiltroError(err)
+      return
+    }
     setPagina(1)
     setFiltros(filtrosPendientes)
   }
@@ -91,6 +101,7 @@ export default function NotificacionesPage() {
   function handleLimpiarFiltros() {
     setFiltrosPendientes(FILTROS_VACIOS)
     setFiltros(FILTROS_VACIOS)
+    setFiltroError(null)
     setPagina(1)
   }
 
@@ -165,41 +176,57 @@ export default function NotificacionesPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-acero">Desde</label>
+          <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Desde</label>
           <input
             type="date"
             name="fechaDesde"
             value={filtrosPendientes.fechaDesde}
             onChange={handleFiltroChange}
-            className="rounded-md border border-acero/40 px-3 py-2 text-sm text-tinta"
+            max={filtrosPendientes.fechaHasta || undefined}
+            className="rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-acero">Hasta</label>
+          <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Hasta</label>
           <input
             type="date"
             name="fechaHasta"
             value={filtrosPendientes.fechaHasta}
             onChange={handleFiltroChange}
-            className="rounded-md border border-acero/40 px-3 py-2 text-sm text-tinta"
+            min={filtrosPendientes.fechaDesde || undefined}
+            className="rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta"
           />
         </div>
 
-        <button
-          type="submit"
-          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          Filtrar
-        </button>
-        <button
-          type="button"
-          onClick={handleLimpiarFiltros}
-          className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
-        >
-          Limpiar
-        </button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button
+            type="submit"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-md bg-tanque px-4 py-2 text-sm font-semibold text-white hover:opacity-90 shadow-sm min-h-[38px] active:scale-[0.98]"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            Filtrar
+          </button>
+          <button
+            type="button"
+            onClick={handleLimpiarFiltros}
+            className="flex-1 sm:flex-initial rounded-md border border-acero/30 bg-white px-4 py-2 text-sm font-medium text-tinta hover:bg-fondo min-h-[38px] active:scale-[0.98]"
+          >
+            Limpiar
+          </button>
+        </div>
       </form>
+
+      {filtroError && (
+        <div className="mb-4 flex items-center gap-2 rounded-md bg-peligro/10 border border-peligro/20 p-3 text-sm text-peligro">
+          <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{filtroError}</span>
+        </div>
+      )}
 
       {error && <p className="text-sm text-peligro">{error}</p>}
       {reintentoError && <p className="text-sm text-peligro">{reintentoError}</p>}
@@ -207,63 +234,81 @@ export default function NotificacionesPage() {
 
       {!error && !loading && respuesta && (
         <>
-          <div className="overflow-x-auto rounded-sm border border-acero/20">
-            <table className="min-w-full divide-y divide-acero/20 text-sm">
-              <thead className="bg-fondo">
-                <tr>
-                  {['Tipo', 'Canal', 'Destinatario', 'Estado', 'Fecha', 'Intentos', 'Acciones'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-acero/10 bg-white">
-                {respuesta.elementos.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-6 text-center text-acero/70">
-                      Sin notificaciones para los filtros aplicados.
-                    </td>
-                  </tr>
-                )}
-                {respuesta.elementos.map((n) => (
-                  <tr key={n.id} className="hover:bg-fondo">
-                    <td className="px-4 py-3 font-mono text-tinta">{n.tipo}</td>
-                    <td className="px-4 py-3 font-mono text-acero">{n.canal}</td>
-                    <td className="px-4 py-3 font-mono text-acero">{n.destinatario}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge label={ESTADO_LABEL[n.estado] ?? n.estado} variant={ESTADO_VARIANT[n.estado]} />
-                    </td>
-                    <td className="px-4 py-3 font-mono num text-acero">{formatFecha(n.fechaHora)}</td>
-                    <td className="px-4 py-3 font-mono num text-acero">{n.intentos} / {n.intentosTotales}</td>
-                    <td className="px-4 py-3">
-                      {n.estado === 'FALLIDA' && (
-                        <button
-                          type="button"
-                          onClick={() => handleReintentar(n)}
-                          disabled={reintentandoId === n.id}
-                          className="rounded bg-tanque px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
-                        >
-                          {reintentandoId === n.id ? 'Reintentando...' : 'Reintentar'}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveTable
+            data={respuesta.elementos}
+            keyField="id"
+            emptyMessage="Sin notificaciones para los filtros aplicados."
+            columns={[
+              {
+                key: 'tipo',
+                label: 'Tipo',
+                primary: true,
+                priority: 'high',
+                render: (n) => (
+                  <div>
+                    <span className="font-semibold font-mono text-tanque text-xs sm:text-sm">{n.tipo}</span>
+                    <div className="text-xs text-acero font-mono sm:hidden">{n.canal} • {n.destinatario}</div>
+                  </div>
+                ),
+              },
+              {
+                key: 'canal',
+                label: 'Canal',
+                priority: 'med',
+                render: (n) => <span className="font-mono text-acero">{n.canal}</span>,
+              },
+              {
+                key: 'destinatario',
+                label: 'Destinatario',
+                priority: 'med',
+                render: (n) => <span className="font-mono text-acero">{n.destinatario}</span>,
+              },
+              {
+                key: 'estado',
+                label: 'Estado',
+                priority: 'high',
+                render: (n) => <StatusBadge label={ESTADO_LABEL[n.estado] ?? n.estado} variant={ESTADO_VARIANT[n.estado]} />,
+              },
+              {
+                key: 'fechaHora',
+                label: 'Fecha',
+                priority: 'high',
+                render: (n) => <span className="font-mono num text-acero text-xs sm:text-sm">{formatFecha(n.fechaHora)}</span>,
+              },
+              {
+                key: 'intentos',
+                label: 'Intentos',
+                priority: 'low',
+                render: (n) => <span className="font-mono num text-acero">{n.intentos} / {n.intentosTotales}</span>,
+              },
+            ]}
+            actions={(n) => (
+              n.estado === 'FALLIDA' && (
+                <button
+                  type="button"
+                  onClick={() => handleReintentar(n)}
+                  disabled={reintentandoId === n.id}
+                  className="inline-flex min-h-[38px] items-center gap-1.5 rounded-sm bg-tanque px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-tanque/90 disabled:opacity-50 active:scale-[0.98]"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {reintentandoId === n.id ? 'Reintentando...' : 'Reintentar'}
+                </button>
+              )
+            )}
+          />
 
-          <div className="mt-4 flex items-center justify-between text-sm">
-            <span className="font-mono num text-acero">
+          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
+            <span className="font-mono num text-acero order-2 sm:order-1">
               Página {respuesta.pagina} de {totalPaginas} — {respuesta.total} registros
             </span>
-            <div className="flex gap-2">
+            <div className="flex w-full sm:w-auto gap-2 order-1 sm:order-2">
               <button
                 type="button"
                 onClick={() => setPagina((p) => Math.max(1, p - 1))}
                 disabled={pagina === 1}
-                className="rounded-md border border-acero/40 px-3 py-1.5 text-tinta hover:bg-fondo disabled:opacity-50"
+                className="flex-1 sm:flex-initial min-h-[42px] rounded-md border border-acero/30 bg-white px-4 py-2 text-tinta hover:bg-fondo disabled:opacity-50 active:scale-[0.98]"
               >
                 Anterior
               </button>
@@ -271,7 +316,7 @@ export default function NotificacionesPage() {
                 type="button"
                 onClick={() => setPagina((p) => p + 1)}
                 disabled={pagina >= totalPaginas}
-                className="rounded-md border border-acero/40 px-3 py-1.5 text-tinta hover:bg-fondo disabled:opacity-50"
+                className="flex-1 sm:flex-initial min-h-[42px] rounded-md border border-acero/30 bg-white px-4 py-2 text-tinta hover:bg-fondo disabled:opacity-50 active:scale-[0.98]"
               >
                 Siguiente
               </button>

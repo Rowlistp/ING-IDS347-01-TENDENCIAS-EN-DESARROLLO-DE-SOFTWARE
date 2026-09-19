@@ -7,10 +7,10 @@ const AUTO_REFRESH_MS = 60_000
 
 function StatCard({ label, value, sub }) {
   return (
-    <div className="rounded-sm border border-acero/20 bg-white p-5">
-      <p className="text-xs font-medium text-acero uppercase tracking-wide">{label}</p>
-      <p className="mt-1 font-mono num text-3xl font-semibold text-tinta">{value}</p>
-      {sub && <p className="mt-1 text-xs text-acero/70">{sub}</p>}
+    <div className="rounded-sm border border-acero/20 bg-white p-3.5 sm:p-5 flex flex-col justify-between shadow-xs">
+      <p className="text-[11px] sm:text-xs font-semibold text-acero uppercase tracking-wider leading-snug">{label}</p>
+      <p className="mt-1 font-mono num text-2xl sm:text-3xl font-semibold text-tinta truncate">{value}</p>
+      {sub && <p className="mt-1 text-[11px] text-acero/70">{sub}</p>}
     </div>
   )
 }
@@ -18,24 +18,28 @@ function StatCard({ label, value, sub }) {
 function BarRow({ label, value, max, color = 'bg-tanque' }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0
   return (
-    <div className="flex items-center gap-3 text-sm">
-      <span className="w-24 shrink-0 text-acero">{label}</span>
-      <div className="flex-1 h-3 rounded-full bg-acero/10 overflow-hidden">
-        <div className={`h-3 rounded-full ${color}`} style={{ width: `${pct}%` }} />
+    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm py-1">
+      <div className="flex justify-between items-center sm:w-32 sm:shrink-0">
+        <span className="text-acero text-xs sm:text-sm truncate font-medium">{label}</span>
+        <span className="sm:hidden font-mono num text-tinta font-semibold text-xs">{value.toFixed(1)} gal</span>
       </div>
-      <span className="w-16 text-right font-mono num text-tinta font-medium">{value.toFixed(1)}</span>
+      <div className="flex-1 h-2.5 sm:h-3 rounded-full bg-acero/10 overflow-hidden w-full">
+        <div className={`h-full rounded-full ${color} transition-all duration-300`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="hidden sm:inline-block w-20 text-right font-mono num text-tinta font-semibold text-xs sm:text-sm">{value.toFixed(1)} gal</span>
     </div>
   )
 }
 
 function Section({ title, children }) {
   return (
-    <div className="rounded-sm border border-acero/20 bg-white p-5">
-      <h2 className="mb-4 text-sm font-semibold text-tinta uppercase tracking-wide">{title}</h2>
+    <div className="rounded-sm border border-acero/20 bg-white p-4 sm:p-5 shadow-xs">
+      <h2 className="mb-3 sm:mb-4 text-xs sm:text-sm font-semibold text-tinta uppercase tracking-wider">{title}</h2>
       {children}
     </div>
   )
 }
+
 
 export default function DashboardPage() {
   const [data, setData] = useState(null)
@@ -94,7 +98,7 @@ export default function DashboardPage() {
 
   return (
     <PageContainer title="Dashboard">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <p className="text-xs text-acero/70">
           {lastUpdated && `Actualizado ${lastUpdated.toLocaleTimeString()}`}
         </p>
@@ -102,14 +106,17 @@ export default function DashboardPage() {
           type="button"
           onClick={() => load(false)}
           disabled={refreshing}
-          className="rounded bg-acero/10 px-3 py-1.5 text-xs font-medium text-tinta hover:bg-acero/20 disabled:opacity-50"
+          className="flex min-h-[44px] sm:min-h-[36px] items-center justify-center gap-1.5 rounded-md border border-acero/30 bg-white px-3 py-1.5 text-xs font-semibold text-tinta hover:bg-fondo hover:border-tanque transition-colors disabled:opacity-50 w-full sm:w-auto shadow-xs"
         >
+          <svg className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
           {refreshing ? 'Actualizando...' : 'Actualizar'}
         </button>
       </div>
 
-      {/* Tarjetas hoy */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 mb-6">
+      {/* Tarjetas hoy — Grid fluido auto-fit/minmax */}
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))] mb-6">
         <StatCard label="Despachos hoy"        value={hoy.totalDespachos} />
         <StatCard label="Volumen hoy (gal)"    value={hoy.volumenDespachado.toFixed(1)} />
         <StatCard label="Solicitudes pendientes" value={hoy.solicitudesPendientes} />
@@ -117,6 +124,7 @@ export default function DashboardPage() {
         <StatCard label="Inventario actual (gal)" value={inventarioActual.toFixed(1)} />
         <StatCard label="Tickets activos / vencidos" value={`${ticketsStats.activos} / ${ticketsStats.vencidos}`} />
       </div>
+
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 mb-4">
         {/* Consumo por departamento */}

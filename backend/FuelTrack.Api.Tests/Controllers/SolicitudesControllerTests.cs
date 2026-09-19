@@ -1,4 +1,3 @@
-// backend/FuelTrack.Api.Tests/Controllers/SolicitudesControllerTests.cs
 using System.Security.Claims;
 using FuelTrack.Api.Controllers;
 using FuelTrack.Api.Data;
@@ -424,5 +423,145 @@ public sealed class SolicitudesControllerTests
 
         Assert.IsNotNull(conflict);
         Assert.IsTrue(conflict.Value!.ToString()!.Contains("SOLICITUD_YA_PROCESADA"));
+    }
+
+    // ── OwnerFilter / Solicitante ───────────────────────────────────────────
+
+    private void SetUserContext(int userId, string role)
+    {
+        var identity = new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim(ClaimTypes.Role, role)
+        ], "TestAuth");
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
+        };
+    }
+
+    [TestMethod]
+    public async Task GetAll_Solicitante_FiltraSoloSusPropiasSolicitudes()
+    {
+        var (empleado1, vehiculo, depto, tipo) = await CrearDependenciasAsync();
+
+        var user1 = new Usuario { NombreUsuario = "solicitante1", Activo = true };
+        var user2 = new Usuario { NombreUsuario = "solicitante2", Activo = true };
+        _db.Usuarios.AddRange(user1, user2);
+        await _db.SaveChangesAsync();
+
+        empleado1.UsuarioId = user1.Id;
+
+        var empleado2 = new Empleado
+        {
+            Codigo = "E-002", NombreCompleto = "Otro Empleado", Cedula = "001-0000002-2",
+            Cargo = "Chofer", Correo = "otro@test.com", Telefono = "8091234568",
+            DepartamentoId = depto.Id, Activo = true, UsuarioId = user2.Id
+        };
+        _db.Empleados.Add(empleado2);
+        await _db.SaveChangesAsync();
+
+        _db.SolicitudesCombustible.AddRange(
+            new SolicitudCombustible
+            {
+                CantidadSolicitada = 10m, TipoSolicitud = "Manual", Estado = EstadoSolicitud.Pendiente,
+                FechaSolicitud = DateTime.UtcNow, EmpleadoId = empleado1.Id, VehiculoId = vehiculo.Id,
+                DepartamentoId = depto.Id, TipoCombustibleId = tipo.Id
+            },
+            new SolicitudCombustible
+            {
+                CantidadSolicitada = 20m, TipoSolicitud = "Manual", Estado = EstadoSolicitud.Pendiente,
+                FechaSolicitud = DateTime.UtcNow, EmpleadoId = empleado2.Id, VehiculoId = vehiculo.Id,
+                DepartamentoId = depto.Id, TipoCombustibleId = tipo.Id
+            }
+        );
+        await _db.SaveChangesAsync();
+
+        SetUserContext(user1.Id, Roles.Solicitante);
+
+        var result = await _controller.GetAll(CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        Assert.IsNotNull(ok);
+        var list = ok.Value as List<SolicitudDto>;
+        Assert.IsNotNull(list);
+        Assert.AreEqual(1, list.Count);
+        Assert.AreEqual(empleado1.Id, list[0].EmpleadoId);
+    }
+
+    [TestMethod]
+    public async Task GetAll_Administrador_RetornaTodasLasSolicitudes()
+    {
+        var (empleado1, vehiculo, depto, tipo) = await CrearDependenciasAsync();
+
+        var user1 = new Usuario { NombreUsuario = "solicitante.admin.test", Activo = true };
+        var userAdmin = new Usuario { NombreUsuario = "admin.test", Activo = true };
+        _db.Usuarios.AddRange(user1, userAdmin);
+        await _db.SaveChangesAsync();
+
+        empleado1.UsuarioId = user1.Id;
+
+        var empleado2 = new Empleado
+        {
+            Codigo = "E-003", NombreCompleto = "Tercer Empleado", Cedula = "001-0000003-3",
+            Cargo = "Chofer", Correo = "tercero@test.com", Telefono = "8091234569",
+            DepartamentoId = depto.Id, Activo = true
+        };
+        _db.Empleados.Add(empleado2);
+        await _db.SaveChangesAsync();
+
+        _db.SolicitudesCombustible.AddRange(
+            new SolicitudCombustible
+            {
+                CantidadSolicitada = 10m, TipoSolicitud = "Manual", Estado = EstadoSolicitud.Pendiente,
+                FechaSolicitud = DateTime.UtcNow, EmpleadoId = empleado1.Id, VehiculoId = vehiculo.Id,
+                DepartamentoId = depto.Id, TipoCombustibleId = tipo.Id
+            },
+            new SolicitudCombustible
+            {
+                CantidadSolicitada = 20m, TipoSolicitud = "Manual", Estado = EstadoSolicitud.Pendiente,
+                FechaSolicitud = DateTime.UtcNow, EmpleadoId = empleado2.Id, VehiculoId = vehiculo.Id,
+                DepartamentoId = depto.Id, TipoCombustibleId = tipo.Id
+            }
+        );
+        await _db.SaveChangesAsync();
+
+        SetUserContext(userAdmin.Id, Roles.Administrador);
+
+        var result = await _controller.GetAll(CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        Assert.IsNotNull(ok);
+        var list = ok.Value as List<SolicitudDto>;
+        Assert.IsNotNull(list);
+        Assert.AreEqual(2, list.Count);
+    }
+
+    [TestMethod]
+    public async Task Create_Solicitante_NoPuedeCrearParaOtroEmpleado_Retorna403()
+    {
+        var (empleado1, vehiculo, depto, tipo) = await CrearDependenciasAsync();
+
+        var user1 = new Usuario { NombreUsuario = "solicitante.propio", Activo = true };
+        _db.Usuarios.Add(user1);
+        await _db.SaveChangesAsync();
+
+        empleado1.UsuarioId = user1.Id;
+
+        var empleadoOtro = new Empleado
+        {
+            Codigo = "E-004", NombreCompleto = "Empleado Ajeno", Cedula = "001-0000004-4",
+            Cargo = "Chofer", Correo = "ajeno@test.com", Telefono = "8091234570",
+            DepartamentoId = depto.Id, Activo = true
+        };
+        _db.Empleados.Add(empleadoOtro);
+        await _db.SaveChangesAsync();
+
+        SetUserContext(user1.Id, Roles.Solicitante);
+
+        var req = new CreateSolicitudRequest(50m, empleadoOtro.Id, vehiculo.Id, depto.Id, tipo.Id, null);
+        var result = await _controller.Create(req, CancellationToken.None);
+        var objResult = result.Result as ObjectResult;
+        Assert.IsNotNull(objResult);
+        Assert.AreEqual(StatusCodes.Status403Forbidden, objResult.StatusCode);
     }
 }

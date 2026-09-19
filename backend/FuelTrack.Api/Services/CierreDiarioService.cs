@@ -149,77 +149,248 @@ public sealed class CierreDiarioService(AppDbContext db, AuditService audit)
     }
 
     public async Task<byte[]?> GetPdfAsync(int id, CancellationToken ct)
-        => await db.CierresDiarios
-            .AsNoTracking()
-            .Where(c => c.Id == id)
-            .Select(c => c.PdfActa)
-            .SingleOrDefaultAsync(ct);
+    {
+        var cierre = await db.CierresDiarios
+            .Include(c => c.Detalles)
+                .ThenInclude(d => d.Tanque)
+                    .ThenInclude(t => t.TipoCombustible)
+            .Include(c => c.CreadoPor)
+            .SingleOrDefaultAsync(c => c.Id == id, ct);
+
+        if (cierre is null) return null;
+
+        if (cierre.PdfActa is not null && cierre.PdfActa.Length > 0)
+            return cierre.PdfActa;
+
+        var detalleResponses = cierre.Detalles.Select(d => new CierreDiarioDetalleResponse(
+            d.TanqueId, d.Tanque.Identificacion, d.Tanque.TipoCombustible.Nombre,
+            d.NumeroDespachos, d.VolumenDespachado, d.VolumenRecibido,
+            d.InventarioInicial, d.InventarioFinal, d.Diferencias)).ToList();
+
+        var pdf = GenerarPdf(cierre, detalleResponses, cierre.CreadoPor.NombreUsuario);
+        cierre.PdfActa = pdf;
+        await db.SaveChangesAsync(ct);
+        return pdf;
+    }
 
     private static CierreDiarioResponse ToResponse(CierreDiario c,
         IReadOnlyList<CierreDiarioDetalleResponse> detalles, string creadoPorNombre)
         => new(c.Id, c.Fecha, c.TotalDespachos, c.VolumenDespachado,
             c.InventarioFinal, c.Diferencias, c.CreadoPorId, creadoPorNombre,
-            c.CreadoEn, c.PdfActa is not null, detalles);
+            c.CreadoEn, true, detalles);
 
     private static byte[] GenerarPdf(CierreDiario cierre,
         IReadOnlyList<CierreDiarioDetalleResponse> detalles, string creadoPorNombre)
-        => Document.Create(doc => doc.Page(page =>
+    {
+        var colorTanque = Color.FromHex("#16333A");
+        var colorTanque700 = Color.FromHex("#0E2228");
+        var colorTanqueClaro = Color.FromHex("#EDF3F4");
+        var colorTanqueBorde = Color.FromHex("#D0E3E6");
+        var colorAcero = Color.FromHex("#4A5A63");
+        var colorAceroClaro = Color.FromHex("#EAEEF0");
+        var colorAceroBorde = Color.FromHex("#D3DADE");
+        var colorMedidor = Color.FromHex("#E29B2E");
+        var colorExito = Color.FromHex("#2E7D5B");
+        var colorExitoClaro = Color.FromHex("#EDF8F3");
+        var colorPeligro = Color.FromHex("#C1432B");
+        var colorPeligroClaro = Color.FromHex("#FDF1EE");
+        var colorTinta = Color.FromHex("#12181A");
+
+        var totalRecibido = detalles.Sum(d => d.VolumenRecibido);
+
+        return Document.Create(doc => doc.Page(page =>
         {
-            page.Size(PageSizes.A4);
-            page.Margin(36);
-            page.DefaultTextStyle(s => s.FontSize(10));
+            page.Size(PageSizes.Letter);
+            page.Margin(26);
+            page.DefaultTextStyle(s => s.FontSize(8.5f).FontColor(colorTinta));
 
-            page.Header().Text($"FuelTrack — Acta de Cierre Diario: {cierre.Fecha:yyyy-MM-dd}")
-                .SemiBold().FontSize(16).FontColor(Colors.Blue.Darken2);
-
-            page.Content().PaddingVertical(16).Column(col =>
+            page.Header().Column(col =>
             {
-                col.Spacing(6);
-                col.Item().Text($"Total despachos: {cierre.TotalDespachos}  |  " +
-                    $"Volumen total: {cierre.VolumenDespachado:0.####} gal  |  " +
-                    $"Diferencias: {cierre.Diferencias:0.####} gal").Bold();
+                col.Item().Border(1).BorderColor(colorAceroBorde).Row(row =>
+                {
+                    row.ConstantItem(5).Background(colorMedidor);
 
-                col.Item().PaddingTop(10).Table(table =>
+                    row.RelativeItem().Background(colorTanque).Padding(12).Column(brandCol =>
+                    {
+                        brandCol.Item().Text("FUELTRACK").ExtraBold().FontSize(18).FontColor(Colors.White).LetterSpacing(0.08f);
+                        brandCol.Item().Text("SISTEMA DE GESTIÓN DE COMBUSTIBLE").FontSize(7.5f).FontColor(Color.FromHex("#93C5FD")).LetterSpacing(0.12f);
+                    });
+
+                    row.ConstantItem(180).Background(colorTanque).Padding(10).Column(rightCol =>
+                    {
+                        rightCol.Item().AlignRight().Text("DOCUMENTO OFICIAL").FontSize(7f).FontColor(Color.FromHex("#93C5FD")).LetterSpacing(0.12f);
+                        rightCol.Item().AlignRight().Text("ACTA DE CIERRE DIARIO").Bold().FontSize(10f).FontColor(Colors.White);
+                        rightCol.Item().PaddingTop(3).AlignRight().Text($"FECHA: {cierre.Fecha:dd/MM/yyyy}").Bold().FontSize(8.5f).FontColor(colorMedidor);
+                    });
+                });
+
+                // Metrics band
+                col.Item().Background(colorTanque700).PaddingVertical(8).PaddingHorizontal(14).Row(metrics =>
+                {
+                    static void MetricItem(IContainer c, string label, string val, Color? valColor = null)
+                    {
+                        c.Column(mc =>
+                        {
+                            mc.Item().AlignCenter().Text(label).Bold().FontSize(6.5f).FontColor(Color.FromHex("#93C5FD")).LetterSpacing(0.08f);
+                            mc.Item().AlignCenter().Text(val).ExtraBold().FontSize(14f).FontColor(valColor ?? Colors.White);
+                        });
+                    }
+
+                    metrics.RelativeItem().Element(c => MetricItem(c, "TOTAL DESPACHOS", cierre.TotalDespachos.ToString()));
+                    metrics.ConstantItem(1).Background(Color.FromHex("#2C4850"));
+                    metrics.RelativeItem().Element(c => MetricItem(c, "VOLUMEN DESPACHADO", $"{cierre.VolumenDespachado:0.##} gal"));
+                    metrics.ConstantItem(1).Background(Color.FromHex("#2C4850"));
+                    metrics.RelativeItem().Element(c => MetricItem(c, "VOLUMEN RECIBIDO", $"{totalRecibido:0.##} gal", colorExito));
+                    metrics.ConstantItem(1).Background(Color.FromHex("#2C4850"));
+                    metrics.RelativeItem().Element(c => MetricItem(c, "DIFERENCIAS TOTALES", $"{cierre.Diferencias:0.##} gal", cierre.Diferencias == 0 ? Colors.White : colorMedidor));
+                });
+            });
+
+            page.Content().PaddingTop(10).Column(col =>
+            {
+                col.Spacing(8);
+
+                // Período y Responsable cards
+                col.Item().Row(r =>
+                {
+                    r.Spacing(8);
+
+                    r.RelativeItem().Border(1).BorderColor(colorAceroBorde).Column(card =>
+                    {
+                        card.Item().Background(colorTanqueClaro).BorderBottom(1).BorderColor(colorAceroBorde).Padding(5)
+                            .Text("PERÍODO DEL CIERRE").Bold().FontSize(7.5f).FontColor(colorTanque).LetterSpacing(0.08f);
+                        card.Item().Padding(8).Column(inner =>
+                        {
+                            inner.Spacing(2);
+                            inner.Item().Text($"Fecha Operacional: {cierre.Fecha:dd/MM/yyyy}").Bold().FontSize(9f);
+                            inner.Item().Text($"Hora de Cierre: {cierre.CreadoEn:dd/MM/yyyy HH:mm:ss} UTC").FontSize(8f).FontColor(colorAcero);
+                            inner.Item().Text("Turno: Completo (00:00 – 23:59)").FontSize(8f).FontColor(colorAcero);
+                        });
+                    });
+
+                    r.RelativeItem().Border(1).BorderColor(colorAceroBorde).Column(card =>
+                    {
+                        card.Item().Background(colorTanqueClaro).BorderBottom(1).BorderColor(colorAceroBorde).Padding(5)
+                            .Text("RESPONSABLE DEL REGISTRO").Bold().FontSize(7.5f).FontColor(colorTanque).LetterSpacing(0.08f);
+                        card.Item().Padding(8).Column(inner =>
+                        {
+                            inner.Spacing(2);
+                            inner.Item().Text($"Generado por: {creadoPorNombre}").Bold().FontSize(9f);
+                            inner.Item().Text($"ID Usuario: #{cierre.CreadoPorId}").FontSize(8f).FontColor(colorAcero);
+                            inner.Item().Text("Perfil: Supervisor / Administrador de Turno").FontSize(8f).FontColor(colorAcero);
+                        });
+                    });
+                });
+
+                // Table title
+                col.Item().Row(r =>
+                {
+                    r.AutoItem().Text("ESTADO DE TANQUES E INVENTARIOS AL CIERRE").Bold().FontSize(8f).FontColor(colorTanque).LetterSpacing(0.08f);
+                });
+
+                // Detailed Table
+                col.Item().Border(1).BorderColor(colorAceroBorde).Table(table =>
                 {
                     table.ColumnsDefinition(c =>
                     {
-                        c.RelativeColumn(2); c.RelativeColumn(2); c.RelativeColumn();
-                        c.RelativeColumn(); c.RelativeColumn(); c.RelativeColumn();
-                        c.RelativeColumn(); c.RelativeColumn();
+                        c.RelativeColumn(1.8f);
+                        c.RelativeColumn(2.2f);
+                        c.RelativeColumn(1.2f);
+                        c.RelativeColumn(1.4f);
+                        c.RelativeColumn(1.4f);
+                        c.RelativeColumn(1.4f);
+                        c.RelativeColumn(1.4f);
+                        c.RelativeColumn(1.2f);
                     });
 
-                    static IContainer HeaderCell(IContainer c) =>
-                        c.Background(Colors.Blue.Lighten3).Padding(4);
-                    static IContainer DataCell(IContainer c) =>
-                        c.BorderBottom(0.5f).Padding(4);
-
-                    table.Header(header =>
+                    table.Header(h =>
                     {
-                        foreach (var h in new[] { "Tanque", "Combustible", "Despachos",
-                            "Vol.Desp.", "Vol.Recib.", "Inv.Inicial", "Inv.Final", "Dif." })
-                            header.Cell().Element(HeaderCell).Text(h).Bold();
+                        static IContainer HeaderCell(IContainer c, Color bg) =>
+                            c.Background(bg).PaddingVertical(5).PaddingHorizontal(4);
+
+                        h.Cell().Element(c => HeaderCell(c, colorTanque)).Text("TANQUE").Bold().FontSize(7.5f).FontColor(Colors.White);
+                        h.Cell().Element(c => HeaderCell(c, colorTanque)).Text("COMBUSTIBLE").Bold().FontSize(7.5f).FontColor(Colors.White);
+                        h.Cell().Element(c => HeaderCell(c, colorTanque)).AlignRight().Text("DESP.").Bold().FontSize(7.5f).FontColor(Colors.White);
+                        h.Cell().Element(c => HeaderCell(c, colorTanque)).AlignRight().Text("VOL.DESP.").Bold().FontSize(7.5f).FontColor(Colors.White);
+                        h.Cell().Element(c => HeaderCell(c, colorTanque)).AlignRight().Text("VOL.REC.").Bold().FontSize(7.5f).FontColor(Colors.White);
+                        h.Cell().Element(c => HeaderCell(c, colorTanque)).AlignRight().Text("INV.INIC.").Bold().FontSize(7.5f).FontColor(Colors.White);
+                        h.Cell().Element(c => HeaderCell(c, colorTanque)).AlignRight().Text("INV.FINAL").Bold().FontSize(7.5f).FontColor(Colors.White);
+                        h.Cell().Element(c => HeaderCell(c, colorTanque)).AlignRight().Text("DIF.").Bold().FontSize(7.5f).FontColor(Colors.White);
                     });
 
+                    var idx = 0;
                     foreach (var d in detalles)
                     {
-                        table.Cell().Element(DataCell).Text(d.TanqueIdentificacion);
-                        table.Cell().Element(DataCell).Text(d.TipoCombustible);
-                        table.Cell().Element(DataCell).Text(d.NumeroDespachos.ToString());
-                        table.Cell().Element(DataCell).Text($"{d.VolumenDespachado:0.##}");
-                        table.Cell().Element(DataCell).Text($"{d.VolumenRecibido:0.##}");
-                        table.Cell().Element(DataCell).Text($"{d.InventarioInicial:0.##}");
-                        table.Cell().Element(DataCell).Text($"{d.InventarioFinal:0.##}");
-                        table.Cell().Element(DataCell)
+                        var rowBg = (idx++ % 2 == 0) ? Colors.White : colorTanqueClaro;
+                        IContainer DataCell(IContainer c) => c.Background(rowBg).BorderBottom(0.5f).BorderColor(colorAceroClaro).PaddingVertical(4).PaddingHorizontal(4);
+
+                        table.Cell().Element(DataCell).Text(d.TanqueIdentificacion).Bold().FontSize(8f);
+                        table.Cell().Element(DataCell).Text(d.TipoCombustible).FontSize(8f);
+                        table.Cell().Element(DataCell).AlignRight().Text(d.NumeroDespachos.ToString()).FontSize(8f);
+                        table.Cell().Element(DataCell).AlignRight().Text($"{d.VolumenDespachado:0.##}").Bold().FontColor(colorPeligro).FontSize(8f);
+                        table.Cell().Element(DataCell).AlignRight().Text($"{d.VolumenRecibido:0.##}").Bold().FontColor(colorExito).FontSize(8f);
+                        table.Cell().Element(DataCell).AlignRight().Text($"{d.InventarioInicial:0.##}").FontSize(8f);
+                        table.Cell().Element(DataCell).AlignRight().Text($"{d.InventarioFinal:0.##}").Bold().FontSize(8f);
+                        table.Cell().Element(DataCell).AlignRight()
                             .Text($"{d.Diferencias:0.##}")
-                            .FontColor(d.Diferencias == 0 ? Colors.Black : Colors.Red.Medium);
+                            .Bold().FontSize(8f)
+                            .FontColor(d.Diferencias == 0 ? colorAcero : colorMedidor);
                     }
                 });
 
-                col.Item().PaddingTop(20)
-                    .Text($"Generado por: {creadoPorNombre} — {cierre.CreadoEn:O} UTC")
-                    .FontSize(8).FontColor(Colors.Grey.Darken1);
+                // Totals Bar
+                col.Item().Background(colorTanqueClaro).Border(1).BorderColor(colorTanqueBorde).Padding(7).Row(tb =>
+                {
+                    tb.AutoItem().Text("TOTALES DEL DÍA: ").Bold().FontSize(8f).FontColor(colorTanque);
+                    tb.RelativeItem().PaddingLeft(8).Row(inner =>
+                    {
+                        inner.Spacing(14);
+                        inner.AutoItem().Text($"Despachos: {cierre.TotalDespachos}").FontSize(8f);
+                        inner.AutoItem().Text($"Vol. Despachado: {cierre.VolumenDespachado:0.##} gal").Bold().FontColor(colorPeligro).FontSize(8f);
+                        inner.AutoItem().Text($"Vol. Recibido: {totalRecibido:0.##} gal").Bold().FontColor(colorExito).FontSize(8f);
+                        inner.AutoItem().Text($"Inv. Final Acumulado: {cierre.InventarioFinal:0.##} gal").Bold().FontSize(8f);
+                    });
+                });
+
+                // Signatures
+                col.Item().PaddingTop(18).Row(sigs =>
+                {
+                    sigs.Spacing(24);
+
+                    static void SignatureBox(IContainer c, string title, string sub)
+                    {
+                        c.Column(sc =>
+                        {
+                            sc.Item().LineHorizontal(1).LineColor(Color.FromHex("#16333A"));
+                            sc.Item().PaddingTop(3).AlignCenter().Text(title).Bold().FontSize(8f);
+                            sc.Item().AlignCenter().Text(sub).FontSize(7f).FontColor(Color.FromHex("#4A5A63"));
+                        });
+                    }
+
+                    sigs.RelativeItem().Element(c => SignatureBox(c, creadoPorNombre, "Supervisora / Elaboró"));
+                    sigs.RelativeItem().Element(c => SignatureBox(c, "Gerencia de Operaciones", "Revisión y Aprobación"));
+                    sigs.RelativeItem().Element(c => SignatureBox(c, "Auditoría Interna", "V.B. y Conforme"));
+                });
             });
 
-            page.Footer().AlignCenter().Text(t => { t.Span("FuelTrack · "); t.CurrentPageNumber(); });
+            page.Footer().BorderTop(1).BorderColor(colorAceroBorde).PaddingTop(6).Row(row =>
+            {
+                row.RelativeItem().Text(t =>
+                {
+                    t.Span("FuelTrack v2.1 · Acta oficial de cierre operacional · ");
+                    t.Span($"Emitido: {DateTime.UtcNow:dd/MM/yyyy HH:mm} UTC").FontColor(colorAcero);
+                });
+
+                row.AutoItem().Background(colorAceroClaro).Border(0.5f).BorderColor(colorAceroBorde).PaddingHorizontal(5).PaddingVertical(1)
+                    .Text("CONFIDENCIAL").Bold().FontSize(6.5f).FontColor(colorAcero);
+
+                row.RelativeItem().AlignRight().Text(t =>
+                {
+                    t.Span("Página ");
+                    t.CurrentPageNumber();
+                    t.Span($" · Ref: CD-{cierre.Fecha:yyyy-MM-dd}");
+                });
+            });
         })).GeneratePdf();
+    }
 }

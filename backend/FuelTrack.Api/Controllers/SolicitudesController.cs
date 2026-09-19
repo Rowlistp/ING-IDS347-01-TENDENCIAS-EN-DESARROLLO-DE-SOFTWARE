@@ -1,4 +1,3 @@
-// backend/FuelTrack.Api/Controllers/SolicitudesController.cs
 using System.Security.Claims;
 using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Solicitudes;
@@ -59,15 +58,31 @@ public sealed class SolicitudesController : ControllerBase
     }
 
     private int? OwnerFilter(int actorId)
-        => OperationalRoles.Any(User.IsInRole) ? null : actorId;
+        => User is not null && OperationalRoles.Any(User.IsInRole) ? null : actorId;
 
     private bool TryGetCurrentUserId(out int userId)
-        => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
+    {
+        userId = 0;
+        return User is not null && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
+    }
 
     [HttpPost]
     [Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor},{Roles.Solicitante}")]
     public async Task<ActionResult<SolicitudDto>> Create(CreateSolicitudRequest req, CancellationToken ct)
     {
+        if (TryGetCurrentUserId(out var actorId))
+        {
+            var ownerId = OwnerFilter(actorId);
+            if (ownerId.HasValue)
+            {
+                var empleadoEsPropio = await _db.Empleados.AnyAsync(
+                    e => e.Id == req.EmpleadoId && e.UsuarioId == ownerId.Value, ct);
+                if (!empleadoEsPropio)
+                    return StatusCode(StatusCodes.Status403Forbidden,
+                        new { code = "SOLICITANTE_EMPLEADO_NO_AUTORIZADO", message = "No tiene autorización para crear solicitudes a nombre de otro empleado." });
+            }
+        }
+
         if (!await _db.Empleados.AnyAsync(e => e.Id == req.EmpleadoId, ct))
             return BadRequest(new { code = "EMPLEADO_NOT_FOUND", message = "El empleado no existe." });
         if (!await _db.Vehiculos.AnyAsync(v => v.Id == req.VehiculoId, ct))

@@ -6,4 +6,6 @@ public sealed class UserResponse
     public string NombreUsuario { get; set; } = string.Empty;
     public bool Activo { get; set; }
     public IReadOnlyCollection<string> Roles { get; set; } = Array.Empty<string>();
+    public int? EmpleadoId { get; set; }
+    public string? EmpleadoNombre { get; set; }
 }

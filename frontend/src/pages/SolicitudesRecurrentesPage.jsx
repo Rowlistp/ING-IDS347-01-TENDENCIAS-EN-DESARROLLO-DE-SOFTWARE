@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
+import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
 import { useDepartamentos } from '../hooks/useDepartamentos'
 import { useEmpleados } from '../hooks/useEmpleados'
@@ -141,12 +142,15 @@ export default function SolicitudesRecurrentesPage() {
         en segundo plano las procesa a medianoche UTC — crear una plantilla aquí no genera una solicitud de inmediato.
       </p>
 
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-col sm:flex-row sm:justify-end">
         <button
           type="button"
           onClick={openCreate}
-          className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="inline-flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-md bg-tanque px-4 py-2 text-sm font-semibold text-white hover:bg-tanque/90 shadow-sm transition-colors"
         >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+          </svg>
           + Nueva plantilla
         </button>
       </div>
@@ -156,55 +160,97 @@ export default function SolicitudesRecurrentesPage() {
       {actionError && <p className="text-sm text-peligro">{actionError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-sm border border-acero/20">
-          <table className="min-w-full divide-y divide-acero/20 text-sm">
-            <thead className="bg-fondo">
-              <tr>
-                {['Empleado', 'Vehículo', 'Departamento', 'Tipo', 'Cantidad', 'Periodicidad', 'Inicio', 'Fin', 'Última ejecución', 'Estado', 'Acciones'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-acero/10 bg-white">
-              {plantillas.length === 0 && (
-                <tr>
-                  <td colSpan={11} className="px-4 py-6 text-center text-acero/70">
-                    Sin plantillas de solicitud recurrente registradas.
-                  </td>
-                </tr>
+        <ResponsiveTable
+          data={plantillas}
+          keyField="id"
+          columns={[
+            {
+              key: 'empleadoNombre',
+              label: 'Empleado',
+              primary: true,
+              priority: 'high',
+              render: (p) => <span className="font-semibold text-tinta">{p.empleadoNombre}</span>,
+            },
+            {
+              key: 'vehiculoPlaca',
+              label: 'Vehículo',
+              priority: 'high',
+              render: (p) => <span className="font-mono text-acero">{p.vehiculoPlaca}</span>,
+            },
+            {
+              key: 'departamentoNombre',
+              label: 'Departamento',
+              priority: 'med',
+            },
+            {
+              key: 'tipoCombustibleNombre',
+              label: 'Tipo',
+              priority: 'med',
+            },
+            {
+              key: 'cantidadSolicitada',
+              label: 'Cantidad',
+              priority: 'high',
+              render: (p) => <span className="font-mono num font-bold text-tinta">{p.cantidadSolicitada} gal</span>,
+            },
+            {
+              key: 'periodicidad',
+              label: 'Periodicidad',
+              priority: 'high',
+              render: (p) => PERIODICIDAD_LABEL[p.periodicidad] ?? p.periodicidad,
+            },
+            {
+              key: 'fechaInicio',
+              label: 'Inicio',
+              priority: 'med',
+              render: (p) => <span className="font-mono num">{formatFecha(p.fechaInicio)}</span>,
+            },
+            {
+              key: 'fechaFin',
+              label: 'Fin',
+              priority: 'low',
+              render: (p) => <span className="font-mono num">{formatFecha(p.fechaFin)}</span>,
+            },
+            {
+              key: 'ultimaEjecucion',
+              label: 'Última ejecución',
+              priority: 'low',
+              render: (p) => <span className="font-mono num">{formatFecha(p.ultimaEjecucion)}</span>,
+            },
+            {
+              key: 'activo',
+              label: 'Estado',
+              priority: 'high',
+              render: (p) => <StatusBadge active={p.activa} activeText="Activa" inactiveText="Inactiva" />,
+            },
+          ]}
+          actions={(p) => (
+            <button
+              type="button"
+              onClick={() => handleCambiarEstado(p)}
+              disabled={cambiandoEstadoId === p.id}
+              className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 shadow-xs ${
+                p.activa
+                  ? 'border-peligro/30 bg-peligro/10 text-peligro hover:bg-peligro hover:text-white'
+                  : 'border-exito/30 bg-exito/10 text-exito hover:bg-exito hover:text-white'
+              }`}
+            >
+              {p.activa ? (
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+              ) : (
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
               )}
-              {plantillas.map((p) => (
-                <tr key={p.id} className="hover:bg-fondo">
-                  <td className="px-4 py-3 font-medium text-tinta">{p.empleadoNombre}</td>
-                  <td className="px-4 py-3 font-mono text-acero">{p.vehiculoPlaca}</td>
-                  <td className="px-4 py-3 text-acero">{p.departamentoNombre}</td>
-                  <td className="px-4 py-3 text-acero">{p.tipoCombustibleNombre}</td>
-                  <td className="px-4 py-3 font-mono num text-acero">{p.cantidadSolicitada}</td>
-                  <td className="px-4 py-3 text-acero">{PERIODICIDAD_LABEL[p.periodicidad] ?? p.periodicidad}</td>
-                  <td className="px-4 py-3 font-mono num text-acero">{formatFecha(p.fechaInicio)}</td>
-                  <td className="px-4 py-3 font-mono num text-acero">{formatFecha(p.fechaFin)}</td>
-                  <td className="px-4 py-3 font-mono num text-acero">{formatFecha(p.ultimaEjecucion)}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge active={p.activa} activeText="Activa" inactiveText="Inactiva" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => handleCambiarEstado(p)}
-                      disabled={cambiandoEstadoId === p.id}
-                      className={`rounded px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50 ${p.activa ? 'bg-peligro' : 'bg-exito'}`}
-                    >
-                      {cambiandoEstadoId === p.id ? 'Guardando...' : p.activa ? 'Desactivar' : 'Activar'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              {cambiandoEstadoId === p.id ? 'Guardando...' : p.activa ? 'Desactivar' : 'Activar'}
+            </button>
+          )}
+          emptyMessage="Sin plantillas de solicitud recurrente registradas."
+        />
       )}
+
 
       {showCreate && (
         <Modal title="Nueva plantilla recurrente" onClose={() => setShowCreate(false)}>
@@ -281,22 +327,23 @@ export default function SolicitudesRecurrentesPage() {
               />
             </Field>
             {formError && <p className="text-sm text-peligro">{formError}</p>}
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowCreate(false)}
-                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
+                className="flex min-h-[44px] items-center justify-center rounded-md border border-acero/30 px-4 py-2 text-sm font-medium text-tinta hover:bg-fondo transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={submitting || !requiredFieldsFilled}
-                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
+                className="flex min-h-[44px] items-center justify-center rounded-md bg-tanque px-4 py-2 text-sm font-semibold text-white hover:bg-tanque/90 disabled:opacity-50 transition-colors shadow-sm"
               >
                 {submitting ? 'Guardando...' : 'Crear plantilla'}
               </button>
             </div>
+
           </form>
         </Modal>
       )}

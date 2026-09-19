@@ -3,6 +3,7 @@ using FuelTrack.Api.Data;
 using FuelTrack.Api.DTOs.Empleados;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
+using FuelTrack.Api.Notifications;
 using FuelTrack.Api.Security;
 using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -34,9 +35,11 @@ public sealed class EmpleadosController : ControllerBase
         var list = await _db.Empleados
             .AsNoTracking()
             .Include(e => e.Departamento)
+            .Include(e => e.Usuario)
             .Select(e => new EmpleadoDto(
                 e.Id, e.Codigo, e.NombreCompleto, e.Cedula, e.Cargo,
-                e.Correo, e.Telefono, e.DepartamentoId, e.Departamento.Nombre, e.Activo))
+                e.Correo, e.Telefono, e.DepartamentoId, e.Departamento.Nombre, e.Activo,
+                e.UsuarioId, e.Usuario != null ? e.Usuario.NombreUsuario : null))
             .ToListAsync(ct);
         return Ok(list);
     }
@@ -47,11 +50,13 @@ public sealed class EmpleadosController : ControllerBase
         var e = await _db.Empleados
             .AsNoTracking()
             .Include(x => x.Departamento)
+            .Include(x => x.Usuario)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (e is null) return NotFound();
         return Ok(new EmpleadoDto(
             e.Id, e.Codigo, e.NombreCompleto, e.Cedula, e.Cargo,
-            e.Correo, e.Telefono, e.DepartamentoId, e.Departamento.Nombre, e.Activo));
+            e.Correo, e.Telefono, e.DepartamentoId, e.Departamento.Nombre, e.Activo,
+            e.UsuarioId, e.Usuario?.NombreUsuario));
     }
 
     [HttpPost]
@@ -73,6 +78,12 @@ public sealed class EmpleadosController : ControllerBase
             return Conflict(new { code = "CEDULA_DUPLICADA",
                 message = "La cédula ya está registrada." });
 
+        if (req.UsuarioId.HasValue)
+        {
+            var (ok, error) = await ValidateUsuarioVinculoAsync(req.UsuarioId, null, ct);
+            if (!ok) return error!;
+        }
+
         var entity = new Empleado
         {
             Codigo         = req.Codigo,
@@ -80,13 +91,16 @@ public sealed class EmpleadosController : ControllerBase
             Cedula         = req.Cedula,
             Cargo          = req.Cargo,
             Correo         = req.Correo,
-            Telefono       = req.Telefono,
+            Telefono       = NotificationOptions.NormalizePhone(req.Telefono),
             DepartamentoId = req.DepartamentoId,
-            Activo         = req.Activo
+            Activo         = req.Activo,
+            UsuarioId      = req.UsuarioId
         };
         _db.Empleados.Add(entity);
         await _db.SaveChangesAsync(ct);
         await _db.Entry(entity).Reference(e => e.Departamento).LoadAsync(ct);
+        if (entity.UsuarioId.HasValue)
+            await _db.Entry(entity).Reference(e => e.Usuario).LoadAsync(ct);
 
         await _audit.WriteAsync("EMPLEADO_CREADO", "Empleado", entity.Id.ToString(), usuarioId,
             HttpContext.Connection.RemoteIpAddress?.ToString(),
@@ -95,7 +109,8 @@ public sealed class EmpleadosController : ControllerBase
         var dto = new EmpleadoDto(
             entity.Id, entity.Codigo, entity.NombreCompleto, entity.Cedula, entity.Cargo,
             entity.Correo, entity.Telefono, entity.DepartamentoId,
-            entity.Departamento.Nombre, entity.Activo);
+            entity.Departamento.Nombre, entity.Activo,
+            entity.UsuarioId, entity.Usuario?.NombreUsuario);
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, dto);
     }
 
@@ -108,6 +123,7 @@ public sealed class EmpleadosController : ControllerBase
 
         var entity = await _db.Empleados
             .Include(e => e.Departamento)
+            .Include(e => e.Usuario)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
         if (entity is null) return NotFound();
 
@@ -123,14 +139,21 @@ public sealed class EmpleadosController : ControllerBase
             return Conflict(new { code = "CEDULA_DUPLICADA",
                 message = "La cédula ya está registrada." });
 
+        if (req.UsuarioId.HasValue)
+        {
+            var (ok, error) = await ValidateUsuarioVinculoAsync(req.UsuarioId, id, ct);
+            if (!ok) return error!;
+        }
+
         entity.Codigo         = req.Codigo;
         entity.NombreCompleto = req.NombreCompleto;
         entity.Cedula         = req.Cedula;
         entity.Cargo          = req.Cargo;
         entity.Correo         = req.Correo;
-        entity.Telefono       = req.Telefono;
+        entity.Telefono       = NotificationOptions.NormalizePhone(req.Telefono);
         entity.DepartamentoId = req.DepartamentoId;
         entity.Activo         = req.Activo;
+        entity.UsuarioId      = req.UsuarioId;
         await _db.SaveChangesAsync(ct);
 
         await _audit.WriteAsync("EMPLEADO_ACTUALIZADO", "Empleado", entity.Id.ToString(), usuarioId,
@@ -140,11 +163,52 @@ public sealed class EmpleadosController : ControllerBase
         await _db.Entry(entity)
     .Reference(e => e.Departamento)
     .LoadAsync(ct);
+        if (entity.Departamento.Id != req.DepartamentoId)
+            await _db.Entry(entity).Reference(e => e.Departamento).LoadAsync(ct);
+        if (entity.UsuarioId.HasValue && (entity.Usuario == null || entity.Usuario.Id != entity.UsuarioId))
+            await _db.Entry(entity).Reference(e => e.Usuario).LoadAsync(ct);
+        else if (!entity.UsuarioId.HasValue)
+            entity.Usuario = null;
 
         return Ok(new EmpleadoDto(
             entity.Id, entity.Codigo, entity.NombreCompleto, entity.Cedula, entity.Cargo,
             entity.Correo, entity.Telefono, entity.DepartamentoId,
-            entity.Departamento.Nombre, entity.Activo));
+            entity.Departamento.Nombre, entity.Activo,
+            entity.UsuarioId, entity.Usuario?.NombreUsuario));
+    }
+
+    [HttpPut("{id:int}/vincular-usuario")]
+    [Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor}")]
+    public async Task<ActionResult<EmpleadoDto>> VincularUsuario(
+        int id, VincularUsuarioRequest req, CancellationToken ct)
+    {
+        var entity = await _db.Empleados
+            .Include(e => e.Departamento)
+            .Include(e => e.Usuario)
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (entity is null) return NotFound();
+
+        if (req.UsuarioId.HasValue)
+        {
+            var (ok, error) = await ValidateUsuarioVinculoAsync(req.UsuarioId, id, ct);
+            if (!ok) return error!;
+            entity.UsuarioId = req.UsuarioId;
+        }
+        else
+        {
+            entity.UsuarioId = null;
+            entity.Usuario = null;
+        }
+
+        await _db.SaveChangesAsync(ct);
+        if (entity.UsuarioId.HasValue)
+            await _db.Entry(entity).Reference(e => e.Usuario).LoadAsync(ct);
+
+        return Ok(new EmpleadoDto(
+            entity.Id, entity.Codigo, entity.NombreCompleto, entity.Cedula, entity.Cargo,
+            entity.Correo, entity.Telefono, entity.DepartamentoId,
+            entity.Departamento.Nombre, entity.Activo,
+            entity.UsuarioId, entity.Usuario?.NombreUsuario));
     }
 
     [HttpDelete("{id:int}")]
@@ -171,5 +235,27 @@ public sealed class EmpleadosController : ControllerBase
             HttpContext.Connection.RemoteIpAddress?.ToString(), null, ct);
 
         return NoContent();
+    }
+
+    private async Task<(bool ok, ActionResult? error)> ValidateUsuarioVinculoAsync(
+        int? usuarioId, int? currentEmpleadoId, CancellationToken ct)
+    {
+        if (!usuarioId.HasValue)
+            return (true, null);
+
+        var usuario = await _db.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId.Value, ct);
+        if (usuario is null)
+            return (false, NotFound(new { code = "USUARIO_NOT_FOUND", message = "El usuario especificado no existe." }));
+
+        if (!usuario.Activo)
+            return (false, BadRequest(new { code = "USUARIO_INACTIVO", message = "No se puede vincular un usuario inactivo." }));
+
+        var yaVinculado = await _db.Empleados.AnyAsync(
+            e => e.UsuarioId == usuarioId.Value && (!currentEmpleadoId.HasValue || e.Id != currentEmpleadoId.Value),
+            ct);
+        if (yaVinculado)
+            return (false, Conflict(new { code = "USUARIO_YA_VINCULADO", message = "El usuario ya está vinculado a otro empleado." }));
+
+        return (true, null);
     }
 }

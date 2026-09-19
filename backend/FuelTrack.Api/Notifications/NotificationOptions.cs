@@ -44,6 +44,34 @@ public sealed class NotificationOptions
     public static bool ValidEmail(string value) => value.Length <= 254 && !value.Contains('\r') && !value.Contains('\n') &&
         MailboxAddress.TryParse(value, out var address) && address.Address == value && value.Contains('@');
     public static bool ValidPhone(string value) => Regex.IsMatch(value, @"^\+[1-9][0-9]{7,14}$");
+    public static string NormalizePhone(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var trimmed = value.Trim();
+        var digits = new string(trimmed.Where(char.IsDigit).ToArray());
+
+        if (trimmed.StartsWith("+") && digits.Length is >= 8 and <= 15)
+        {
+            return "+" + digits;
+        }
+
+        if (digits.Length == 10)
+        {
+            return "+1" + digits;
+        }
+
+        if (digits.Length == 11 && digits.StartsWith("1"))
+        {
+            return "+" + digits;
+        }
+
+        if (digits.Length is >= 8 and <= 15)
+        {
+            return "+" + digits;
+        }
+
+        return trimmed;
+    }
     public int RetrySeconds(int attempts) => (int)Math.Min(MaxRetrySeconds, BaseRetrySeconds * Math.Pow(2, Math.Min(attempts - 1, 20)));
 }
 public sealed class SmtpOptions

@@ -21,8 +21,8 @@ public sealed class DispatchService(AppDbContext db, TicketService tickets, Audi
                 .SingleOrDefaultAsync(u => u.Id == actorId, ct);
             if (actor is null || !actor.Activo)
                 throw Error(401, "OPERADOR_INVALIDO", "La sesión del operador no está activa.");
-            if (!actor.UsuarioRoles.Any(r => r.Rol.Nombre == Roles.Despachador))
-                throw Error(403, "OPERADOR_NO_AUTORIZADO", "Solo un Despachador puede registrar combustible servido.");
+            if (!actor.UsuarioRoles.Any(r => r.Rol.Nombre is Roles.Despachador or Roles.Administrador or Roles.Supervisor))
+                throw Error(403, "OPERADOR_NO_AUTORIZADO", "Solo un Despachador, Supervisor o Administrador puede registrar combustible servido.");
 
             if (db.Database.IsNpgsql())
                 await db.Database.ExecuteSqlInterpolatedAsync($"SELECT 1 FROM \"Tickets\" WHERE \"Id\" = {request.TicketId} FOR UPDATE", ct);

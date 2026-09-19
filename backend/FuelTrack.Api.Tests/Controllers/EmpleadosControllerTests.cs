@@ -291,4 +291,181 @@ public sealed class EmpleadosControllerTests
         var result = await _controller.Deactivate(emp.Id, CancellationToken.None);
         Assert.IsInstanceOfType<NoContentResult>(result);
     }
+
+    // ── Vincular / Desvincular Usuario ──────────────────────────────────────
+
+    [TestMethod]
+    public async Task VincularUsuario_ReturnsOk_CuandoUsuarioValido()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var emp = new Empleado
+        {
+            Codigo = "EMP-V01", NombreCompleto = "Vinculado Test", Cedula = "001-0000020-0",
+            Cargo = "Chofer", Correo = "v01@test.com", Telefono = "809-000-0020",
+            Activo = true, DepartamentoId = dep.Id
+        };
+        var user = new Usuario { NombreUsuario = "solicitante.v01", Activo = true };
+        _db.Empleados.Add(emp);
+        _db.Usuarios.Add(user);
+        await _db.SaveChangesAsync();
+
+        var req = new VincularUsuarioRequest(user.Id);
+        var result = await _controller.VincularUsuario(emp.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        Assert.IsNotNull(ok);
+        var dto = ok.Value as EmpleadoDto;
+        Assert.IsNotNull(dto);
+        Assert.AreEqual(user.Id, dto.UsuarioId);
+        Assert.AreEqual("solicitante.v01", dto.UsuarioNombre);
+
+        await _db.Entry(emp).ReloadAsync();
+        Assert.AreEqual(user.Id, emp.UsuarioId);
+    }
+
+    [TestMethod]
+    public async Task VincularUsuario_Returns404_CuandoEmpleadoNoExiste()
+    {
+        var req = new VincularUsuarioRequest(1);
+        var result = await _controller.VincularUsuario(999, req, CancellationToken.None);
+        Assert.IsInstanceOfType<NotFoundResult>(result.Result);
+    }
+
+    [TestMethod]
+    public async Task VincularUsuario_Returns404_CuandoUsuarioNoExiste()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var emp = new Empleado
+        {
+            Codigo = "EMP-V02", NombreCompleto = "Test 404", Cedula = "001-0000021-0",
+            Cargo = "Chofer", Correo = "v02@test.com", Telefono = "809-000-0021",
+            Activo = true, DepartamentoId = dep.Id
+        };
+        _db.Empleados.Add(emp);
+        await _db.SaveChangesAsync();
+
+        var req = new VincularUsuarioRequest(9999);
+        var result = await _controller.VincularUsuario(emp.Id, req, CancellationToken.None);
+        Assert.IsInstanceOfType<NotFoundObjectResult>(result.Result);
+    }
+
+    [TestMethod]
+    public async Task VincularUsuario_Returns400_CuandoUsuarioInactivo()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var emp = new Empleado
+        {
+            Codigo = "EMP-V03", NombreCompleto = "Test Inactivo", Cedula = "001-0000022-0",
+            Cargo = "Chofer", Correo = "v03@test.com", Telefono = "809-000-0022",
+            Activo = true, DepartamentoId = dep.Id
+        };
+        var user = new Usuario { NombreUsuario = "inactivo.user", Activo = false };
+        _db.Empleados.Add(emp);
+        _db.Usuarios.Add(user);
+        await _db.SaveChangesAsync();
+
+        var req = new VincularUsuarioRequest(user.Id);
+        var result = await _controller.VincularUsuario(emp.Id, req, CancellationToken.None);
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result.Result);
+    }
+
+    [TestMethod]
+    public async Task VincularUsuario_Returns409_CuandoUsuarioYaVinculadoAOtroEmpleado()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var user = new Usuario { NombreUsuario = "ocupado.user", Activo = true };
+        _db.Usuarios.Add(user);
+        await _db.SaveChangesAsync();
+
+        var emp1 = new Empleado
+        {
+            Codigo = "EMP-V04A", NombreCompleto = "Empleado Uno", Cedula = "001-0000023-0",
+            Cargo = "Chofer", Correo = "v04a@test.com", Telefono = "809-000-0023",
+            Activo = true, DepartamentoId = dep.Id, UsuarioId = user.Id
+        };
+        var emp2 = new Empleado
+        {
+            Codigo = "EMP-V04B", NombreCompleto = "Empleado Dos", Cedula = "001-0000024-0",
+            Cargo = "Chofer", Correo = "v04b@test.com", Telefono = "809-000-0024",
+            Activo = true, DepartamentoId = dep.Id
+        };
+        _db.Empleados.AddRange(emp1, emp2);
+        await _db.SaveChangesAsync();
+
+        var req = new VincularUsuarioRequest(user.Id);
+        var result = await _controller.VincularUsuario(emp2.Id, req, CancellationToken.None);
+        Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
+    }
+
+    [TestMethod]
+    public async Task VincularUsuario_ReturnsOk_DesvincularUsuario()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var user = new Usuario { NombreUsuario = "desvincular.user", Activo = true };
+        _db.Usuarios.Add(user);
+        await _db.SaveChangesAsync();
+
+        var emp = new Empleado
+        {
+            Codigo = "EMP-V05", NombreCompleto = "Empleado A Desvincular", Cedula = "001-0000025-0",
+            Cargo = "Chofer", Correo = "v05@test.com", Telefono = "809-000-0025",
+            Activo = true, DepartamentoId = dep.Id, UsuarioId = user.Id
+        };
+        _db.Empleados.Add(emp);
+        await _db.SaveChangesAsync();
+
+        var req = new VincularUsuarioRequest(null);
+        var result = await _controller.VincularUsuario(emp.Id, req, CancellationToken.None);
+        var ok = result.Result as OkObjectResult;
+        Assert.IsNotNull(ok);
+        var dto = ok.Value as EmpleadoDto;
+        Assert.IsNull(dto!.UsuarioId);
+        Assert.IsNull(dto.UsuarioNombre);
+
+        await _db.Entry(emp).ReloadAsync();
+        Assert.IsNull(emp.UsuarioId);
+    }
+
+    [TestMethod]
+    public async Task Create_ConUsuarioIdValido_Retorna201()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var user = new Usuario { NombreUsuario = "crear.con.usuario", Activo = true };
+        _db.Usuarios.Add(user);
+        await _db.SaveChangesAsync();
+
+        var req = new SaveEmpleadoRequest("EMP-V06", "Empleado Nuevo Vinculado", "001-0000026-0",
+            "Inspector", "v06@test.com", "809-000-0026", dep.Id, true, user.Id);
+
+        var result = await _controller.Create(req, CancellationToken.None);
+        var created = result.Result as CreatedAtActionResult;
+        Assert.IsNotNull(created);
+        Assert.AreEqual(201, created.StatusCode);
+        var dto = created.Value as EmpleadoDto;
+        Assert.AreEqual(user.Id, dto!.UsuarioId);
+        Assert.AreEqual("crear.con.usuario", dto.UsuarioNombre);
+    }
+
+    [TestMethod]
+    public async Task Create_ConUsuarioYaVinculado_Retorna409()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var user = new Usuario { NombreUsuario = "duplicado.user", Activo = true };
+        _db.Usuarios.Add(user);
+        await _db.SaveChangesAsync();
+
+        var empExistente = new Empleado
+        {
+            Codigo = "EMP-V07A", NombreCompleto = "Emp Existente", Cedula = "001-0000027-0",
+            Cargo = "Chofer", Correo = "v07a@test.com", Telefono = "809-000-0027",
+            Activo = true, DepartamentoId = dep.Id, UsuarioId = user.Id
+        };
+        _db.Empleados.Add(empExistente);
+        await _db.SaveChangesAsync();
+
+        var req = new SaveEmpleadoRequest("EMP-V07B", "Emp Nuevo", "001-0000028-0",
+            "Chofer", "v07b@test.com", "809-000-0028", dep.Id, true, user.Id);
+
+        var result = await _controller.Create(req, CancellationToken.None);
+        Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
+    }
 }

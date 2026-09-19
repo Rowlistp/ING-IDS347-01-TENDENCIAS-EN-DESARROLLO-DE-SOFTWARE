@@ -9,11 +9,11 @@
 // a ~7.8:1 y ~5.6:1 respectivamente, sin aproximar los valores de la paleta.
 const VARIANT_CLS = {
   green: 'border-exito/40 bg-exito/10 text-exito',
-  yellow: 'border-advertencia bg-advertencia text-tinta',
+  yellow: 'border-amber-400/40 bg-amber-500/15 text-amber-900',
   red: 'border-peligro/40 bg-peligro/10 text-peligro',
   gray: 'border-acero/30 bg-acero/10 text-acero',
   blue: 'border-info/40 bg-info/10 text-info',
-  orange: 'border-medidor bg-medidor text-tinta',
+  orange: 'border-medidor/40 bg-medidor/15 text-[#854d0e]',
   purple: 'border-tanque/30 bg-tanque/10 text-tanque',
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import PageContainer from '../components/PageContainer'
+import ResponsiveTable from '../components/ResponsiveTable'
 import apiRequest from '../services/api'
 
 const TAMANO_PAGINA = 50
@@ -63,52 +64,68 @@ export default function AuditoriaPage() {
 
       {!error && !loading && respuesta && (
         <>
-          <div className="overflow-x-auto rounded-sm border border-acero/20">
-            <table className="min-w-full divide-y divide-acero/20 text-sm">
-              <thead className="bg-fondo">
-                <tr>
-                  {['Usuario', 'Fecha', 'Hora', 'Dirección IP', 'Evento', 'Entidad afectada'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-acero/10 bg-white">
-                {respuesta.elementos.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-acero/70">
-                      Sin registros de auditoría.
-                    </td>
-                  </tr>
-                )}
-                {respuesta.elementos.map((a) => (
-                  <tr key={a.id} className="hover:bg-fondo">
-                    <td className="px-4 py-3 text-tinta">{nombreUsuario(a)}</td>
-                    <td className="px-4 py-3 font-mono num text-acero">{formatFecha(a.fechaHoraUtc)}</td>
-                    <td className="px-4 py-3 font-mono num text-acero">{formatHora(a.fechaHoraUtc)}</td>
-                    <td className="px-4 py-3 font-mono num text-acero">{a.direccionIp ?? '—'}</td>
-                    <td className="px-4 py-3 font-mono text-tinta">{a.evento}</td>
-                    <td className="px-4 py-3 text-acero">
-                      {a.entidadAfectada}{' '}
-                      <span className="font-mono text-acero/70">#{a.identificadorRegistro}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveTable
+            data={respuesta.elementos}
+            keyField="id"
+            emptyMessage="Sin registros de auditoría."
+            columns={[
+              {
+                key: 'evento',
+                label: 'Evento',
+                primary: true,
+                priority: 'high',
+                render: (a) => (
+                  <div>
+                    <span className="font-semibold font-mono text-tanque">{a.evento}</span>
+                    <div className="text-xs text-acero sm:hidden">{nombreUsuario(a)}</div>
+                  </div>
+                ),
+              },
+              {
+                key: 'usuario',
+                label: 'Usuario',
+                priority: 'high',
+                render: (a) => <span className="text-tinta font-medium">{nombreUsuario(a)}</span>,
+              },
+              {
+                key: 'fechaHoraUtc',
+                label: 'Fecha / Hora',
+                priority: 'high',
+                render: (a) => (
+                  <span className="font-mono num text-acero text-xs sm:text-sm">
+                    {formatFecha(a.fechaHoraUtc)} {formatHora(a.fechaHoraUtc)}
+                  </span>
+                ),
+              },
+              {
+                key: 'entidadAfectada',
+                label: 'Entidad afectada',
+                priority: 'high',
+                render: (a) => (
+                  <span className="text-acero">
+                    {a.entidadAfectada} <span className="font-mono text-acero/70">#{a.identificadorRegistro}</span>
+                  </span>
+                ),
+              },
+              {
+                key: 'direccionIp',
+                label: 'Dirección IP',
+                priority: 'low',
+                render: (a) => <span className="font-mono num text-acero text-xs">{a.direccionIp ?? '—'}</span>,
+              },
+            ]}
+          />
 
-          <div className="mt-4 flex items-center justify-between text-sm">
-            <span className="font-mono num text-acero">
+          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
+            <span className="font-mono num text-acero order-2 sm:order-1">
               Página {respuesta.pagina} de {totalPaginas} — {respuesta.total} registros
             </span>
-            <div className="flex gap-2">
+            <div className="flex w-full sm:w-auto gap-2 order-1 sm:order-2">
               <button
                 type="button"
                 onClick={() => setPagina((p) => Math.max(1, p - 1))}
                 disabled={pagina === 1}
-                className="rounded-md border border-acero/40 px-3 py-1.5 text-tinta hover:bg-fondo disabled:opacity-50"
+                className="flex-1 sm:flex-initial min-h-[42px] rounded-md border border-acero/30 bg-white px-4 py-2 text-tinta hover:bg-fondo disabled:opacity-50 active:scale-[0.98]"
               >
                 Anterior
               </button>
@@ -116,7 +133,7 @@ export default function AuditoriaPage() {
                 type="button"
                 onClick={() => setPagina((p) => p + 1)}
                 disabled={pagina >= totalPaginas}
-                className="rounded-md border border-acero/40 px-3 py-1.5 text-tinta hover:bg-fondo disabled:opacity-50"
+                className="flex-1 sm:flex-initial min-h-[42px] rounded-md border border-acero/30 bg-white px-4 py-2 text-tinta hover:bg-fondo disabled:opacity-50 active:scale-[0.98]"
               >
                 Siguiente
               </button>

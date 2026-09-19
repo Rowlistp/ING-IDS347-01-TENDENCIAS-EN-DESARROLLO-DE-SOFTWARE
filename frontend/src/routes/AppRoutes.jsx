@@ -22,16 +22,14 @@ import TicketsPage from '../pages/TicketsPage'
 import TiposCombustiblePage from '../pages/TiposCombustiblePage'
 import UsuariosPage from '../pages/UsuariosPage'
 import VehiculosPage from '../pages/VehiculosPage'
-import { landingRouteForRoles } from './accessMatrix'
+import { getUser } from '../services/auth'
+import { getDefaultRouteForUser } from '../utils/rbac'
 import ProtectedRoute from './ProtectedRoute'
 import RoleProtectedRoute from './RoleProtectedRoute'
-import { getUser } from '../services/auth'
 
 function HomeRedirect() {
-  // "/" ya no va siempre a /dashboard: la mayoría de roles no tienen acceso
-  // ahí (ver accessMatrix.js). Cada rol aterriza en la pantalla más relevante
-  // para su función dentro de lo que tiene permitido ver.
-  return <Navigate to={landingRouteForRoles(getUser()?.roles)} replace />
+  const user = getUser()
+  return <Navigate to={getDefaultRouteForUser(user)} replace />
 }
 
 export default function AppRoutes() {

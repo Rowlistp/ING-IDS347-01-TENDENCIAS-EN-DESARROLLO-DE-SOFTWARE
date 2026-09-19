@@ -113,13 +113,18 @@ public sealed class TanquesController : ControllerBase
             .FirstOrDefaultAsync(t => t.Id == id, ct);
         if (tanque is null) return NotFound();
 
-        if (!await _db.TiposCombustible.AnyAsync(t => t.Id == req.TipoCombustibleId, ct))
+        var tipoCombustible = await _db.TiposCombustible.FirstOrDefaultAsync(t => t.Id == req.TipoCombustibleId, ct);
+        if (tipoCombustible is null)
             return BadRequest(new { code = "TIPO_COMBUSTIBLE_NOT_FOUND",
                 message = "El tipo de combustible no existe." });
 
         if (await _db.Tanques.AnyAsync(t => t.Identificacion == req.Identificacion && t.Id != id, ct))
             return Conflict(new { code = "IDENTIFICACION_DUPLICADA",
                 message = "Ya existe un tanque con esa identificación." });
+
+        if (req.Activo == true && !tipoCombustible.Activo)
+            return Conflict(new { code = "TIPO_COMBUSTIBLE_INACTIVO",
+                message = "No se puede activar el tanque porque su tipo de combustible está inactivo." });
 
         if (tanque.Activo && req.Activo == false && (tanque.Inventario?.ExistenciaActual ?? 0m) > 0)
             return Conflict(new { code = "TANQUE_CON_INVENTARIO",
@@ -140,6 +145,27 @@ public sealed class TanquesController : ControllerBase
 
         if (tipoCambio)
             await _db.Entry(tanque).Reference(t => t.TipoCombustible).LoadAsync(ct);
+
+        return Ok(new TanqueDto(tanque.Id, tanque.Identificacion, tanque.Capacidad, tanque.Inventario?.ExistenciaActual ?? 0m,
+            tanque.NivelCritico, tanque.TipoCombustibleId, tanque.TipoCombustible.Nombre, tanque.Activo));
+    }
+
+    [HttpPut("{id:int}/activar")]
+    [Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor}")]
+    public async Task<ActionResult<TanqueDto>> Activar(int id, CancellationToken ct)
+    {
+        var tanque = await _db.Tanques
+            .Include(t => t.TipoCombustible)
+            .Include(t => t.Inventario)
+            .FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (tanque is null) return NotFound();
+
+        if (!tanque.TipoCombustible.Activo)
+            return Conflict(new { code = "TIPO_COMBUSTIBLE_INACTIVO",
+                message = "No se puede activar el tanque porque su tipo de combustible está inactivo." });
+
+        tanque.Activo = true;
+        await _db.SaveChangesAsync(ct);
 
         return Ok(new TanqueDto(tanque.Id, tanque.Identificacion, tanque.Capacidad, tanque.Inventario?.ExistenciaActual ?? 0m,
             tanque.NivelCritico, tanque.TipoCombustibleId, tanque.TipoCombustible.Nombre, tanque.Activo));

@@ -21,14 +21,25 @@
   --color-peligro: #c1432b; /* error / crítico */
   --color-info: #2f6f8f; /* informativo */
 
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1280px;
+
   --font-sans: "Public Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {
   background-color: var(--color-fondo);
   color: var(--color-tinta);
   font-family: var(--font-sans);
+  min-height: 100vh;
 }
 
 /* Datos numéricos y códigos (galones, niveles, odómetro, COM-2026-XXXXXX):
@@ -36,3 +47,35 @@ body {
 .num {
   font-variant-numeric: tabular-nums;
 }
+
+/* Patrón responsive de tablas con scroll suave y fijación de primera columna */
+.table-responsive-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+
+.table-sticky-first th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background-color: var(--color-fondo);
+}
+
+.table-sticky-first td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background-color: #ffffff;
+}
+
+/* Soporte de Impresión Oficial para Comprobantes */
+@media print {
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #12181a !important;
+  }
+}
+

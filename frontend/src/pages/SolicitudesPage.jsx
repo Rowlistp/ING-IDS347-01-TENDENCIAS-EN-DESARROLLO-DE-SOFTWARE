@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
+import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
+import { useAuth } from '../hooks/useAuth'
 import { useDepartamentos } from '../hooks/useDepartamentos'
 import { useEmpleados } from '../hooks/useEmpleados'
 import { useVehiculos } from '../hooks/useVehiculos'
 import apiRequest from '../services/api'
-import { getUser } from '../services/auth'
+import { canApproveRequests, isReadOnlyRole, ROLES } from '../utils/rbac'
 
 const ESTADO_VARIANT = {
   Pendiente: 'yellow',
@@ -24,27 +26,23 @@ const EMPTY_FORM = {
   fechaVencimiento: '',
 }
 
-function nowLocalInputValue() {
-  const now = new Date()
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
-}
-
 export default function SolicitudesPage() {
-  // POST /solicitudes (crear) solo permite Administrador/Supervisor/Solicitante,
-  // y /aprobar-/rechazar solo Administrador/Supervisor (SolicitudesController.cs).
-  // El resto de roles con acceso a esta pantalla (Despachador, Auditor, Consulta)
-  // solo consultan — el backend ya les filtra el listado si aplica (Solicitante).
-  const userRoles = getUser()?.roles ?? []
-  const puedeCrear = userRoles.some((r) => ['Administrador', 'Supervisor', 'Solicitante'].includes(r))
-  const puedeAprobar = userRoles.some((r) => ['Administrador', 'Supervisor'].includes(r))
+  const { user } = useAuth()
+  const canApprove = canApproveRequests(user)
+  const isReadOnly = isReadOnlyRole(user)
   const [solicitudes, setSolicitudes] = useState([])
   const empleados = useEmpleados()
   const vehiculos = useVehiculos()
   const departamentos = useDepartamentos()
-  const [tipos, setTipos] = useState([])
+  const [tiposCombustible, setTipos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  const isSolicitanteOnly =
+    user?.roles?.includes(ROLES.SOLICITANTE) &&
+    !user?.roles?.includes(ROLES.ADMINISTRADOR) &&
+    !user?.roles?.includes(ROLES.SUPERVISOR)
+  const miEmpleado = empleados.find((e) => e.usuarioId === user?.usuarioId)
 
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -84,10 +82,20 @@ export default function SolicitudesPage() {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
   }
 
+  function openCreate() {
+    setForm({
+      ...EMPTY_FORM,
+      empleadoId: miEmpleado ? String(miEmpleado.id) : '',
+      departamentoId: miEmpleado ? String(miEmpleado.departamentoId) : '',
+    })
+    setFormError(null)
+    setShowCreate(true)
+  }
+
   const requiredFieldsFilled =
-    form.empleadoId &&
+    (isSolicitanteOnly ? Boolean(miEmpleado) : Boolean(form.empleadoId)) &&
     form.vehiculoId &&
-    form.departamentoId &&
+    (isSolicitanteOnly ? Boolean(miEmpleado) : Boolean(form.departamentoId)) &&
     form.tipoCombustibleId &&
     form.cantidadSolicitada &&
     form.fechaVencimiento
@@ -96,13 +104,17 @@ export default function SolicitudesPage() {
     e.preventDefault()
     setSubmitting(true)
     setFormError(null)
+
+    const empId = isSolicitanteOnly && miEmpleado ? miEmpleado.id : Number(form.empleadoId)
+    const deptoId = isSolicitanteOnly && miEmpleado ? miEmpleado.departamentoId : Number(form.departamentoId)
+
     try {
       await apiRequest('/solicitudes', {
         method: 'POST',
         body: JSON.stringify({
-          empleadoId: Number(form.empleadoId),
+          empleadoId: empId,
           vehiculoId: Number(form.vehiculoId),
-          departamentoId: Number(form.departamentoId),
+          departamentoId: deptoId,
           tipoCombustibleId: Number(form.tipoCombustibleId),
           cantidadSolicitada: Number(form.cantidadSolicitada),
           fechaVencimiento: new Date(form.fechaVencimiento).toISOString(),
@@ -150,19 +162,38 @@ export default function SolicitudesPage() {
 
   return (
     <PageContainer title="Solicitudes de Combustible">
-      {puedeCrear && (
-        <div className="mb-4 flex justify-end">
+      {!isReadOnly && (
+        <div className="mb-4 flex flex-col sm:flex-row sm:justify-end">
           <button
             type="button"
-            onClick={() => {
-              setForm(EMPTY_FORM)
-              setFormError(null)
-              setShowCreate(true)
-            }}
-            className="rounded-md bg-tanque px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+            onClick={openCreate}
+            className="inline-flex min-h-[44px] w-full sm:w-auto items-center justify-center gap-2 rounded-md bg-tanque px-4 py-2 text-sm font-semibold text-white hover:bg-tanque/90 shadow-sm transition-colors"
           >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+            </svg>
             + Nueva solicitud
           </button>
+        </div>
+      )}
+
+      {isSolicitanteOnly && !miEmpleado && (
+        <div className="mb-4 rounded-md border border-peligro/30 bg-peligro/10 p-3 text-sm text-peligro">
+          ⚠️ <strong>Cuenta no vinculada:</strong> Tu cuenta de usuario aún no está asociada a ningún empleado de la institución. Por favor solicita a un Administrador que complete tu vinculación.
+        </div>
+      )}
+
+      {isSolicitanteOnly && miEmpleado && (
+        <div className="mb-4 rounded-md border border-tanque/20 bg-tanque/5 p-3 text-sm text-tanque flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span>👤</span>
+            <span>
+              Solicitante: <strong>{miEmpleado.nombreCompleto}</strong> — {miEmpleado.departamentoNombre}
+            </span>
+          </div>
+          <span className="text-xs bg-tanque/10 text-tanque border border-tanque/20 px-2.5 py-1 rounded font-medium self-start sm:self-auto">
+            Mis solicitudes
+          </span>
         </div>
       )}
 
@@ -171,109 +202,195 @@ export default function SolicitudesPage() {
       {actionError && <p className="text-sm text-peligro">{actionError}</p>}
 
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-sm border border-acero/20">
-          <table className="min-w-full divide-y divide-acero/20 text-sm">
-            <thead className="bg-fondo">
-              <tr>
-                {['#', 'Empleado', 'Vehículo', 'Departamento', 'Tipo', 'Solicitado', 'Autorizado', 'Estado', 'Fecha solicitud', 'Vencimiento', 'Acciones'].map(
-                  (h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-acero uppercase tracking-wider">
-                      {h}
-                    </th>
-                  )
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-acero/10 bg-white">
-              {solicitudes.length === 0 && (
-                <tr>
-                  <td colSpan={11} className="px-4 py-6 text-center text-acero/70">
-                    Sin solicitudes registradas.
-                  </td>
-                </tr>
+        <ResponsiveTable
+          data={solicitudes}
+          keyField="id"
+          columns={[
+            {
+              key: 'id',
+              label: '#',
+              priority: 'low',
+              render: (s) => <span className="font-mono num text-acero">{s.id}</span>,
+            },
+            {
+              key: 'empleadoNombre',
+              label: 'Empleado',
+              primary: true,
+              priority: 'high',
+              render: (s) => <span className="font-semibold text-tinta">{s.empleadoNombre}</span>,
+            },
+            {
+              key: 'vehiculoPlaca',
+              label: 'Vehículo',
+              priority: 'high',
+              render: (s) => <span className="font-mono text-acero">{s.vehiculoPlaca}</span>,
+            },
+            {
+              key: 'departamentoNombre',
+              label: 'Departamento',
+              priority: 'low',
+            },
+            {
+              key: 'tipoCombustibleNombre',
+              label: 'Tipo',
+              priority: 'med',
+            },
+            {
+              key: 'cantidadSolicitada',
+              label: 'Solicitado',
+              priority: 'high',
+              render: (s) => <span className="font-mono num font-bold text-tinta">{s.cantidadSolicitada} gal</span>,
+            },
+            {
+              key: 'cantidadAutorizada',
+              label: 'Autorizado',
+              priority: 'med',
+              render: (s) => (
+                <span className="font-mono num text-acero">
+                  {s.cantidadAutorizada ? `${s.cantidadAutorizada} gal` : '—'}
+                </span>
+              ),
+            },
+            {
+              key: 'estado',
+              label: 'Estado',
+              priority: 'high',
+              render: (s) => <StatusBadge label={s.estado} variant={ESTADO_VARIANT[s.estado]} />,
+            },
+            {
+              key: 'fechaSolicitud',
+              label: 'Fecha',
+              priority: 'med',
+              render: (s) => <span className="font-mono num text-xs">{new Date(s.fechaSolicitud).toLocaleDateString()}</span>,
+            },
+            {
+              key: 'fechaVencimiento',
+              label: 'Vence',
+              priority: 'low',
+              render: (s) => (
+                <span className="font-mono num text-xs">
+                  {s.fechaVencimiento ? new Date(s.fechaVencimiento).toLocaleDateString() : '—'}
+                </span>
+              ),
+            },
+          ]}
+          actions={(s) => (
+            <>
+              {s.estado === 'Pendiente' && canApprove && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAprobarModal(s)
+                      setCantidadAutorizada(String(s.cantidadSolicitada))
+                      setActionError(null)
+                    }}
+                    className="inline-flex min-h-[38px] items-center gap-1.5 rounded-md border border-exito/30 bg-exito/10 px-3 py-1.5 text-xs font-semibold text-exito transition-colors hover:bg-exito hover:text-white shadow-xs"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    Aprobar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRechazarModal(s)
+                      setMotivoRechazo('')
+                      setActionError(null)
+                    }}
+                    className="inline-flex min-h-[38px] items-center gap-1.5 rounded-md border border-peligro/30 bg-white px-3 py-1.5 text-xs font-semibold text-peligro transition-colors hover:border-peligro hover:bg-peligro/10 shadow-xs"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                    Rechazar
+                  </button>
+                </div>
               )}
-              {solicitudes.map((s) => (
-                <tr key={s.id} className="hover:bg-fondo">
-                  <td className="px-4 py-3 font-mono num text-acero">{s.id}</td>
-                  <td className="px-4 py-3 font-medium text-tinta">{s.empleadoNombre}</td>
-                  <td className="px-4 py-3 font-mono text-acero">{s.vehiculoPlaca}</td>
-                  <td className="px-4 py-3 text-acero">{s.departamentoNombre}</td>
-                  <td className="px-4 py-3 text-acero">{s.tipoCombustibleNombre}</td>
-                  <td className="px-4 py-3 font-mono num text-acero">{s.cantidadSolicitada}</td>
-                  <td className="px-4 py-3 font-mono num text-acero">{s.cantidadAutorizada ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge label={s.estado} variant={ESTADO_VARIANT[s.estado]} />
-                  </td>
-                  <td className="px-4 py-3 text-acero">{new Date(s.fechaSolicitud).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-acero">
-                    {s.fechaVencimiento ? new Date(s.fechaVencimiento).toLocaleDateString() : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    {s.estado === 'Pendiente' && puedeAprobar && (
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAprobarModal({ id: s.id })
-                            setCantidadAutorizada(String(s.cantidadSolicitada))
-                            setActionError(null)
-                          }}
-                          className="rounded bg-exito px-2 py-1 text-xs text-white hover:opacity-90"
-                        >
-                          Aprobar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRechazarModal({ id: s.id })
-                            setMotivoRechazo('')
-                            setActionError(null)
-                          }}
-                          className="rounded bg-peligro px-2 py-1 text-xs text-white hover:opacity-90"
-                        >
-                          Rechazar
-                        </button>
-                      </div>
-                    )}
-                    {s.estado === 'Rechazada' && s.motivoRechazo && (
-                      <span className="text-xs text-acero/70" title={s.motivoRechazo}>
-                        · {s.motivoRechazo.slice(0, 30)}
-                        {s.motivoRechazo.length > 30 ? '…' : ''}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              {s.estado === 'Pendiente' && !canApprove && (
+                <span className="text-xs text-acero italic">En espera de autorización</span>
+              )}
+              {s.estado === 'Rechazada' && s.motivoRechazo && (
+                <span className="text-xs text-acero/80" title={s.motivoRechazo}>
+                  Motivo: {s.motivoRechazo}
+                </span>
+              )}
+            </>
+          )}
+          emptyMessage="Sin solicitudes registradas."
+        />
       )}
 
       {showCreate && (
-        <Modal title="Nueva solicitud manual" onClose={() => setShowCreate(false)}>
+        <Modal title="Nueva solicitud de combustible" onClose={() => setShowCreate(false)}>
           <form onSubmit={handleCreate} className="space-y-4">
-            <Field label="Empleado">
-              <select name="empleadoId" value={form.empleadoId} onChange={handleFormChange} required className={inputCls}>
-                <option value="">Seleccionar...</option>
-                {empleados.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.nombreCompleto}
-                  </option>
-                ))}
+            {isSolicitanteOnly && !miEmpleado && (
+              <div className="rounded-md border border-peligro/30 bg-peligro/10 p-3 text-sm text-peligro">
+                ⚠️ Su cuenta de usuario no está vinculada a ningún empleado. No puede emitir solicitudes hasta que un Administrador asocie su cuenta.
+              </div>
+            )}
+
+            <Field
+              label="Empleado solicitante"
+              required
+              hint={isSolicitanteOnly && miEmpleado ? `Registrando como: ${miEmpleado.nombreCompleto} (${miEmpleado.codigo})` : undefined}
+            >
+              <select
+                name="empleadoId"
+                value={isSolicitanteOnly && miEmpleado ? miEmpleado.id : form.empleadoId}
+                onChange={handleFormChange}
+                required
+                disabled={isSolicitanteOnly}
+                className={inputCls}
+              >
+                {isSolicitanteOnly ? (
+                  miEmpleado ? (
+                    <option value={miEmpleado.id}>
+                      {miEmpleado.nombreCompleto} ({miEmpleado.codigo})
+                    </option>
+                  ) : (
+                    <option value="">-- Sin empleado vinculado --</option>
+                  )
+                ) : (
+                  <>
+                    <option value="">Seleccionar...</option>
+                    {empleados.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.nombreCompleto} ({e.codigo}) {e.usuarioNombre ? `[Usuario: ${e.usuarioNombre}]` : ''}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </Field>
-            <Field label="Vehículo">
-              <select name="vehiculoId" value={form.vehiculoId} onChange={handleFormChange} required className={inputCls}>
+
+            <Field label="Vehículo" required>
+              <select
+                name="vehiculoId"
+                value={form.vehiculoId}
+                onChange={handleFormChange}
+                required
+                className={inputCls}
+              >
                 <option value="">Seleccionar...</option>
                 {vehiculos.map((v) => (
                   <option key={v.id} value={v.id}>
-                    {v.placa} — {v.marca} {v.modelo}
+                    {v.placa} — {v.marca} {v.modelo} ({v.ficha})
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Departamento">
-              <select name="departamentoId" value={form.departamentoId} onChange={handleFormChange} required className={inputCls}>
+
+            <Field label="Departamento" required>
+              <select
+                name="departamentoId"
+                value={form.departamentoId}
+                onChange={handleFormChange}
+                required
+                className={inputCls}
+              >
                 <option value="">Seleccionar...</option>
                 {departamentos.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -282,17 +399,25 @@ export default function SolicitudesPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Tipo de combustible">
-              <select name="tipoCombustibleId" value={form.tipoCombustibleId} onChange={handleFormChange} required className={inputCls}>
+
+            <Field label="Tipo de combustible" required>
+              <select
+                name="tipoCombustibleId"
+                value={form.tipoCombustibleId}
+                onChange={handleFormChange}
+                required
+                className={inputCls}
+              >
                 <option value="">Seleccionar...</option>
-                {tipos.map((t) => (
+                {tiposCombustible.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.nombre}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Cantidad solicitada">
+
+            <Field label="Cantidad solicitada (galones)" required hint="Rango permitido: 1 a 500 galones">
               <input
                 type="number"
                 name="cantidadSolicitada"
@@ -301,22 +426,25 @@ export default function SolicitudesPage() {
                 min="0.0001"
                 step="0.0001"
                 required
-                className={inputCls}
-                placeholder="0.00"
+                className={`${inputCls} font-mono`}
               />
             </Field>
-            <Field label="Fecha de vencimiento">
+
+            <Field label="Días de vigencia">
               <input
-                type="datetime-local"
-                name="fechaVencimiento"
-                value={form.fechaVencimiento}
+                type="number"
+                name="diasVigencia"
+                value={form.diasVigencia}
                 onChange={handleFormChange}
-                required
-                min={nowLocalInputValue()}
+                min="1"
+                max="365"
+                placeholder="7 (por defecto)"
                 className={inputCls}
               />
             </Field>
+
             {formError && <p className="text-sm text-peligro">{formError}</p>}
+
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -328,7 +456,7 @@ export default function SolicitudesPage() {
               <button
                 type="submit"
                 disabled={submitting || !requiredFieldsFilled}
-                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50"
+                className="rounded-md bg-tanque px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-50 font-medium"
               >
                 {submitting ? 'Guardando...' : 'Crear solicitud'}
               </button>
@@ -338,20 +466,102 @@ export default function SolicitudesPage() {
       )}
 
       {aprobarModal && (
-        <Modal title="Aprobar solicitud" onClose={() => setAprobarModal(null)}>
+        <Modal title="Aprobación de Solicitud de Combustible" onClose={() => setAprobarModal(null)}>
           <form onSubmit={handleAprobar} className="space-y-4">
-            <Field label="Cantidad autorizada">
+            {/* Context Card */}
+            <div className="rounded-md border border-tanque/20 bg-tanque/5 p-3.5 text-sm space-y-2">
+              <div className="flex justify-between items-center border-b border-tanque/10 pb-2">
+                <span className="font-semibold text-tanque">Solicitud #{aprobarModal.id}</span>
+                <span className="text-xs bg-tanque/10 text-tanque px-2 py-0.5 rounded font-mono">
+                  {aprobarModal.departamentoNombre}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-acero block">Empleado:</span>
+                  <span className="font-medium text-tinta">{aprobarModal.empleadoNombre}</span>
+                </div>
+                <div>
+                  <span className="text-acero block">Vehículo:</span>
+                  <span className="font-medium font-mono text-tinta">{aprobarModal.vehiculoPlaca}</span>
+                </div>
+                <div>
+                  <span className="text-acero block">Combustible:</span>
+                  <span className="font-medium text-tinta">{aprobarModal.tipoCombustibleNombre}</span>
+                </div>
+                <div>
+                  <span className="text-acero block">Cantidad Solicitada:</span>
+                  <span className="font-bold font-mono text-tanque">{aprobarModal.cantidadSolicitada} galones</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Percentage Presets */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-acero">
+                Opciones rápidas de autorización
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCantidadAutorizada(String(aprobarModal.cantidadSolicitada))}
+                  className={`py-1.5 px-3 rounded text-xs font-semibold border transition-all ${
+                    Number(cantidadAutorizada) === Number(aprobarModal.cantidadSolicitada)
+                      ? 'bg-tanque text-white border-tanque'
+                      : 'bg-white text-tanque border-tanque/30 hover:bg-tanque/5'
+                  }`}
+                >
+                  100% ({aprobarModal.cantidadSolicitada} gal)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCantidadAutorizada(String(Number((aprobarModal.cantidadSolicitada * 0.75).toFixed(2))))}
+                  className={`py-1.5 px-3 rounded text-xs font-semibold border transition-all ${
+                    Number(cantidadAutorizada) === Number((aprobarModal.cantidadSolicitada * 0.75).toFixed(2))
+                      ? 'bg-tanque text-white border-tanque'
+                      : 'bg-white text-tanque border-tanque/30 hover:bg-tanque/5'
+                  }`}
+                >
+                  75% ({(aprobarModal.cantidadSolicitada * 0.75).toFixed(2)} gal)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCantidadAutorizada(String(Number((aprobarModal.cantidadSolicitada * 0.5).toFixed(2))))}
+                  className={`py-1.5 px-3 rounded text-xs font-semibold border transition-all ${
+                    Number(cantidadAutorizada) === Number((aprobarModal.cantidadSolicitada * 0.5).toFixed(2))
+                      ? 'bg-tanque text-white border-tanque'
+                      : 'bg-white text-tanque border-tanque/30 hover:bg-tanque/5'
+                  }`}
+                >
+                  50% ({(aprobarModal.cantidadSolicitada * 0.5).toFixed(2)} gal)
+                </button>
+              </div>
+            </div>
+
+            <Field
+              label="Cantidad autorizada definitiva (galones)"
+              required
+              hint={`No puede ser mayor a los ${aprobarModal.cantidadSolicitada} galones solicitados`}
+            >
               <input
                 type="number"
                 value={cantidadAutorizada}
                 onChange={(e) => setCantidadAutorizada(e.target.value)}
-                min="0.0001"
-                step="0.0001"
+                min="0.01"
+                max={aprobarModal.cantidadSolicitada}
+                step="0.01"
                 required
-                className={inputCls}
+                className={`${inputCls} font-mono text-base font-bold`}
               />
             </Field>
+
+            <div className="rounded-md border border-advertencia/40 bg-advertencia/10 p-3 text-xs text-tinta">
+              <span className="font-semibold block mb-0.5">Aviso de emisión:</span>
+              Al aprobar esta solicitud, quedará disponible para emisión de ticket. Asegúrese de que el volumen asignado sea el correcto.
+            </div>
+
             {actionError && <p className="text-sm text-peligro">{actionError}</p>}
+
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -360,8 +570,12 @@ export default function SolicitudesPage() {
               >
                 Cancelar
               </button>
-              <button type="submit" className="rounded-md bg-exito px-4 py-2 text-sm text-white hover:opacity-90">
-                Aprobar
+              <button
+                type="submit"
+                disabled={!cantidadAutorizada || Number(cantidadAutorizada) <= 0 || Number(cantidadAutorizada) > aprobarModal.cantidadSolicitada}
+                className="rounded-md bg-exito px-5 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              >
+                Confirmar y aprobar
               </button>
             </div>
           </form>
@@ -371,7 +585,13 @@ export default function SolicitudesPage() {
       {rechazarModal && (
         <Modal title="Rechazar solicitud" onClose={() => setRechazarModal(null)}>
           <form onSubmit={handleRechazar} className="space-y-4">
-            <Field label="Motivo de rechazo">
+            <div className="rounded-md border border-peligro/20 bg-peligro/5 p-3 text-xs text-tinta space-y-1">
+              <p><strong className="text-peligro">Solicitud #{rechazarModal.id}</strong></p>
+              <p>Empleado: <span className="font-medium">{rechazarModal.empleadoNombre}</span> · Vehículo: <span className="font-mono">{rechazarModal.vehiculoPlaca}</span></p>
+              <p>Volumen: <span className="font-medium">{rechazarModal.cantidadSolicitada} galones</span> de {rechazarModal.tipoCombustibleNombre}</p>
+            </div>
+
+            <Field label="Motivo de rechazo" required hint="Explique al solicitante por qué se deniega la autorización">
               <textarea
                 value={motivoRechazo}
                 onChange={(e) => setMotivoRechazo(e.target.value)}
@@ -379,10 +599,12 @@ export default function SolicitudesPage() {
                 maxLength={500}
                 rows={3}
                 className={inputCls}
-                placeholder="Indique el motivo..."
+                placeholder="Ej. Cuota mensual del departamento agotada, vehículo en mantenimiento..."
               />
             </Field>
+
             {actionError && <p className="text-sm text-peligro">{actionError}</p>}
+
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -391,8 +613,12 @@ export default function SolicitudesPage() {
               >
                 Cancelar
               </button>
-              <button type="submit" className="rounded-md bg-peligro px-4 py-2 text-sm text-white hover:opacity-90">
-                Rechazar
+              <button
+                type="submit"
+                disabled={!motivoRechazo.trim()}
+                className="rounded-md bg-peligro px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              >
+                Confirmar rechazo
               </button>
             </div>
           </form>
