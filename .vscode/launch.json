@@ -1,0 +1,26 @@
+﻿{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "FuelTrack Mobile (Emulador AVD)",
+      "cwd": "mobile",
+      "request": "launch",
+      "type": "dart",
+      "program": "mobile/lib/main.dart",
+      "args": [
+        "--dart-define=APP_ENV=development",
+        "--dart-define=API_BASE_URL=http://10.0.2.2:5298/api/v1",
+        "--dart-define=OIDC_AUTHORITY=http://10.0.2.2:18080/realms/fueltrack",
+        "--dart-define=OIDC_CLIENT_ID=fueltrack-mobile",
+        "--dart-define=OIDC_REDIRECT_URI=fueltrack://callback"
+      ]
+    },
+    {
+      "name": "FuelTrack Mobile Tests",
+      "cwd": "mobile",
+      "request": "launch",
+      "type": "dart",
+      "program": "mobile/test/flow_test.dart"
+    }
+  ]
+}
