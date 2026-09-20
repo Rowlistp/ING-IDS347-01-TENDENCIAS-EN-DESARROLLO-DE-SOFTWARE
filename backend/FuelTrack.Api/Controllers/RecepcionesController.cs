@@ -61,12 +61,15 @@ public sealed class RecepcionesController : ControllerBase
 
         var tanque = await _db.Tanques
             .Include(t => t.Inventario)
+            .Include(t => t.TipoCombustible)
             .FirstOrDefaultAsync(t => t.Id == req.TanqueId, ct);
 
         if (tanque is null)
             return BadRequest(new { code = "TANQUE_NOT_FOUND", message = "El tanque no existe." });
         if (!tanque.Activo)
             return BadRequest(new { code = "TANQUE_INACTIVO", message = "El tanque no está activo." });
+        if (!tanque.TipoCombustible.Activo)
+            return Conflict(new { code = "TIPO_COMBUSTIBLE_INACTIVO", message = "El tipo de combustible del tanque no está activo." });
 
         var recepcion = new RecepcionCombustible
         {

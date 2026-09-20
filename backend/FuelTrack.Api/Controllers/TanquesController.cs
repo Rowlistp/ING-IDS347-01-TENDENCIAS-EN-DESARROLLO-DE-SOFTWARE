@@ -36,7 +36,7 @@ public sealed class TanquesController : ControllerBase
             .Select(t => new TanqueDto(
                 t.Id, t.Identificacion, t.Capacidad,
                 t.Inventario != null ? t.Inventario.ExistenciaActual : 0m,
-                t.NivelCritico, t.TipoCombustibleId, t.TipoCombustible.Nombre, t.Activo))
+                t.NivelCritico, t.TipoCombustibleId, t.TipoCombustible.Nombre, t.Activo, t.TipoCombustible.Activo))
             .ToListAsync(ct);
         return Ok(list);
     }
@@ -52,7 +52,7 @@ public sealed class TanquesController : ControllerBase
         if (t is null) return NotFound();
         return Ok(new TanqueDto(
             t.Id, t.Identificacion, t.Capacidad, t.Inventario?.ExistenciaActual ?? 0m, t.NivelCritico,
-            t.TipoCombustibleId, t.TipoCombustible.Nombre, t.Activo));
+            t.TipoCombustibleId, t.TipoCombustible.Nombre, t.Activo, t.TipoCombustible.Activo));
     }
 
     [HttpPost]
@@ -61,22 +61,14 @@ public sealed class TanquesController : ControllerBase
     {
         if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
 
-        var combustible = await _db.TiposCombustible
-    .FirstOrDefaultAsync(t => t.Id == req.TipoCombustibleId, ct);
+        var tipoCombustible = await _db.TiposCombustible.FirstOrDefaultAsync(t => t.Id == req.TipoCombustibleId, ct);
+        if (tipoCombustible is null)
+            return BadRequest(new { code = "TIPO_COMBUSTIBLE_NOT_FOUND",
+                message = "El tipo de combustible no existe." });
 
-if (combustible is null)
-    return BadRequest(new
-    {
-        code = "TIPO_COMBUSTIBLE_NOT_FOUND",
-        message = "El tipo de combustible no existe."
-    });
-
-if (!combustible.Activo)
-    return BadRequest(new
-    {
-        code = "TIPO_COMBUSTIBLE_INACTIVO",
-        message = "No se puede asignar un tipo de combustible inactivo."
-    });
+        if (!tipoCombustible.Activo)
+            return Conflict(new { code = "TIPO_COMBUSTIBLE_INACTIVO",
+                message = "No se puede crear un tanque con un tipo de combustible inactivo." });
 
         if (await _db.Tanques.AnyAsync(t => t.Identificacion == req.Identificacion, ct))
             return Conflict(new { code = "IDENTIFICACION_DUPLICADA",
@@ -111,7 +103,7 @@ if (!combustible.Activo)
 
         return CreatedAtAction(nameof(GetById), new { id = tanque.Id },
             new TanqueDto(tanque.Id, tanque.Identificacion, tanque.Capacidad, tanque.Inventario?.ExistenciaActual ?? 0m,
-                tanque.NivelCritico, tanque.TipoCombustibleId, tanque.TipoCombustible.Nombre, tanque.Activo));
+                tanque.NivelCritico, tanque.TipoCombustibleId, tanque.TipoCombustible.Nombre, tanque.Activo, tanque.TipoCombustible.Activo));
     }
 
     [HttpPut("{id:int}")]
@@ -160,7 +152,7 @@ if (!combustible.Activo)
             await _db.Entry(tanque).Reference(t => t.TipoCombustible).LoadAsync(ct);
 
         return Ok(new TanqueDto(tanque.Id, tanque.Identificacion, tanque.Capacidad, tanque.Inventario?.ExistenciaActual ?? 0m,
-            tanque.NivelCritico, tanque.TipoCombustibleId, tanque.TipoCombustible.Nombre, tanque.Activo));
+            tanque.NivelCritico, tanque.TipoCombustibleId, tanque.TipoCombustible.Nombre, tanque.Activo, tanque.TipoCombustible.Activo));
     }
 
     [HttpPut("{id:int}/activar")]
@@ -181,7 +173,7 @@ if (!combustible.Activo)
         await _db.SaveChangesAsync(ct);
 
         return Ok(new TanqueDto(tanque.Id, tanque.Identificacion, tanque.Capacidad, tanque.Inventario?.ExistenciaActual ?? 0m,
-            tanque.NivelCritico, tanque.TipoCombustibleId, tanque.TipoCombustible.Nombre, tanque.Activo));
+            tanque.NivelCritico, tanque.TipoCombustibleId, tanque.TipoCombustible.Nombre, tanque.Activo, tanque.TipoCombustible.Activo));
     }
 
     [HttpDelete("{id:int}")]

@@ -5,7 +5,6 @@ import PageContainer from '../components/PageContainer'
 import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
 import { useAuth } from '../hooks/useAuth'
-import { useDepartamentos } from '../hooks/useDepartamentos'
 import { useEmpleados } from '../hooks/useEmpleados'
 import { useVehiculos } from '../hooks/useVehiculos'
 import apiRequest from '../services/api'
@@ -33,7 +32,6 @@ export default function SolicitudesPage() {
   const [solicitudes, setSolicitudes] = useState([])
   const empleados = useEmpleados()
   const vehiculos = useVehiculos()
-  const departamentos = useDepartamentos()
   const [tiposCombustible, setTipos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -95,11 +93,9 @@ export default function SolicitudesPage() {
   const requiredFieldsFilled =
     (isSolicitanteOnly ? Boolean(miEmpleado) : Boolean(form.empleadoId)) &&
     form.vehiculoId &&
-    (isSolicitanteOnly ? Boolean(miEmpleado) : Boolean(form.departamentoId)) &&
     form.tipoCombustibleId &&
     form.cantidadSolicitada &&
     form.diasVigencia
-
 
   async function handleCreate(e) {
     e.preventDefault()
@@ -107,7 +103,10 @@ export default function SolicitudesPage() {
     setFormError(null)
 
     const empId = isSolicitanteOnly && miEmpleado ? miEmpleado.id : Number(form.empleadoId)
-    const deptoId = isSolicitanteOnly && miEmpleado ? miEmpleado.departamentoId : Number(form.departamentoId)
+    const emp = isSolicitanteOnly && miEmpleado
+      ? miEmpleado
+      : empleados.find((e) => String(e.id) === String(form.empleadoId))
+    const deptoId = emp ? emp.departamentoId : 0
 
     try {
       await apiRequest('/solicitudes', {
@@ -369,6 +368,17 @@ export default function SolicitudesPage() {
               </select>
             </Field>
 
+            {/* Departamento derivado del empleado — solo lectura */}
+            {(() => {
+              const empId = isSolicitanteOnly && miEmpleado ? miEmpleado.id : form.empleadoId
+              const emp = empleados.find((e) => String(e.id) === String(empId)) || miEmpleado
+              return emp ? (
+                <div className="rounded-md border border-tanque/20 bg-tanque/5 px-3 py-2 text-sm text-tanque">
+                  <span className="font-medium">Departamento: </span>{emp.departamentoNombre}
+                </div>
+              ) : null
+            })()}
+
             <Field label="Vehículo" required>
               <select
                 name="vehiculoId"
@@ -386,23 +396,6 @@ export default function SolicitudesPage() {
               </select>
             </Field>
 
-            <Field label="Departamento" required>
-              <select
-                name="departamentoId"
-                value={form.departamentoId}
-                onChange={handleFormChange}
-                required
-                className={inputCls}
-              >
-                <option value="">Seleccionar...</option>
-                {departamentos.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.nombre}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
             <Field label="Tipo de combustible" required>
               <select
                 name="tipoCombustibleId"
@@ -412,7 +405,7 @@ export default function SolicitudesPage() {
                 className={inputCls}
               >
                 <option value="">Seleccionar...</option>
-                {tiposCombustible.map((t) => (
+                {tiposCombustible.filter((t) => t.activo).map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.nombre}
                   </option>

@@ -4,7 +4,6 @@ import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
 import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
-import { useDepartamentos } from '../hooks/useDepartamentos'
 import { useEmpleados } from '../hooks/useEmpleados'
 import { useTiposCombustible } from '../hooks/useTiposCombustible'
 import { useVehiculos } from '../hooks/useVehiculos'
@@ -38,7 +37,6 @@ function formatFecha(value) {
 export default function SolicitudesRecurrentesPage() {
   const empleados = useEmpleados()
   const vehiculos = useVehiculos()
-  const departamentos = useDepartamentos()
   const tiposCombustible = useTiposCombustible()
 
   const [plantillas, setPlantillas] = useState([])
@@ -86,7 +84,6 @@ export default function SolicitudesRecurrentesPage() {
   const requiredFieldsFilled =
     form.empleadoId &&
     form.vehiculoId &&
-    form.departamentoId &&
     form.tipoCombustibleId &&
     form.cantidadSolicitada &&
     form.periodicidad &&
@@ -96,13 +93,14 @@ export default function SolicitudesRecurrentesPage() {
     e.preventDefault()
     setSubmitting(true)
     setFormError(null)
+    const emp = empleados.find((e) => String(e.id) === String(form.empleadoId))
     try {
       await apiRequest('/solicitudes-recurrentes', {
         method: 'POST',
         body: JSON.stringify({
           empleadoId: Number(form.empleadoId),
           vehiculoId: Number(form.vehiculoId),
-          departamentoId: Number(form.departamentoId),
+          departamentoId: emp ? emp.departamentoId : 0,
           tipoCombustibleId: Number(form.tipoCombustibleId),
           cantidadSolicitada: Number(form.cantidadSolicitada),
           periodicidad: form.periodicidad,
@@ -258,31 +256,31 @@ export default function SolicitudesRecurrentesPage() {
             <Field label="Empleado">
               <select name="empleadoId" value={form.empleadoId} onChange={handleFormChange} required className={inputCls}>
                 <option value="">Seleccionar...</option>
-                {empleados.map((e) => (
+                {empleados.filter((e) => e.activo).map((e) => (
                   <option key={e.id} value={e.id}>{e.nombreCompleto}</option>
                 ))}
               </select>
             </Field>
+            {form.empleadoId && (() => {
+              const emp = empleados.find((e) => String(e.id) === String(form.empleadoId))
+              return emp ? (
+                <div className="rounded-md border border-tanque/20 bg-tanque/5 px-3 py-2 text-sm text-tanque">
+                  <span className="font-medium">Departamento: </span>{emp.departamentoNombre}
+                </div>
+              ) : null
+            })()}
             <Field label="Vehículo">
               <select name="vehiculoId" value={form.vehiculoId} onChange={handleFormChange} required className={inputCls}>
                 <option value="">Seleccionar...</option>
-                {vehiculos.map((v) => (
+                {vehiculos.filter((v) => v.activo).map((v) => (
                   <option key={v.id} value={v.id}>{v.placa} — {v.marca} {v.modelo}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Departamento">
-              <select name="departamentoId" value={form.departamentoId} onChange={handleFormChange} required className={inputCls}>
-                <option value="">Seleccionar...</option>
-                {departamentos.map((d) => (
-                  <option key={d.id} value={d.id}>{d.nombre}</option>
                 ))}
               </select>
             </Field>
             <Field label="Tipo de combustible">
               <select name="tipoCombustibleId" value={form.tipoCombustibleId} onChange={handleFormChange} required className={inputCls}>
                 <option value="">Seleccionar...</option>
-                {tiposCombustible.map((t) => (
+                {tiposCombustible.filter((t) => t.activo).map((t) => (
                   <option key={t.id} value={t.id}>{t.nombre}</option>
                 ))}
               </select>
