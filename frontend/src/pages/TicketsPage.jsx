@@ -68,24 +68,51 @@ export default function TicketsPage() {
   const [anulando, setAnulando] = useState(false)
   const [anularError, setAnularError] = useState(null)
 
-  async function cargarTickets() {
+  const [qrModalTicket, setQrModalTicket] = useState(null)
+  const [qrImageUrl, setQrImageUrl] = useState(null)
+  const [loadingQr, setLoadingQr] = useState(false)
+
+  async function handleVerQr(ticket) {
+    setQrModalTicket(ticket)
+    setLoadingQr(true)
+    setQrImageUrl(null)
+    try {
+      const { blob } = await apiDownload(`/tickets/${ticket.id}/qr`)
+      const url = URL.createObjectURL(blob)
+      setQrImageUrl(url)
+    } catch {
+      setQrImageUrl(`https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(ticket.codigo)}&color=16-33-3A`)
+    } finally {
+      setLoadingQr(false)
+    }
+  }
+
+  async function cargarTickets(silent = false) {
+    if (!silent) setLoading(true)
     try {
       const data = await apiRequest('/tickets')
       setTickets(data)
+      setQrModalTicket((prev) => {
+        if (!prev) return null
+        return data.find((t) => t.id === prev.id) || prev
+      })
+      setDetailTicket((prev) => {
+        if (!prev) return null
+        return data.find((t) => t.id === prev.id) || prev
+      })
     } catch (e) {
-      setError(e.message)
+      if (!silent) setError(e.message)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
   useEffect(() => {
-    let cancelado = false
-    apiRequest('/tickets')
-      .then((data) => { if (!cancelado) setTickets(data) })
-      .catch((e) => { if (!cancelado) setError(e.message) })
-      .finally(() => { if (!cancelado) setLoading(false) })
-    return () => { cancelado = true }
+    cargarTickets()
+    const timer = setInterval(() => {
+      cargarTickets(true)
+    }, 3000)
+    return () => clearInterval(timer)
   }, [])
 
   const nextSequenceNumber = useMemo(() => {
@@ -196,12 +223,26 @@ export default function TicketsPage() {
       )}
 
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
+        <div className="flex items-center gap-3">
           {!loading && !error && (
             <span className="text-sm text-acero">
               Total emitidos: <strong className="text-tinta font-mono">{tickets.length}</strong>
             </span>
           )}
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-exito/10 text-exito border border-exito/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-exito animate-pulse"></span>
+            En vivo
+          </span>
+          <button
+            type="button"
+            onClick={() => cargarTickets(false)}
+            className="p-1.5 rounded-md text-acero hover:text-tinta hover:bg-acero/10 transition-colors"
+            title="Actualizar tickets manualmente"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
         </div>
         {canEmit && (
           <button
@@ -309,6 +350,28 @@ export default function TicketsPage() {
                   <circle cx="12" cy="12" r="3" />
                 </svg>
                 Ver
+              </button>
+              <button
+                type="button"
+                onClick={() => handleVerQr(t)}
+                className="inline-flex min-h-[38px] items-center gap-1 rounded-md border border-amber-500/40 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-500 hover:text-white transition-colors shadow-xs"
+                title="Ver código QR oficial para escanear con el celular"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="5" height="5" x="3" y="3" rx="1" />
+                  <rect width="5" height="5" x="16" y="3" rx="1" />
+                  <rect width="5" height="5" x="3" y="16" rx="1" />
+                  <path d="M21 16h-3a2 2 0 0 0-2 2v3" />
+                  <path d="M21 21v.01" />
+                  <path d="M12 7v3a2 2 0 0 1-2 2H7" />
+                  <path d="M3 12h.01" />
+                  <path d="M12 3h.01" />
+                  <path d="M12 16v.01" />
+                  <path d="M16 12h1" />
+                  <path d="M21 12v.01" />
+                  <path d="M12 21v-1" />
+                </svg>
+                QR
               </button>
               <button
                 type="button"
@@ -561,6 +624,28 @@ export default function TicketsPage() {
 
                 <button
                   type="button"
+                  onClick={() => handleVerQr(detailTicket)}
+                  className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-amber-500/50 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-500 hover:text-white transition-colors shadow-xs"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="5" height="5" x="3" y="3" rx="1" />
+                    <rect width="5" height="5" x="16" y="3" rx="1" />
+                    <rect width="5" height="5" x="3" y="16" rx="1" />
+                    <path d="M21 16h-3a2 2 0 0 0-2 2v3" />
+                    <path d="M21 21v.01" />
+                    <path d="M12 7v3a2 2 0 0 1-2 2H7" />
+                    <path d="M3 12h.01" />
+                    <path d="M12 3h.01" />
+                    <path d="M12 16v.01" />
+                    <path d="M16 12h1" />
+                    <path d="M21 12v.01" />
+                    <path d="M12 21v-1" />
+                  </svg>
+                  Ver Código QR
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => handleDescargarPdf(detailTicket)}
                   disabled={downloadingId === detailTicket.id}
                   className="flex min-h-[38px] items-center gap-1.5 rounded-md bg-tanque px-4 py-2 text-xs font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
@@ -573,6 +658,84 @@ export default function TicketsPage() {
                   {downloadingId === detailTicket.id ? 'Descargando…' : 'Descargar PDF oficial'}
                 </button>
               </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {qrModalTicket && (
+        <Modal title={`Código QR Oficial — ${qrModalTicket.codigo}`} onClose={() => setQrModalTicket(null)}>
+          <div className="space-y-4 text-center">
+            {qrModalTicket.estado === 'Consumido' ? (
+              <div className="rounded-md border border-exito/60 bg-exito/15 p-4 text-center">
+                <div className="flex items-center justify-center gap-2 text-exito font-bold text-base mb-1">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>¡Ticket Consumido con Éxito!</span>
+                </div>
+                <p className="text-xs text-acero">El combustible ya fue despachado y registrado en el inventario por el operador móvil.</p>
+              </div>
+            ) : (
+              <div className="rounded-md border border-exito/30 bg-exito/5 p-3 text-xs text-acero flex items-center justify-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-exito animate-pulse"></span>
+                <span>Apunta la cámara de la aplicación móvil a este código para validar y despachar combustible.</span>
+              </div>
+            )}
+
+            <div className="inline-block p-4 bg-white rounded-lg border-2 border-dashed border-acero/30 shadow-md">
+              {loadingQr ? (
+                <div className="w-64 h-64 flex flex-col items-center justify-center gap-2 text-acero">
+                  <div className="w-8 h-8 border-2 border-tanque border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-xs">Cargando código QR oficial...</span>
+                </div>
+              ) : qrImageUrl ? (
+                <img
+                  src={qrImageUrl}
+                  alt={`QR ${qrModalTicket.codigo}`}
+                  className="w-64 h-64 object-contain mx-auto"
+                />
+              ) : (
+                <div className="w-64 h-64 flex items-center justify-center text-xs text-peligro">
+                  No se pudo cargar el código QR.
+                </div>
+              )}
+            </div>
+
+            <div className="bg-fondo p-3.5 rounded-md border border-acero/20 text-xs text-left grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-acero block">Conductor</span>
+                <strong className="text-tinta font-semibold">{qrModalTicket.empleadoNombre}</strong>
+              </div>
+              <div>
+                <span className="text-acero block">Vehículo / Placa</span>
+                <strong className="text-tinta font-mono font-semibold">{qrModalTicket.vehiculoPlaca}</strong>
+              </div>
+              <div>
+                <span className="text-acero block">Combustible</span>
+                <strong className="text-tinta font-semibold">{qrModalTicket.tipoCombustibleNombre}</strong>
+              </div>
+              <div>
+                <span className="text-acero block">Autorizado</span>
+                <strong className="text-tanque font-mono font-bold">{qrModalTicket.cantidadAutorizada} gal</strong>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-acero/20">
+              <button
+                type="button"
+                onClick={() => setQrModalTicket(null)}
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDescargarPdf(qrModalTicket)}
+                className="rounded-md bg-tanque px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+              >
+                Descargar PDF
+              </button>
             </div>
           </div>
         </Modal>

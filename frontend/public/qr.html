@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FuelTrack · Generador de Códigos QR para Pruebas Móviles</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --tanque: #16333A;
+      --acero: #4A5A63;
+      --medidor: #E29B2E;
+      --fondo: #F7F8F6;
+      --tinta: #12181A;
+      --borde: rgba(74, 90, 99, 0.2);
+      --exito: #2E7D5B;
+      --exito-bg: rgba(46, 125, 91, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Public Sans', system-ui, sans-serif;
+      background-color: var(--fondo);
+      color: var(--tinta);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background-color: var(--tanque);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--medidor);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: rgba(255, 255, 255, 0.6);
+      text-transform: uppercase;
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(46, 125, 91, 0.25);
+      border: 1px solid rgba(46, 125, 91, 0.5);
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #7ee787;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      background: #7ee787;
+      border-radius: 50%;
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    main {
+      flex: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 32px 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      align-items: start;
+    }
+
+    @media (max-width: 800px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: white;
+      border: 1px solid var(--borde);
+      border-radius: 6px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--acero);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ticket-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .ticket-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border: 1px solid var(--borde);
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: left;
+      font-family: inherit;
+      width: 100%;
+    }
+
+    .ticket-option:hover {
+      border-color: var(--tanque);
+      background: rgba(22, 51, 58, 0.02);
+    }
+
+    .ticket-option.active {
+      border-color: var(--tanque);
+      background: rgba(22, 51, 58, 0.05);
+      box-shadow: inset 3px 0 0 var(--tanque);
+    }
+
+    .opt-code {
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--tanque);
+    }
+
+    .opt-desc {
+      font-size: 12px;
+      color: var(--acero);
+      margin-top: 2px;
+    }
+
+    .opt-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 3px;
+      background: var(--fondo);
+      border: 1px solid var(--borde);
+      color: var(--acero);
+    }
+
+    .ticket-option.active .opt-badge {
+      background: var(--tanque);
+      color: white;
+      border-color: var(--tanque);
+    }
+
+    /* Ticket Card View */
+    .ticket-voucher {
+      background: white;
+      border: 2px dashed var(--borde);
+      border-radius: 6px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .voucher-header {
+      border-bottom: 1px solid var(--borde);
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+    }
+
+    .voucher-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--acero);
+      text-transform: uppercase;
+    }
+
+    .voucher-code {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--tanque);
+      margin-top: 4px;
+    }
+
+    .qr-container {
+      background: white;
+      padding: 16px;
+      display: inline-block;
+      border: 1px solid var(--borde);
+      border-radius: 6px;
+      margin: 0 auto 16px auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    #qrcode {
+      display: flex;
+      justify-content: center;
+    }
+
+    #qrcode img, #qrcode canvas {
+      display: block;
+      margin: 0 auto;
+    }
+
+    .scan-instruction {
+      font-size: 13px;
+      color: var(--exito);
+      background: var(--exito-bg);
+      border: 1px solid rgba(46, 125, 91, 0.3);
+      padding: 10px 14px;
+      border-radius: 4px;
+      font-weight: 600;
+      margin-bottom: 18px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      text-align: left;
+      background: var(--fondo);
+      padding: 14px;
+      border-radius: 4px;
+      border: 1px solid var(--borde);
+    }
+
+    .meta-item label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--acero);
+      display: block;
+    }
+
+    .meta-item value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--tinta);
+      display: block;
+      margin-top: 2px;
+    }
+
+    .meta-item value.mono {
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .tip-box {
+      margin-top: 20px;
+      padding: 14px;
+      background: #FFFDF7;
+      border: 1px solid rgba(201, 122, 26, 0.3);
+      border-radius: 4px;
+      font-size: 12px;
+      color: #7A4B0E;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div>
+        <div class="brand-eyebrow">FuelTrack System</div>
+        <div class="brand-title">Generador de Tickets y Códigos QR</div>
+      </div>
+    </div>
+    <div class="badge-live">
+      <div class="dot"></div>
+      Listo para escanear
+    </div>
+  </header>
+
+  <main>
+    <!-- Selector de Tickets -->
+    <div class="panel">
+      <div class="panel-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        Selecciona un ticket de prueba
+      </div>
+
+      <div class="ticket-selector">
+        <button class="ticket-option active" onclick="selectTicket(0)">
+          <div>
+            <div class="opt-code">TCK-2026-001008</div>
+            <div class="opt-desc">Ramón Antonio Gómez · L345002 (Transporte)</div>
+          </div>
+          <div class="opt-badge">50 gal · Gasoil Reg.</div>
+        </button>
+
+        <button class="ticket-option" onclick="selectTicket(1)">
+          <div>
+            <div class="opt-code">TCK-2026-001009</div>
+            <div class="opt-desc">Ana Luisa Rodríguez · G123001 (Operaciones)</div>
+          </div>
+          <div class="opt-badge">22 gal · Gasoil Ópt.</div>
+        </button>
+
+        <button class="ticket-option" onclick="selectTicket(2)">
+          <div>
+            <div class="opt-code">COM-2026-000001</div>
+            <div class="opt-desc">Carlos Rodríguez · CAM-01 (Toyota Hilux)</div>
+          </div>
+          <div class="opt-badge">20 gal · Gasoil</div>
+        </button>
+
+        <button class="ticket-option" onclick="selectTicket(3)">
+          <div>
+            <div class="opt-code">COM-2026-000002</div>
+            <div class="opt-desc">Ana Martínez · GEN-02 (Generador)</div>
+          </div>
+          <div class="opt-badge">35 gal · Diésel</div>
+        </button>
+
+        <button class="ticket-option" onclick="selectTicket(4)">
+          <div>
+            <div class="opt-code">COM-2026-000003</div>
+            <div class="opt-desc">Juan Pérez · PAT-04 (Nissan Frontier)</div>
+          </div>
+          <div class="opt-badge">15 gal · Gasolina</div>
+        </button>
+      </div>
+
+      <div class="tip-box">
+        <strong>¿Cómo probar desde tu celular?</strong><br>
+        1. Abre la app móvil FuelTrack en tu celular.<br>
+        2. Toca la pestaña <strong>Escanear QR</strong>.<br>
+        3. Apunta la cámara de tu teléfono al código QR que ves a la derecha.<br>
+        4. Cada ticket mostrará su propio conductor, vehículo y combustible.<br>
+        5. Al despachar, el ticket quedará consumido y no podrá reutilizarse.
+      </div>
+    </div>
+
+    <!-- Comprobante / QR View -->
+    <div class="panel">
+      <div class="ticket-voucher">
+        <div class="voucher-header">
+          <div class="voucher-title">Ticket Oficial de Suministro</div>
+          <div class="voucher-code" id="v-code">TCK-2026-001008</div>
+        </div>
+
+        <div class="scan-instruction">
+          📷 Apunta tu cámara móvil aquí
+        </div>
+
+        <div class="qr-container">
+          <div id="qrcode"></div>
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-item">
+            <label>Conductor</label>
+            <value id="v-driver">Ramón Antonio Gómez</value>
+          </div>
+          <div class="meta-item">
+            <label>Vehículo / Placa</label>
+            <value id="v-vehicle">L345002</value>
+          </div>
+          <div class="meta-item">
+            <label>Combustible</label>
+            <value id="v-fuel">Gasoil Regular</value>
+          </div>
+          <div class="meta-item">
+            <label>Autorizado</label>
+            <value class="mono" id="v-gallons">50.0 gal</value>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const tickets = [
+      {
+        id: 'a8888888-8888-8888-8888-888888888888',
+        code: 'TCK-2026-001008',
+        driver: 'Ramón Antonio Gómez',
+        vehicle: 'L345002',
+        fuel: 'Gasoil Regular',
+        gallons: '50.0 gal'
+      },
+      {
+        id: 'a9999999-9999-9999-9999-999999999999',
+        code: 'TCK-2026-001009',
+        driver: 'Ana Luisa Rodríguez',
+        vehicle: 'G123001',
+        fuel: 'Gasoil Óptimo',
+        gallons: '22.0 gal'
+      },
+      {
+        code: 'COM-2026-000001',
+        driver: 'Carlos Rodríguez',
+        vehicle: 'CAM-01 (Toyota Hilux)',
+        fuel: 'Gasoil Regular',
+        gallons: '20.0 gal'
+      },
+      {
+        code: 'COM-2026-000002',
+        driver: 'Ana Martínez',
+        vehicle: 'GEN-02 (Generador)',
+        fuel: 'Diésel Óptimo',
+        gallons: '35.0 gal'
+      },
+      {
+        code: 'COM-2026-000003',
+        driver: 'Juan Pérez',
+        vehicle: 'PAT-04 (Nissan Frontier)',
+        fuel: 'Gasolina Regular',
+        gallons: '15.0 gal'
+      }
+    ];
+
+    let qrcodeObj = null;
+
+    function renderQr(code) {
+      const container = document.getElementById('qrcode');
+      container.innerHTML = '';
+
+      if (window.QRCode) {
+        qrcodeObj = new QRCode(container, {
+          text: code,
+          width: 220,
+          height: 220,
+          colorDark: "#16333A",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } else {
+        const img = document.createElement('img');
+        img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(code)}&color=16-33-3A`;
+        img.alt = 'QR Code';
+        img.width = 220;
+        img.height = 220;
+        container.appendChild(img);
+      }
+    }
+
+    function selectTicket(index) {
+      const t = tickets[index];
+      document.getElementById('v-code').textContent = t.code;
+      document.getElementById('v-driver').textContent = t.driver;
+      document.getElementById('v-vehicle').textContent = t.vehicle;
+      document.getElementById('v-fuel').textContent = t.fuel;
+      document.getElementById('v-gallons').textContent = t.gallons;
+
+      const buttons = document.querySelectorAll('.ticket-option');
+      buttons.forEach((btn, idx) => {
+        if (idx === index) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+
+      renderQr(t.code);
+    }
+
+    // Inicializar con el primer ticket
+    window.addEventListener('DOMContentLoaded', () => {
+      selectTicket(0);
+    });
+  </script>
+</body>
+</html>
