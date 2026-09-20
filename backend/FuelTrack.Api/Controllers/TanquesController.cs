@@ -61,9 +61,22 @@ public sealed class TanquesController : ControllerBase
     {
         if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
 
-        if (!await _db.TiposCombustible.AnyAsync(t => t.Id == req.TipoCombustibleId, ct))
-            return BadRequest(new { code = "TIPO_COMBUSTIBLE_NOT_FOUND",
-                message = "El tipo de combustible no existe." });
+        var combustible = await _db.TiposCombustible
+    .FirstOrDefaultAsync(t => t.Id == req.TipoCombustibleId, ct);
+
+if (combustible is null)
+    return BadRequest(new
+    {
+        code = "TIPO_COMBUSTIBLE_NOT_FOUND",
+        message = "El tipo de combustible no existe."
+    });
+
+if (!combustible.Activo)
+    return BadRequest(new
+    {
+        code = "TIPO_COMBUSTIBLE_INACTIVO",
+        message = "No se puede asignar un tipo de combustible inactivo."
+    });
 
         if (await _db.Tanques.AnyAsync(t => t.Identificacion == req.Identificacion, ct))
             return Conflict(new { code = "IDENTIFICACION_DUPLICADA",
