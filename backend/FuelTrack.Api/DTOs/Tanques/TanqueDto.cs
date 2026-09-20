@@ -8,5 +8,6 @@ public record TanqueDto(
     decimal NivelCritico,
     int TipoCombustibleId,
     string TipoCombustibleNombre,
-    bool Activo
+    bool Activo,
+    bool TipoCombustibleActivo = true
 );

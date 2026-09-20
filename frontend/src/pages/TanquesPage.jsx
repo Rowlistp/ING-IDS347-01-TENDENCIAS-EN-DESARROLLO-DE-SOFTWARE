@@ -327,7 +327,10 @@ export default function TanquesPage() {
                 className={fieldErrors.tipoCombustibleId ? inputClsError : inputCls}
               >
                 <option value="">Seleccione un tipo de combustible</option>
-                {tiposCombustible.map((t) => (
+                {(editingId
+                  ? tiposCombustible
+                  : tiposCombustible.filter((tc) => tc.activo)
+                ).map((t) => (
                   <option key={t.id} value={t.id}>{t.nombre}</option>
                 ))}
               </select>

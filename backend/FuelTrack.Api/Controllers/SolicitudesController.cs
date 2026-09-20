@@ -119,46 +119,65 @@ if (!vehiculo.Activo)
     });
 
 
-var departamento = await _db.Departamentos
-    .FirstOrDefaultAsync(d => d.Id == req.DepartamentoId, ct);
+        if (req.DepartamentoId > 0)
+        {
+            var deptoReq = await _db.Departamentos.FirstOrDefaultAsync(d => d.Id == req.DepartamentoId, ct);
+            if (deptoReq is null)
+                return BadRequest(new
+                {
+                    code = "DEPARTAMENTO_NOT_FOUND",
+                    message = "El departamento no existe."
+                });
 
-if (departamento is null)
-    return BadRequest(new
-    {
-        code = "DEPARTAMENTO_NOT_FOUND",
-        message = "El departamento no existe."
-    });
+            if (req.DepartamentoId != empleado.DepartamentoId)
+                return BadRequest(new
+                {
+                    code = "DEPARTAMENTO_NO_COINCIDE",
+                    message = "El departamento no coincide con el departamento asignado al empleado."
+                });
+        }
 
-if (!departamento.Activo)
-    return BadRequest(new
-    {
-        code = "DEPARTAMENTO_INACTIVO",
-        message = "No se puede crear una solicitud para un departamento inactivo."
-    });
+        var departamento = await _db.Departamentos
+            .FirstOrDefaultAsync(d => d.Id == empleado.DepartamentoId, ct);
+
+        if (departamento is null)
+            return BadRequest(new
+            {
+                code = "DEPARTAMENTO_NOT_FOUND",
+                message = "El departamento no existe."
+            });
+
+        if (!departamento.Activo)
+            return BadRequest(new
+            {
+                code = "DEPARTAMENTO_INACTIVO",
+                message = "No se puede crear una solicitud para un departamento inactivo."
+            });
 
 
-var tipoCombustible = await _db.TiposCombustible
-    .FirstOrDefaultAsync(t => t.Id == req.TipoCombustibleId, ct);
+        var tipoCombustible = await _db.TiposCombustible
+            .FirstOrDefaultAsync(t => t.Id == req.TipoCombustibleId, ct);
 
-if (tipoCombustible is null)
-    return BadRequest(new
-    {
-        code = "TIPO_COMBUSTIBLE_NOT_FOUND",
-        message = "El tipo de combustible no existe."
-    });
+        if (tipoCombustible is null)
+            return BadRequest(new
+            {
+                code = "TIPO_COMBUSTIBLE_NOT_FOUND",
+                message = "El tipo de combustible no existe."
+            });
 
-if (!tipoCombustible.Activo)
-    return BadRequest(new
-    {
-        code = "TIPO_COMBUSTIBLE_INACTIVO",
-        message = "No se puede crear una solicitud con un tipo de combustible inactivo."
-    });
+        if (!tipoCombustible.Activo)
+            return BadRequest(new
+            {
+                code = "TIPO_COMBUSTIBLE_INACTIVO",
+                message = "No se puede crear una solicitud con un tipo de combustible inactivo."
+            });
+
         var solicitud = new SolicitudCombustible
         {
             CantidadSolicitada = req.CantidadSolicitada,
             EmpleadoId = req.EmpleadoId,
             VehiculoId = req.VehiculoId,
-            DepartamentoId = req.DepartamentoId,
+            DepartamentoId = empleado.DepartamentoId,
             TipoCombustibleId = req.TipoCombustibleId,
             FechaVencimiento = req.FechaVencimiento,
             TipoSolicitud = "Manual",

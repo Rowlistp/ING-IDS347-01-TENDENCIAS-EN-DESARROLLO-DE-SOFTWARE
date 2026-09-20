@@ -383,6 +383,207 @@ DEFECTOS = [
             ("Compilación Frontend", "npm.cmd run build", "Aprobado"),
             ("Linter Frontend", "npm.cmd run lint", "Aprobado")
         ]
+    },
+    {
+        "codigo": "DEF-2026-011",
+        "archivo": "Bloqueo_Despacho_Estacion_Inactiva_Frontend",
+        "titulo_corto": "Módulo: Despachos — Bloqueo por Selección Involuntaria de Estación Inactiva",
+        "modulo": "Despachos & Estaciones",
+        "severidad": "Mayor (Interrupción total del flujo de despacho en pista al existir estaciones inactivas)",
+        "prioridad": "P1 (Alta)",
+        "tipo": "Integridad Operativa & Frontend",
+        "descripcion": (
+            "Al confirmar un despacho de combustible, el modal arrojaba error 409 ESTACION_INACTIVA "
+            "debido a la inicialización errónea del estado con la primera estación sin filtrar en memoria, "
+            "provocando bloqueo cuando la primera estación alfabéticamente estaba inactiva."
+        ),
+        "pasos": [
+            "1. Registrar una estación inactiva en el catálogo.",
+            "2. Abrir el modal de despacho en /despachos.",
+            "3. Confirmar la operación de despacho."
+        ],
+        "observado": "- Error HTTP 409 Conflict ESTACION_INACTIVA al despachar.",
+        "esperado": "- Menú desplegable filtrado exclusivamente a estaciones activas tanto en backend (?soloActivas=true) como en frontend.",
+        "rca": (
+            "El endpoint GET /estaciones no soportaba filtrado por estado activo en backend y el frontend "
+            "inicializaba el ID seleccionado a partir del arreglo crudo sin filtrar."
+        ),
+        "solucion": [
+            ("Backend (EstacionesController.cs):", "Soporte para parámetro opcional [FromQuery] bool? soloActivas."),
+            ("Frontend (DespachosPage.jsx):", "Consumo de /estaciones?soloActivas=true y auto-sincronización defensiva del ID seleccionado."),
+            ("Móvil (api.dart):", "Actualización a /estaciones?soloActivas=true y filtro defensivo local.")
+        ],
+        "verificacion": [
+            ("Pruebas Unitarias Backend", "dotnet test", "Aprobado"),
+            ("Linter Frontend", "npm.cmd run lint", "Aprobado"),
+            ("Compilación Frontend", "npm.cmd run build", "Aprobado")
+        ]
+    },
+    {
+        "codigo": "DEF-2026-012",
+        "archivo": "Creacion_Tanque_Combustible_Inactivo_Permitida",
+        "titulo_corto": "Módulo: Tanques — Creación de Tanques con Tipo de Combustible Inactivo",
+        "modulo": "Tanques & Inventario",
+        "severidad": "Mayor (Inconsistencia de catálogo al permitir tanques asociados a combustible inactivo)",
+        "prioridad": "P1 (Alta)",
+        "tipo": "Integridad de Negocio",
+        "descripcion": (
+            "El endpoint POST /api/v1/tanques permitía registrar un nuevo tanque vinculado a un tipo de "
+            "combustible inactivo (Activo = false). Aunque PUT realizaba la validación, POST la omitía."
+        ),
+        "pasos": [
+            "1. Desactivar un tipo de combustible en el catálogo.",
+            "2. Enviar POST /tanques especificando dicho TipoCombustibleId.",
+            "3. El tanque se creaba sin verificar el estado del combustible."
+        ],
+        "observado": "- Creación exitosa de un tanque con tipo de combustible inactivo.",
+        "esperado": "- Retorno de HTTP 409 Conflict TIPO_COMBUSTIBLE_INACTIVO y exclusión de combustibles inactivos en el formulario.",
+        "rca": (
+            "TanquesController.Create() no validaba la propiedad Activo de la entidad TipoCombustible "
+            "y TanqueDto no exponía TipoCombustibleActivo para control de UI."
+        ),
+        "solucion": [
+            ("Backend (TanquesController.cs):", "Carga completa de TipoCombustible, validación if (!tipoCombustible.Activo) return Conflict(409) e inclusión de TipoCombustibleActivo en TanqueDto."),
+            ("Frontend (TanquesPage.jsx):", "Filtro de tiposCombustible activos en el modal de nuevo tanque.")
+        ],
+        "verificacion": [
+            ("Pruebas Unitarias Backend", "dotnet test", "Aprobado"),
+            ("Linter Frontend", "npm.cmd run lint", "Aprobado"),
+            ("Compilación Frontend", "npm.cmd run build", "Aprobado")
+        ]
+    },
+    {
+        "codigo": "DEF-2026-013",
+        "archivo": "Solicitudes_Recurrentes_Entidades_Inactivas_Y_Departamento",
+        "titulo_corto": "Módulo: Recurrentes — Plantillas con Entidades Inactivas y Departamento Erróneo",
+        "modulo": "Solicitudes Recurrentes",
+        "severidad": "Mayor (Ejecución de plantillas automáticas fallidas en segundo plano)",
+        "prioridad": "P1 (Alta)",
+        "tipo": "Integridad de Negocio & Automatización",
+        "descripcion": (
+            "POST /api/v1/solicitudes-recurrentes permitía crear plantillas referenciando empleados, vehículos "
+            "y tipos de combustible inactivos, además de admitir departamentos distintos al del empleado."
+        ),
+        "pasos": [
+            "1. Inactivar un empleado, vehículo o combustible.",
+            "2. Enviar POST /solicitudes-recurrentes asociando dichas entidades inactivas.",
+            "3. La plantilla se creaba exitosamente."
+        ],
+        "observado": "- Plantilla recurrente registrada con entidades no operativas.",
+        "esperado": "- Rechazo con HTTP 400 BadRequest ante entidades inactivas y auto-asignación del departamento del empleado.",
+        "rca": (
+            "SolicitudesRecurrentesController.Create() y Activar() no validaban el estado de las claves foráneas "
+            "ni derivaban el departamento del empleado."
+        ),
+        "solucion": [
+            ("Backend (SolicitudesRecurrentesController.cs):", "Carga y verificación de Activo en Empleado, Vehículo y Combustible; departamento auto-asignado desde empleado.DepartamentoId."),
+            ("Frontend (SolicitudesRecurrentesPage.jsx):", "Filtro de entidades activas y reemplazo del selector de departamento por badge informativo de solo lectura.")
+        ],
+        "verificacion": [
+            ("Pruebas Unitarias Backend", "dotnet test", "Aprobado"),
+            ("Linter Frontend", "npm.cmd run lint", "Aprobado"),
+            ("Compilación Frontend", "npm.cmd run build", "Aprobado")
+        ]
+    },
+    {
+        "codigo": "DEF-2026-014",
+        "archivo": "Solicitudes_Departamento_Inconsistente_Con_Empleado",
+        "titulo_corto": "Módulo: Solicitudes — Asignación de Departamento Ajeno al Empleado",
+        "modulo": "Solicitudes de Combustible",
+        "severidad": "Mayor (Corrupción de centros de costos y cuotas departamentales)",
+        "prioridad": "P1 (Alta)",
+        "tipo": "Integridad de Negocio",
+        "descripcion": (
+            "El formulario de solicitud de combustible incluía un selector manual de departamento que permitía "
+            "vincular la solicitud a un departamento ajeno al del empleado solicitante."
+        ),
+        "pasos": [
+            "1. Abrir modal de nueva solicitud.",
+            "2. Seleccionar empleado de TI.",
+            "3. Seleccionar departamento de Operaciones en el selector manual.",
+            "4. Crear la solicitud."
+        ],
+        "observado": "- Solicitud emitida con departamento inconsistente respecto al empleado.",
+        "esperado": "- Validación estricta en API y visualización de solo lectura en interfaz de usuario.",
+        "rca": (
+            "SolicitudesController.Create() no comparaba req.DepartamentoId con empleado.DepartamentoId "
+            "y el formulario web exponía un selector de departamento innecesario."
+        ),
+        "solucion": [
+            ("Backend (SolicitudesController.cs):", "Validación if (req.DepartamentoId != 0 && req.DepartamentoId != empleado.DepartamentoId) return BadRequest(DEPARTAMENTO_NO_COINCIDE)."),
+            ("Frontend (SolicitudesPage.jsx):", "Eliminación del selector manual de departamento y visualización automática como badge de solo lectura derivado del empleado.")
+        ],
+        "verificacion": [
+            ("Pruebas Unitarias Backend", "dotnet test", "Aprobado"),
+            ("Linter Frontend", "npm.cmd run lint", "Aprobado"),
+            ("Compilación Frontend", "npm.cmd run build", "Aprobado")
+        ]
+    },
+    {
+        "codigo": "DEF-2026-015",
+        "archivo": "Recepcion_Tanque_Combustible_Inactivo_Permitida",
+        "titulo_corto": "Módulo: Recepciones — Ingreso de Combustible en Tanque con Combustible Inactivo",
+        "modulo": "Recepciones de Combustible",
+        "severidad": "Mayor (Inconsistencia de inventario y entradas no operativas)",
+        "prioridad": "P1 (Alta)",
+        "tipo": "Integridad de Negocio & Control de Inventario",
+        "descripcion": (
+            "El endpoint POST /api/v1/recepciones permitía ingresar combustible a tanques cuyo tipo de combustible "
+            "estaba marcado como inactivo, y el formulario web mostraba tanques y proveedores inactivos."
+        ),
+        "pasos": [
+            "1. Desactivar un tipo de combustible.",
+            "2. Registrar recepción de combustible en un tanque asociado a dicho combustible.",
+            "3. La recepción se completaba y aumentaba el inventario."
+        ],
+        "observado": "- Recepción registrada en tanque con combustible no operativo.",
+        "esperado": "- Retorno de HTTP 409 Conflict TIPO_COMBUSTIBLE_INACTIVO y filtros en formularios.",
+        "rca": (
+            "RecepcionesController.Create() cargaba el tanque sin .Include(t => t.TipoCombustible), "
+            "impidiendo validar si el combustible estaba activo."
+        ),
+        "solucion": [
+            ("Backend (RecepcionesController.cs):", "Inclusión de TipoCombustible y verificación if (!tanque.TipoCombustible.Activo) return Conflict(409)."),
+            ("Frontend (RecepcionesPage.jsx):", "Filtro de proveedores activos y tanques activos con combustible activo.")
+        ],
+        "verificacion": [
+            ("Pruebas Unitarias Backend", "dotnet test", "Aprobado"),
+            ("Linter Frontend", "npm.cmd run lint", "Aprobado"),
+            ("Compilación Frontend", "npm.cmd run build", "Aprobado")
+        ]
+    },
+    {
+        "codigo": "DEF-2026-016",
+        "archivo": "Inventario_Ajuste_Y_Transferencia_Combustible_Inactivo",
+        "titulo_corto": "Módulo: Inventario — Ajuste y Transferencia en Tanques con Combustible Inactivo",
+        "modulo": "Inventario & Tanques",
+        "severidad": "Mayor (Movimientos de inventario sobre combustibles dados de baja)",
+        "prioridad": "P1 (Alta)",
+        "tipo": "Integridad de Negocio",
+        "descripcion": (
+            "Los endpoints POST /inventario/ajustes y POST /inventario/transferencias permitían realizar "
+            "movimientos en tanques cuyo tipo de combustible estaba inactivo."
+        ),
+        "pasos": [
+            "1. Inactivar un tipo de combustible asociado a un tanque.",
+            "2. Registrar un ajuste o transferencia en dicho tanque.",
+            "3. La operación se ejecutaba exitosamente."
+        ],
+        "observado": "- Movimientos de inventario permitidos en tanques con combustible inactivo.",
+        "esperado": "- Retorno de HTTP 409 Conflict TIPO_COMBUSTIBLE_INACTIVO y filtro de tanques en modales.",
+        "rca": (
+            "InventarioController.Ajustar() y Transferir() no incluían ni validaban la propiedad Activo "
+            "de TipoCombustible para los tanques de origen y destino."
+        ),
+        "solucion": [
+            ("Backend (InventarioController.cs):", "Inclusión de TipoCombustible y validación if (!tanque.TipoCombustible.Activo) return Conflict(409) en Ajustar y Transferir (origen y destino)."),
+            ("Frontend (InventarioPage.jsx):", "Filtro de tanques activos con combustible activo en modales de ajuste y transferencia.")
+        ],
+        "verificacion": [
+            ("Pruebas Unitarias Backend", "dotnet test", "Aprobado"),
+            ("Linter Frontend", "npm.cmd run lint", "Aprobado"),
+            ("Compilación Frontend", "npm.cmd run build", "Aprobado")
+        ]
     }
 ]
 

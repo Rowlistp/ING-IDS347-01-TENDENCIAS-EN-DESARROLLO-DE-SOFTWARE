@@ -304,7 +304,7 @@ export default function RecepcionesPage() {
                 className={inputCls}
               >
                 <option value="">Seleccione un proveedor</option>
-                {proveedores.map((p) => (
+                {proveedores.filter((p) => p.activo).map((p) => (
                   <option key={p.id} value={p.id}>{p.nombre} — RNC {formatRNC(p.rnc)}</option>
                 ))}
               </select>
@@ -324,7 +324,7 @@ export default function RecepcionesPage() {
                 className={inputCls}
               >
                 <option value="">Seleccione un tanque</option>
-                {tanques.map((t) => (
+                {tanques.filter((t) => t.activo && t.tipoCombustibleActivo !== false).map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.identificacion} — {t.tipoCombustibleNombre} (Disp: {(t.capacidad - t.nivelActual).toFixed(0)} gal)
                   </option>

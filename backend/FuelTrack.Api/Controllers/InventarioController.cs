@@ -61,12 +61,15 @@ public sealed class InventarioController : ControllerBase
 
         var tanque = await _db.Tanques
             .Include(t => t.Inventario)
+            .Include(t => t.TipoCombustible)
             .FirstOrDefaultAsync(t => t.Id == req.TanqueId, ct);
 
         if (tanque is null)
             return BadRequest(new { code = "TANQUE_NOT_FOUND", message = "El tanque no existe." });
         if (!tanque.Activo)
             return BadRequest(new { code = "TANQUE_INACTIVO", message = "El tanque no está activo." });
+        if (!tanque.TipoCombustible.Activo)
+            return Conflict(new { code = "TIPO_COMBUSTIBLE_INACTIVO", message = "No se puede ajustar el inventario de un tanque con tipo de combustible inactivo." });
 
         var inventario = tanque.Inventario!;
         if (inventario.ExistenciaActual + req.Volumen < 0)
@@ -123,19 +126,25 @@ public sealed class InventarioController : ControllerBase
 
         var tanqueOrigen = await _db.Tanques
             .Include(t => t.Inventario)
+            .Include(t => t.TipoCombustible)
             .FirstOrDefaultAsync(t => t.Id == req.TanqueOrigenId, ct);
         if (tanqueOrigen is null)
             return BadRequest(new { code = "TANQUE_ORIGEN_NOT_FOUND", message = "El tanque de origen no existe." });
         if (!tanqueOrigen.Activo)
             return BadRequest(new { code = "TANQUE_ORIGEN_INACTIVO", message = "El tanque de origen no está activo." });
+        if (!tanqueOrigen.TipoCombustible.Activo)
+            return Conflict(new { code = "TIPO_COMBUSTIBLE_ORIGEN_INACTIVO", message = "El tipo de combustible del tanque de origen no está activo." });
 
         var tanqueDestino = await _db.Tanques
             .Include(t => t.Inventario)
+            .Include(t => t.TipoCombustible)
             .FirstOrDefaultAsync(t => t.Id == req.TanqueDestinoId, ct);
         if (tanqueDestino is null)
             return BadRequest(new { code = "TANQUE_DESTINO_NOT_FOUND", message = "El tanque de destino no existe." });
         if (!tanqueDestino.Activo)
             return BadRequest(new { code = "TANQUE_DESTINO_INACTIVO", message = "El tanque de destino no está activo." });
+        if (!tanqueDestino.TipoCombustible.Activo)
+            return Conflict(new { code = "TIPO_COMBUSTIBLE_DESTINO_INACTIVO", message = "El tipo de combustible del tanque de destino no está activo." });
 
         var inventarioOrigen = tanqueOrigen.Inventario!;
         var inventarioDestino = tanqueDestino.Inventario!;

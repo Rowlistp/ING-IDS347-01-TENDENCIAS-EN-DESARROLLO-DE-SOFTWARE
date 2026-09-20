@@ -365,7 +365,7 @@ export default function InventarioPage() {
                 className={inputCls}
               >
                 <option value="">Seleccione un tanque</option>
-                {tanques.map((t) => (
+                {tanques.filter((t) => t.activo && t.tipoCombustibleActivo !== false).map((t) => (
                   <option key={t.id} value={t.id}>{t.identificacion} ({t.tipoCombustibleNombre})</option>
                 ))}
               </select>
@@ -442,7 +442,7 @@ export default function InventarioPage() {
                 className={inputCls}
               >
                 <option value="">Seleccione un tanque</option>
-                {tanques.map((t) => (
+                {tanques.filter((t) => t.activo && t.tipoCombustibleActivo !== false).map((t) => (
                   <option key={t.id} value={t.id}>{t.identificacion} ({t.tipoCombustibleNombre})</option>
                 ))}
               </select>
@@ -457,7 +457,7 @@ export default function InventarioPage() {
                 className={inputCls}
               >
                 <option value="">Seleccione un tanque</option>
-                {tanques.map((t) => (
+                {tanques.filter((t) => t.activo && t.tipoCombustibleActivo !== false).map((t) => (
                   <option key={t.id} value={t.id}>{t.identificacion} ({t.tipoCombustibleNombre})</option>
                 ))}
               </select>
