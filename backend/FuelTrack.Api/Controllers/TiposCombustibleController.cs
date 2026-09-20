@@ -83,6 +83,14 @@ public sealed class TiposCombustibleController : ControllerBase
             return Conflict(new { code = "NOMBRE_DUPLICADO",
                 message = "Ya existe un tipo de combustible con ese nombre." });
 
+        if (entity.Activo && req.Activo == false)
+        {
+            if (!User.IsInRole(Roles.Administrador))
+                return StatusCode(StatusCodes.Status403Forbidden, new { code = "DESACTIVACION_NO_AUTORIZADA", message = "Solo un administrador puede desactivar este registro." });
+            var conflict = await ValidateDeactivationAsync(id, ct);
+            if (conflict is not null) return conflict;
+        }
+
         entity.Nombre = req.Nombre;
         entity.Activo = req.Activo;
         await _db.SaveChangesAsync(ct);
@@ -102,6 +110,20 @@ public sealed class TiposCombustibleController : ControllerBase
         var entity = await _db.TiposCombustible.FindAsync([id], ct);
         if (entity is null) return NotFound();
 
+        var conflict = await ValidateDeactivationAsync(id, ct);
+        if (conflict is not null) return conflict;
+
+        entity.Activo = false;
+        await _db.SaveChangesAsync(ct);
+
+        await _audit.WriteAsync("TIPO_COMBUSTIBLE_DESACTIVADO", "TipoCombustible", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(), null, ct);
+
+        return NoContent();
+    }
+
+    private async Task<ConflictObjectResult?> ValidateDeactivationAsync(int id, CancellationToken ct)
+    {
         if (await _db.Tanques.AnyAsync(t => t.TipoCombustibleId == id && t.Activo, ct))
             return Conflict(new
             {
@@ -127,12 +149,6 @@ public sealed class TiposCombustibleController : ControllerBase
                 message = "No se puede desactivar el tipo de combustible porque tiene tickets activos."
             });
 
-        entity.Activo = false;
-        await _db.SaveChangesAsync(ct);
-
-        await _audit.WriteAsync("TIPO_COMBUSTIBLE_DESACTIVADO", "TipoCombustible", entity.Id.ToString(), usuarioId,
-            HttpContext.Connection.RemoteIpAddress?.ToString(), null, ct);
-
-        return NoContent();
+        return null;
     }
 }

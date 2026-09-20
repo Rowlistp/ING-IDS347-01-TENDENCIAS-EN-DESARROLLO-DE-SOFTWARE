@@ -75,6 +75,9 @@ public sealed class InventarioController : ControllerBase
         if (inventario.ExistenciaActual + req.Volumen < 0)
             return Conflict(new { code = "INVENTARIO_INSUFICIENTE", message = "El ajuste dejaría el inventario en negativo." });
 
+        if (inventario.ExistenciaActual + req.Volumen > tanque.Capacidad)
+            return Conflict(new { code = "CAPACIDAD_EXCEDIDA", message = "El ajuste supera la capacidad del tanque." });
+
         // Consumo calculado antes del save: Ajuste es Tipo!=Salida, así que el resultado
         // es idéntico antes o después; pero si falla aquí nada se guarda en la BD.
         var (diario, mensual) = await GetConsumoAsync(req.TanqueId, ct);
@@ -103,6 +106,11 @@ public sealed class InventarioController : ControllerBase
                 new { req.TanqueId, req.Volumen, req.Observaciones }, ct);
 
             await transaction.CommitAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await transaction.RollbackAsync(ct);
+            return Conflict(new { code = "INVENTARIO_MODIFICADO", message = "El inventario cambió durante la operación. Actualiza los saldos y vuelve a intentarlo." });
         }
         catch
         {
@@ -145,6 +153,11 @@ public sealed class InventarioController : ControllerBase
             return BadRequest(new { code = "TANQUE_DESTINO_INACTIVO", message = "El tanque de destino no está activo." });
         if (!tanqueDestino.TipoCombustible.Activo)
             return Conflict(new { code = "TIPO_COMBUSTIBLE_DESTINO_INACTIVO", message = "El tipo de combustible del tanque de destino no está activo." });
+
+        if (tanqueOrigen.TipoCombustibleId != tanqueDestino.TipoCombustibleId)
+            return Conflict(new { code = "COMBUSTIBLES_INCOMPATIBLES", message = "Solo se puede transferir entre tanques del mismo combustible." });
+        if (tanqueDestino.Inventario!.ExistenciaActual + req.Volumen > tanqueDestino.Capacidad)
+            return Conflict(new { code = "CAPACIDAD_EXCEDIDA", message = "La transferencia supera la capacidad del tanque de destino." });
 
         var inventarioOrigen = tanqueOrigen.Inventario!;
         var inventarioDestino = tanqueDestino.Inventario!;
@@ -196,6 +209,11 @@ public sealed class InventarioController : ControllerBase
                 new { req.TanqueOrigenId, req.TanqueDestinoId, req.Volumen }, ct);
 
             await transaction.CommitAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await transaction.RollbackAsync(ct);
+            return Conflict(new { code = "INVENTARIO_MODIFICADO", message = "El inventario cambió durante la operación. Actualiza los saldos y vuelve a intentarlo." });
         }
         catch
         {

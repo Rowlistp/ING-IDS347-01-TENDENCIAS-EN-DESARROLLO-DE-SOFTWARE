@@ -306,6 +306,19 @@ public sealed class TicketService(
         return new TicketPdfResult($"ticket-{response.Codigo}.pdf", content);
     }
 
+    public async Task<byte[]?> GetQrCodePngAsync(
+        Guid id,
+        CancellationToken cancellationToken,
+        int? ownerUserId = null)
+    {
+        var ticket = await TicketQuery(asTracking: false)
+            .SingleOrDefaultAsync(item => item.Id == id &&
+                (ownerUserId == null || item.Empleado.UsuarioId == ownerUserId), cancellationToken);
+        if (ticket is null) return null;
+        if (ticket.QrCodePng is { Length: > 100 }) return ticket.QrCodePng;
+        throw Error(409, "QR_NO_DISPONIBLE", "El ticket no tiene un QR firmado disponible. Contacta al administrador.");
+    }
+
     private IQueryable<Ticket> TicketQuery(bool asTracking)
     {
         var query = db.Tickets

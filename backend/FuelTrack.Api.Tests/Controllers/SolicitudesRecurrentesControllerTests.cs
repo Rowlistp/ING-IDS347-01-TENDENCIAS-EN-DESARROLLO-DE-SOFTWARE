@@ -281,4 +281,46 @@ public sealed class SolicitudesRecurrentesControllerTests
         var service = new SolicitudRecurrenteService(factory, NullLogger<SolicitudRecurrenteService>.Instance);
         await service.ProcesarPlantillasAsync(CancellationToken.None);
     }
+
+    [TestMethod]
+    public async Task Create_RechazaRelacionesIncompatibles_SinGuardarPlantilla()
+    {
+        var (e, v, d, t) = await CrearDependenciasAsync();
+        var otro = new Departamento { Nombre = "Otro", Activo = true };
+        _db.Departamentos.Add(otro);
+        await _db.SaveChangesAsync();
+        var vehiculo = await _db.Vehiculos.FindAsync(v);
+        vehiculo!.DepartamentoId = otro.Id;
+        await _db.SaveChangesAsync();
+        var result = await _controller.Create(BuildRequest(e, v, d, t), default);
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result.Result);
+        Assert.AreEqual(0, await _db.SolicitudesRecurrentes.CountAsync());
+    }
+
+    [TestMethod]
+    public async Task ActivarYProcesar_RevalidanCatalogosDesactivados()
+    {
+        var (e, v, d, t) = await CrearDependenciasAsync();
+        var created = await _controller.Create(BuildRequest(e, v, d, t), default);
+        var id = ((SolicitudRecurrenteDto)((CreatedAtActionResult)created.Result!).Value!).Id;
+        var combustible = await _db.TiposCombustible.FindAsync(t);
+        combustible!.Activo = false;
+        await _db.SaveChangesAsync();
+        await EjecutarServicioAsync();
+        Assert.AreEqual(0, await _db.SolicitudesCombustible.CountAsync());
+        await _controller.Desactivar(id, default);
+        var result = await _controller.Activar(id, default);
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result.Result);
+        Assert.IsFalse((await _db.SolicitudesRecurrentes.FindAsync(id))!.Activa);
+    }
+
+    [TestMethod]
+    public async Task Procesar_DosEjecucionesMismoDia_GeneraUnaSolaSolicitud()
+    {
+        var (e, v, d, t) = await CrearDependenciasAsync();
+        await _controller.Create(BuildRequest(e, v, d, t), default);
+        await EjecutarServicioAsync();
+        await EjecutarServicioAsync();
+        Assert.AreEqual(1, await _db.SolicitudesCombustible.CountAsync());
+    }
 }

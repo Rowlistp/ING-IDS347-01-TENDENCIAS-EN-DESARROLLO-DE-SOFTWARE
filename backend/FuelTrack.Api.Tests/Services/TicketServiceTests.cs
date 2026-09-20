@@ -484,6 +484,54 @@ public sealed class TicketServiceTests
             Guid.NewGuid(), 2, "COM", 2, 1, 1, 1, 1, 10, DateTime.UtcNow, DateTime.UtcNow.AddDays(1)));
     }
 
+    [TestMethod]
+    [DataRow("guid")]
+    [DataRow("codigo")]
+    public async Task Validate_UnsignedIdentifier_ReturnsInvalid(string kind)
+    {
+        var created = await CreateAsync(await AddRequestAsync());
+        var payload = kind == "guid" ? created.Ticket.Id.ToString() : created.Ticket.Codigo;
+        var result = await _service.ValidateAsync(payload, default);
+        Assert.IsFalse(result.Valido, "Un identificador sin firma no satisface RS-04 ni el contrato de validar QR.");
+    }
+    [TestMethod]
+    public async Task Create_EmployeeDepartmentChanged_ReturnsBadRequest()
+    {
+        var requestId = await AddRequestAsync();
+        var other = new Departamento { Nombre = "Otro departamento", Activo = true };
+        _db.Departamentos.Add(other);
+        await _db.SaveChangesAsync();
+        var employee = await _db.Empleados.SingleAsync(x => x.Id == _employeeId);
+        employee.DepartamentoId = other.Id;
+        await _db.SaveChangesAsync();
+        await Assert.ThrowsExactlyAsync<TicketDomainException>(() => CreateAsync(requestId));
+    }
+
+    [TestMethod]
+    public async Task GetQr_ReturnsPersistedSignedImageOnlyForOwner()
+    {
+        var created = await CreateAsync(await AddRequestAsync());
+        var employee = await _db.Empleados.SingleAsync(x => x.Id == _employeeId);
+        employee.UsuarioId = _actorId;
+        await _db.SaveChangesAsync();
+        var stored = await _db.Tickets.SingleAsync();
+        CollectionAssert.AreEqual(stored.QrCodePng, await _service.GetQrCodePngAsync(created.Ticket.Id, default, _actorId));
+        Assert.IsNull(await _service.GetQrCodePngAsync(created.Ticket.Id, default, _actorId + 1));
+        Assert.IsNull(await _service.GetQrCodePngAsync(Guid.NewGuid(), default));
+    }
+
+    [TestMethod]
+    public async Task GetQr_MissingImage_DoesNotGenerateUnsignedFallback()
+    {
+        var created = await CreateAsync(await AddRequestAsync());
+        var stored = await _db.Tickets.SingleAsync();
+        stored.QrCodePng = Array.Empty<byte>();
+        await _db.SaveChangesAsync();
+        var error = await Assert.ThrowsExactlyAsync<TicketDomainException>(() => _service.GetQrCodePngAsync(created.Ticket.Id, default));
+        Assert.AreEqual(409, error.StatusCode);
+        Assert.AreEqual("QR_NO_DISPONIBLE", error.Code);
+    }
+
     private async Task<int> AddRequestAsync(
         EstadoSolicitud state = EstadoSolicitud.Aprobada,
         decimal? quantity = 25.5m,

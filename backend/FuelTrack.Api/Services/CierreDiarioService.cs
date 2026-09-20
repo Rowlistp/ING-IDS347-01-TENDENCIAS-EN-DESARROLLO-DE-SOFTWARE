@@ -277,7 +277,7 @@ public sealed class CierreDiarioService(AppDbContext db, AuditService audit)
                             inner.Spacing(2);
                             inner.Item().Text($"Generado por: {creadoPorNombre}").Bold().FontSize(9f);
                             inner.Item().Text($"ID Usuario: #{cierre.CreadoPorId}").FontSize(8f).FontColor(colorAcero);
-                            inner.Item().Text("Perfil: Supervisor / Administrador de Turno").FontSize(8f).FontColor(colorAcero);
+                            inner.Item().Text("Responsable del cierre registrado").FontSize(8f).FontColor(colorAcero);
                         });
                     });
                 });
@@ -367,7 +367,7 @@ public sealed class CierreDiarioService(AppDbContext db, AuditService audit)
                         });
                     }
 
-                    sigs.RelativeItem().Element(c => SignatureBox(c, creadoPorNombre, "Supervisora / Elaboró"));
+                    sigs.RelativeItem().Element(c => SignatureBox(c, creadoPorNombre, "Responsable / Elaboró"));
                     sigs.RelativeItem().Element(c => SignatureBox(c, "Gerencia de Operaciones", "Revisión y Aprobación"));
                     sigs.RelativeItem().Element(c => SignatureBox(c, "Auditoría Interna", "V.B. y Conforme"));
                 });

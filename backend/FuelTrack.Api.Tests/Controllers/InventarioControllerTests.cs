@@ -400,4 +400,53 @@ public sealed class InventarioControllerTests
         Assert.AreEqual("Inventario", auditoria.EntidadAfectada);
         Assert.AreEqual(usuarioId, auditoria.UsuarioId);
     }
+
+    [TestMethod]
+    public async Task Ajustar_RechazaSobrecapacidadSinCambios()
+    {
+        var (id, _, usuario) = await CrearDependenciasAsync(9900m);
+        var result = await CrearController(usuario).Ajustar(new AjustarInventarioRequest(id, 101m, "Límite"), default);
+        Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
+        _db.ChangeTracker.Clear();
+        Assert.AreEqual(9900m, (await _db.Inventarios.SingleAsync()).ExistenciaActual);
+        Assert.AreEqual(0, await _db.MovimientosInventario.CountAsync());
+        Assert.AreEqual(0, await _db.Auditorias.CountAsync());
+    }
+
+    [TestMethod]
+    public async Task Ajustar_AceptaCeroYCapacidadExacta()
+    {
+        var (id, _, usuario) = await CrearDependenciasAsync(9900m);
+        var controller = CrearController(usuario);
+        Assert.IsInstanceOfType<OkObjectResult>((await controller.Ajustar(new AjustarInventarioRequest(id, 0m, "Conciliación"), default)).Result);
+        Assert.IsInstanceOfType<OkObjectResult>((await controller.Ajustar(new AjustarInventarioRequest(id, 100m, "Completar"), default)).Result);
+        Assert.AreEqual(10000m, (await _db.Inventarios.SingleAsync()).ExistenciaActual);
+        Assert.AreEqual(2, await _db.MovimientosInventario.CountAsync());
+        Assert.AreEqual(2, await _db.Auditorias.CountAsync());
+    }
+
+    [TestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public async Task Transferir_RechazaIncompatibilidadOCapacidadSinCambios(bool incompatible)
+    {
+        var (origen, _, usuario) = await CrearDependenciasAsync(500m);
+        var tipo = (await _db.Tanques.FindAsync(origen))!.TipoCombustibleId;
+        if (incompatible)
+        {
+            var gasolina = new TipoCombustible { Nombre = "Gasolina", Activo = true };
+            _db.TiposCombustible.Add(gasolina);
+            await _db.SaveChangesAsync();
+            tipo = gasolina.Id;
+        }
+        var destino = await AgregarSegundoTanqueAsync(tipo, 7950m);
+        var result = await CrearController(usuario).Transferir(new TransferirRequest(origen, destino, 100m, "Rechazo"), default);
+        Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
+        _db.ChangeTracker.Clear();
+        Assert.AreEqual(500m, (await _db.Inventarios.SingleAsync(i => i.TanqueId == origen)).ExistenciaActual);
+        Assert.AreEqual(7950m, (await _db.Inventarios.SingleAsync(i => i.TanqueId == destino)).ExistenciaActual);
+        Assert.AreEqual(0, await _db.MovimientosInventario.CountAsync());
+        Assert.AreEqual(0, await _db.Auditorias.CountAsync());
+    }
+
 }

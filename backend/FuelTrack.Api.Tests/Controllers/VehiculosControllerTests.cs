@@ -41,7 +41,7 @@ public sealed class VehiculosControllerTests
                 HttpContext = new DefaultHttpContext
                 {
                     User = new ClaimsPrincipal(new ClaimsIdentity(
-                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString())], "Test"))
+                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString()), new Claim(ClaimTypes.Role, "Administrador")], "Test"))
                 }
             }
         };

@@ -1,9 +1,11 @@
+> Registro histórico del grupo conservado desde main `d86e7c9`. La declaración histórica de certificación no sustituye las comprobaciones actuales ni las pruebas físicas pendientes. [Verificación actual](06-VERIFICACION-INTEGRACION.md) · [Hallazgos de integración QR/móvil](05-INTEGRACION-CORREGIDA.md).
+
 # BIT?CORA T?CNICA DE CONTROL DE CALIDAD Y DEFECTOS (DEFECT LOG)
 ## Sistema de Gesti?n y Control de Combustible ? FuelTrack ERP
-**Documento Oficial de Aseguramiento de Calidad (QA)**  
-**L?der de Calidad:** Rowlis Trinidad (Rowlistp@gmail.com)  
-**Fecha de Emisi?n:** 18 de Septiembre de 2026  
-**Versi?n:** 1.0 ? Consolidado de Fase de Estabilizaci?n, Redise?o y Validaciones  
+**Documento Oficial de Aseguramiento de Calidad (QA)**
+**L?der de Calidad:** Rowlis Trinidad (Rowlistp@gmail.com)
+**Fecha de Emisi?n:** 18 de Septiembre de 2026
+**Versi?n:** 1.0 ? Consolidado de Fase de Estabilizaci?n, Redise?o y Validaciones
 
 ---
 
@@ -17,9 +19,9 @@
 | **Menor** | 0 | 0 | 0 | 0 |
 | **Total** | **0** | **16** | **0** | **16** |
 
-**Tasa de Resolución:** 100.0%  
-**Estado del Sistema:** ✅ APROBADO PARA PRODUCCIÓN / CERTIFICADO  
-**Total Pruebas Automatizadas Backend:** 321/321 aprobadas (100%)  
+**Tasa de Resolución:** 100.0%
+**Estado del Sistema:** ✅ APROBADO PARA PRODUCCIÓN / CERTIFICADO
+**Total Pruebas Automatizadas Backend:** 321/321 aprobadas (100%)
 **Estado Frontend:** 0 errores de linter (`oxlint`), compilación de producción exitosa (`vite build`).
 
 ---
@@ -291,7 +293,7 @@ Todas las modificaciones fueron validadas contra la suite de pruebas automatizad
   - Resultado: `dist/` generado exitosamente (97 módulos transformados, 0 errores).
 
 ---
-**Certificaci?n de Calidad:**  
-Ingeniero L?der de Aseguramiento de Calidad: **Rowlis Trinidad**  
-Firma: ___________________________  
+**Certificaci?n de Calidad:**
+Ingeniero L?der de Aseguramiento de Calidad: **Rowlis Trinidad**
+Firma: ___________________________
 Fecha: 18 de Septiembre de 2026

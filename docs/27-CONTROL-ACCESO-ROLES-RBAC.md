@@ -84,6 +84,12 @@ Intercepta intentos de navegación manual por URL hacia rutas fuera del perfil d
 
 ---
 
+### Datos personales en consultas de empleados
+
+La matriz de navegación no autoriza descargar fichas personales mediante selectores. `GET /empleados` y `GET /empleados/{id}` permiten fichas completas a Administrador, Supervisor y Auditor; un Solicitante solo recibe su propia ficha vinculada y una ficha ajena responde 404. Consulta y Despachador no acceden a fichas completas.
+
+Los filtros de Reportes usan `GET /empleados/opciones`, autorizado para Administrador, Supervisor, Auditor y Consulta. Esa respuesta contiene únicamente identificador y nombre, sin cédula, teléfono, correo o cuenta vinculada. La ruta web `/empleados` mantiene los roles indicados en la matriz.
+
 ## 6. Verificación de Calidad
 
 - **Pruebas Unitarias Backend**: 299 tests aprobados al 100% (`dotnet test backend/FuelTrack.Api.Tests`).

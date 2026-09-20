@@ -61,14 +61,12 @@ public sealed class TanquesController : ControllerBase
     {
         if (!TryGetCurrentUserId(out var usuarioId)) return Unauthorized();
 
-        var tipoCombustible = await _db.TiposCombustible.FirstOrDefaultAsync(t => t.Id == req.TipoCombustibleId, ct);
-        if (tipoCombustible is null)
+        if (!await _db.TiposCombustible.AnyAsync(t => t.Id == req.TipoCombustibleId, ct))
             return BadRequest(new { code = "TIPO_COMBUSTIBLE_NOT_FOUND",
                 message = "El tipo de combustible no existe." });
 
-        if (!tipoCombustible.Activo)
-            return Conflict(new { code = "TIPO_COMBUSTIBLE_INACTIVO",
-                message = "No se puede crear un tanque con un tipo de combustible inactivo." });
+        if (!await _db.TiposCombustible.AnyAsync(t => t.Id == req.TipoCombustibleId && t.Activo, ct))
+            return Conflict(new { code = "TIPO_COMBUSTIBLE_INACTIVO", message = "Seleccione un tipo de combustible activo." });
 
         if (await _db.Tanques.AnyAsync(t => t.Identificacion == req.Identificacion, ct))
             return Conflict(new { code = "IDENTIFICACION_DUPLICADA",
@@ -127,7 +125,7 @@ public sealed class TanquesController : ControllerBase
             return Conflict(new { code = "IDENTIFICACION_DUPLICADA",
                 message = "Ya existe un tanque con esa identificación." });
 
-        if (req.Activo == true && !tipoCombustible.Activo)
+        if ((req.Activo ?? tanque.Activo) && !tipoCombustible.Activo)
             return Conflict(new { code = "TIPO_COMBUSTIBLE_INACTIVO",
                 message = "No se puede activar el tanque porque su tipo de combustible está inactivo." });
 
@@ -135,7 +133,15 @@ public sealed class TanquesController : ControllerBase
             return Conflict(new { code = "TANQUE_CON_INVENTARIO",
                 message = "No se puede desactivar el tanque porque tiene combustible en inventario." });
 
+        var existencia = tanque.Inventario?.ExistenciaActual ?? 0m;
+        if (req.Capacidad < existencia)
+            return Conflict(new { code = "CAPACIDAD_EXCEDIDA", message = "La capacidad no puede ser menor que la existencia actual." });
         var tipoCambio = tanque.TipoCombustibleId != req.TipoCombustibleId;
+        if (tipoCambio && existencia > 0)
+            return Conflict(new { code = "TANQUE_CON_INVENTARIO", message = "Vacía el tanque antes de cambiar su tipo de combustible." });
+
+        if (tanque.Activo && req.Activo == false && !User.IsInRole(Roles.Administrador))
+            return StatusCode(StatusCodes.Status403Forbidden, new { code = "DESACTIVACION_NO_AUTORIZADA", message = "Solo un administrador puede desactivar este registro." });
 
         tanque.Identificacion    = req.Identificacion;
         tanque.Capacidad         = req.Capacidad;

@@ -80,6 +80,8 @@ public sealed class ReporteService(AppDbContext db)
         if (q.DepartamentoId.HasValue)
             query = query.Where(s => s.DepartamentoId == q.DepartamentoId.Value);
 
+        if (q.TipoCombustibleId.HasValue) query = query.Where(s => s.TipoCombustibleId == q.TipoCombustibleId.Value);
+
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(s => s.FechaSolicitud)
             .Skip((q.Pagina - 1) * q.TamanoPagina).Take(q.TamanoPagina)
@@ -107,6 +109,8 @@ public sealed class ReporteService(AppDbContext db)
         if (q.VehiculoId.HasValue)     query = query.Where(d => d.Ticket.VehiculoId == q.VehiculoId.Value);
         if (q.DepartamentoId.HasValue) query = query.Where(d => d.Ticket.DepartamentoId == q.DepartamentoId.Value);
 
+        if (q.TipoCombustibleId.HasValue) query = query.Where(d => d.Ticket.TipoCombustibleId == q.TipoCombustibleId.Value);
+
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(d => d.Fecha).ThenByDescending(d => d.Hora)
             .Skip((q.Pagina - 1) * q.TamanoPagina).Take(q.TamanoPagina)
@@ -133,6 +137,8 @@ public sealed class ReporteService(AppDbContext db)
             query = query.Where(m => DateOnly.FromDateTime(m.FechaHora) <= q.FechaHasta.Value);
         if (q.TanqueId.HasValue)
             query = query.Where(m => m.TanqueId == q.TanqueId.Value);
+
+        if (q.TipoCombustibleId.HasValue) query = query.Where(m => m.Tanque.TipoCombustibleId == q.TipoCombustibleId.Value);
 
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(m => m.FechaHora)
@@ -182,6 +188,9 @@ public sealed class ReporteService(AppDbContext db)
             query = query.Where(t => t.VehiculoId == q.VehiculoId.Value);
         if (q.DepartamentoId.HasValue)
             query = query.Where(t => t.DepartamentoId == q.DepartamentoId.Value);
+
+        if (q.TipoCombustibleId.HasValue) query = query.Where(t => t.TipoCombustibleId == q.TipoCombustibleId.Value);
+        if (q.EstadoTicket.HasValue) query = query.Where(t => t.Estado == q.EstadoTicket.Value);
 
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(t => t.FechaCreacion)

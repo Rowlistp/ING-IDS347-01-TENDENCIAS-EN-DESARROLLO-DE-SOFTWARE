@@ -29,11 +29,24 @@ public sealed class EmpleadosController : ControllerBase
     private bool TryGetCurrentUserId(out int userId)
         => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 
+    private bool CanReadAllDetails() =>
+        User.IsInRole(Roles.Administrador) || User.IsInRole(Roles.Supervisor) || User.IsInRole(Roles.Auditor);
+
+    [HttpGet("opciones")]
+    [Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor},{Roles.Auditor},{Roles.Consulta}")]
+    public async Task<IActionResult> GetOptions(CancellationToken ct) =>
+        Ok(await _db.Empleados.AsNoTracking().OrderBy(e => e.NombreCompleto)
+            .Select(e => new { e.Id, e.NombreCompleto }).ToListAsync(ct));
+
     [HttpGet]
     public async Task<ActionResult<List<EmpleadoDto>>> GetAll(CancellationToken ct)
     {
+        var canReadAll = CanReadAllDetails();
+        if (!canReadAll && !User.IsInRole(Roles.Solicitante)) return Forbid();
+        if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
         var list = await _db.Empleados
             .AsNoTracking()
+            .Where(e => canReadAll || e.UsuarioId == userId)
             .Include(e => e.Departamento)
             .Include(e => e.Usuario)
             .Select(e => new EmpleadoDto(
@@ -47,8 +60,12 @@ public sealed class EmpleadosController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<EmpleadoDto>> GetById(int id, CancellationToken ct)
     {
+        var canReadAll = CanReadAllDetails();
+        if (!canReadAll && !User.IsInRole(Roles.Solicitante)) return Forbid();
+        if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
         var e = await _db.Empleados
             .AsNoTracking()
+            .Where(e => canReadAll || e.UsuarioId == userId)
             .Include(x => x.Departamento)
             .Include(x => x.Usuario)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -171,6 +188,14 @@ if (!departamento.Activo)
             if (!ok) return error!;
         }
 
+        if (entity.Activo && req.Activo == false)
+        {
+            if (!User.IsInRole(Roles.Administrador))
+                return StatusCode(StatusCodes.Status403Forbidden, new { code = "DESACTIVACION_NO_AUTORIZADA", message = "Solo un administrador puede desactivar este registro." });
+            var conflict = await ValidateDeactivationAsync(id, ct);
+            if (conflict is not null) return conflict;
+        }
+
         entity.Codigo         = req.Codigo;
         entity.NombreCompleto = req.NombreCompleto;
         entity.Cedula         = req.Cedula;
@@ -246,13 +271,8 @@ if (!departamento.Activo)
         var entity = await _db.Empleados.FindAsync([id], ct);
         if (entity is null) return NotFound();
 
-        if (await _db.SolicitudesCombustible.AnyAsync(s => s.EmpleadoId == id &&
-            (s.Estado == EstadoSolicitud.Pendiente || s.Estado == EstadoSolicitud.Aprobada), ct))
-            return Conflict(new
-            {
-                code = "EMPLEADO_CON_SOLICITUDES_ACTIVAS",
-                message = "No se puede desactivar el empleado porque tiene solicitudes pendientes o aprobadas."
-            });
+        var conflict = await ValidateDeactivationAsync(id, ct);
+        if (conflict is not null) return conflict;
 
         entity.Activo = false;
         await _db.SaveChangesAsync(ct);
@@ -283,5 +303,18 @@ if (!departamento.Activo)
             return (false, Conflict(new { code = "USUARIO_YA_VINCULADO", message = "El usuario ya está vinculado a otro empleado." }));
 
         return (true, null);
+    }
+
+    private async Task<ConflictObjectResult?> ValidateDeactivationAsync(int id, CancellationToken ct)
+    {
+        if (await _db.SolicitudesCombustible.AnyAsync(s => s.EmpleadoId == id &&
+            (s.Estado == EstadoSolicitud.Pendiente || s.Estado == EstadoSolicitud.Aprobada), ct))
+            return Conflict(new
+            {
+                code = "EMPLEADO_CON_SOLICITUDES_ACTIVAS",
+                message = "No se puede desactivar el empleado porque tiene solicitudes pendientes o aprobadas."
+            });
+
+        return null;
     }
 }

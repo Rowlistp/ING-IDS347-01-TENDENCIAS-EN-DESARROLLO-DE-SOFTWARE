@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using FuelTrack.Api.DTOs.Reportes;
 using FuelTrack.Api.Security;
+using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,11 +23,13 @@ public sealed class ReportesController(ReporteService service) : ControllerBase
         int? vehiculoId = null,
         int? departamentoId = null,
         [Range(1, 100000)] int pagina = 1,
-        [Range(1, 100)] int tamanoPagina = 20)
+        [Range(1, 100)] int tamanoPagina = 20,
+        int? tipoCombustibleId = null,
+        EstadoTicket? estadoTicket = null)
     {
         try
         {
-            var q = new ReporteQuery(tipo, fechaDesde, fechaHasta, tanqueId, empleadoId, vehiculoId, departamentoId, pagina, tamanoPagina);
+            var q = new ReporteQuery(tipo, fechaDesde, fechaHasta, tanqueId, empleadoId, vehiculoId, departamentoId, pagina, tamanoPagina, tipoCombustibleId, estadoTicket);
             return Ok(await service.GetAsync(q, ct));
         }
         catch (TicketDomainException ex)
@@ -45,11 +48,13 @@ public sealed class ReportesController(ReporteService service) : ControllerBase
         int? tanqueId = null,
         int? empleadoId = null,
         int? vehiculoId = null,
-        int? departamentoId = null)
+        int? departamentoId = null,
+        int? tipoCombustibleId = null,
+        EstadoTicket? estadoTicket = null)
     {
         try
         {
-            var q = new ReporteQuery(tipo, fechaDesde, fechaHasta, tanqueId, empleadoId, vehiculoId, departamentoId, 1, int.MaxValue);
+            var q = new ReporteQuery(tipo, fechaDesde, fechaHasta, tanqueId, empleadoId, vehiculoId, departamentoId, 1, int.MaxValue, tipoCombustibleId, estadoTicket);
             var bytes = await service.ExportarAsync(q, formato, ct);
             var (contentType, ext) = formato switch
             {

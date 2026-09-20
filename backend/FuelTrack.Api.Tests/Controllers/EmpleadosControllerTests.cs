@@ -41,7 +41,7 @@ public sealed class EmpleadosControllerTests
                 HttpContext = new DefaultHttpContext
                 {
                     User = new ClaimsPrincipal(new ClaimsIdentity(
-                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString())], "Test"))
+                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString()), new Claim(ClaimTypes.Role, "Administrador")], "Test"))
                 }
             }
         };
@@ -467,5 +467,39 @@ public sealed class EmpleadosControllerTests
 
         var result = await _controller.Create(req, CancellationToken.None);
         Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
+    }
+
+    [TestMethod]
+    public async Task Solicitante_SoloRecibeSuFicha_YNoPuedePedirOtraPorId()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (emp, _, _) = await CrearDependenciasAsync(dep);
+        var otro = new Empleado { Codigo = "OTRO", NombreCompleto = "Otro", Cedula = "999",
+            Cargo = "Privado", Correo = "otro@test.com", Telefono = "8090000000", DepartamentoId = dep.Id, Activo = true };
+        emp.UsuarioId = _usuarioActorId;
+        _db.Empleados.Add(otro);
+        await _db.SaveChangesAsync();
+        _controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, _usuarioActorId.ToString()), new Claim(ClaimTypes.Role, "Solicitante")], "Test"));
+        var result = await _controller.GetAll(default);
+        var list = (List<EmpleadoDto>)((OkObjectResult)result.Result!).Value!;
+        Assert.AreEqual(1, list.Count);
+        Assert.AreEqual(emp.Id, list[0].Id);
+        Assert.IsInstanceOfType<NotFoundResult>((await _controller.GetById(otro.Id, default)).Result);
+    }
+
+    [TestMethod]
+    public async Task Consulta_UsaOpcionesSinDatosPersonales_YNoLeeFichas()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (emp, _, _) = await CrearDependenciasAsync(dep);
+        _controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, _usuarioActorId.ToString()), new Claim(ClaimTypes.Role, "Consulta")], "Test"));
+        Assert.IsInstanceOfType<ForbidResult>((await _controller.GetAll(default)).Result);
+        Assert.IsInstanceOfType<ForbidResult>((await _controller.GetById(emp.Id, default)).Result);
+        var options = (OkObjectResult)await _controller.GetOptions(default);
+        var json = System.Text.Json.JsonSerializer.Serialize(options.Value);
+        StringAssert.Contains(json, "NombreCompleto");
+        Assert.IsFalse(json.Contains("Cedula") || json.Contains("Telefono") || json.Contains("Correo"));
     }
 }
