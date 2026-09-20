@@ -196,7 +196,7 @@ export default function CierreDiarioPage() {
           data={cierres}
           keyField="id"
           onRowClick={(c) => setDetalle(c)}
-          emptyMessage="Sin cierres generados todavía. Haz clic en '+ Generar nuevo cierre' para conciliar una fecha."
+          emptyMessage="Sin cierres generados todavía. Haz clic en 'Generar nuevo cierre' para conciliar una fecha."
           columns={[
             {
               key: 'fecha',

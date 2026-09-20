@@ -126,21 +126,117 @@ class KeycloakIdentityProvider implements IdentityProvider {
   }
 }
 
+class LocalIdentityProvider implements IdentityProvider {
+  LocalIdentityProvider(AppConfig config, {Dio? client})
+    : dio =
+          client ??
+          Dio(
+            BaseOptions(
+              baseUrl: config.apiUrl,
+              connectTimeout: const Duration(seconds: 10),
+              receiveTimeout: const Duration(seconds: 15),
+              sendTimeout: const Duration(seconds: 15),
+              followRedirects: false,
+            ),
+          );
+  final Dio dio;
+
+  SessionTokens _parse(Map<String, dynamic> data) {
+    final access = data['accessToken'];
+    final refresh = data['refreshToken'];
+    final expires = DateTime.tryParse(
+      data['accessTokenExpiresAtUtc']?.toString() ?? '',
+    );
+    if (access is! String ||
+        access.isEmpty ||
+        refresh is! String ||
+        refresh.isEmpty ||
+        expires == null) {
+      throw const ApiFailure(
+        'LOGIN_FAILED',
+        'No se recibió una sesión válida.',
+      );
+    }
+    return SessionTokens(access, refresh, null, expires.toUtc());
+  }
+
+  Future<SessionTokens> loginWithCredentials(
+    String username,
+    String password,
+  ) async {
+    if (username.trim().isEmpty || password.isEmpty) {
+      throw const ApiFailure(
+        'CREDENTIALS_REQUIRED',
+        'Indica tu usuario y contraseña.',
+      );
+    }
+    try {
+      final response = await dio.post<Map<String, dynamic>>(
+        '/auth/login',
+        data: {'nombreUsuario': username.trim(), 'contrasena': password},
+      );
+      return _parse(response.data ?? {});
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw const ApiFailure(
+          'LOGIN_FAILED',
+          'Usuario o contraseña incorrectos.',
+        );
+      }
+      throw ApiFailure.fromDio(e);
+    }
+  }
+
+  @override
+  Future<SessionTokens> login() async => throw const ApiFailure(
+    'CREDENTIALS_REQUIRED',
+    'Indica tu usuario y contraseña.',
+  );
+  @override
+  Future<SessionTokens> refresh(SessionTokens tokens) async {
+    final response = await dio.post<Map<String, dynamic>>(
+      '/auth/refresh',
+      data: {'refreshToken': tokens.refresh},
+    );
+    return _parse(response.data ?? {});
+  }
+
+  @override
+  Future<void> logout(SessionTokens tokens) async {
+    await dio.post<void>(
+      '/auth/logout',
+      data: {'refreshToken': tokens.refresh},
+      options: Options(headers: {'Authorization': 'Bearer ${tokens.access}'}),
+    );
+  }
+}
+
 class SessionController extends ChangeNotifier {
   SessionController(this.identity, this.store);
   final IdentityProvider identity;
   final TokenStore store;
+  bool get requiresCredentials => identity is LocalIdentityProvider;
   SessionTokens? _tokens;
   LocalUser? user;
   Future<String>? _refreshing;
   int _generation = 0;
   Future<void> restore() async {
-    _tokens = await store.read();
+    final epoch = _generation;
+    final saved = await store.read();
+    if (epoch != _generation) return;
+    if (saved?.access == 'dev-bypass-token') {
+      await store.clear();
+      return;
+    }
+    _tokens = saved;
   }
 
-  Future<void> login() async {
+  Future<void> login({String username = '', String password = ''}) async {
     final epoch = _generation;
-    final result = await identity.login();
+    final provider = identity;
+    final result = provider is LocalIdentityProvider
+        ? await provider.loginWithCredentials(username, password)
+        : await provider.login();
     if (epoch != _generation) return;
     _tokens = result;
     await store.write(result);

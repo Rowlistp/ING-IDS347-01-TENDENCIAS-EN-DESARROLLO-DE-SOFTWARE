@@ -125,15 +125,15 @@ export default function NotificacionesPage() {
   return (
     <PageContainer title="Notificaciones">
       <p className="mb-4 text-sm text-acero">
-        El envío real de correo/SMS está deshabilitado en este entorno de desarrollo — las notificaciones quedan
-        en estado "Pendiente" indefinidamente en vez de completarse o fallar. Esto es esperado, no un error.
+        El estado de cada canal indica el progreso del envío. Pendiente significa que todavía no se ha
+        confirmado su entrega; revisa los intentos y los posibles errores antes de reintentar.
       </p>
 
       <form onSubmit={handleAplicarFiltros} className="mb-4 flex flex-wrap items-end gap-3">
         <div>
-          <label className="mb-1 block text-sm font-medium text-acero">Estado</label>
+          <label htmlFor="notificacion-estado" className="mb-1 block text-sm font-medium text-acero">Estado</label>
           <select
-            name="estado"
+            id="notificacion-estado" name="estado"
             value={filtrosPendientes.estado}
             onChange={handleFiltroChange}
             className="rounded-md border border-acero/40 px-3 py-2 text-sm text-tinta"
@@ -146,9 +146,9 @@ export default function NotificacionesPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-acero">Canal</label>
+          <label htmlFor="notificacion-canal" className="mb-1 block text-sm font-medium text-acero">Canal</label>
           <select
-            name="canal"
+            id="notificacion-canal" name="canal"
             value={filtrosPendientes.canal}
             onChange={handleFiltroChange}
             className="rounded-md border border-acero/40 px-3 py-2 text-sm text-tinta"
@@ -161,9 +161,9 @@ export default function NotificacionesPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-acero">Tipo</label>
+          <label htmlFor="notificacion-tipo" className="mb-1 block text-sm font-medium text-acero">Tipo</label>
           <select
-            name="tipo"
+            id="notificacion-tipo" name="tipo"
             value={filtrosPendientes.tipo}
             onChange={handleFiltroChange}
             className="rounded-md border border-acero/40 px-3 py-2 text-sm text-tinta"
@@ -176,10 +176,10 @@ export default function NotificacionesPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Desde</label>
+          <label htmlFor="notificacion-fechaDesde" className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Desde</label>
           <input
             type="date"
-            name="fechaDesde"
+            id="notificacion-fechaDesde" name="fechaDesde"
             value={filtrosPendientes.fechaDesde}
             onChange={handleFiltroChange}
             max={filtrosPendientes.fechaHasta || undefined}
@@ -188,10 +188,10 @@ export default function NotificacionesPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Hasta</label>
+          <label htmlFor="notificacion-fechaHasta" className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Hasta</label>
           <input
             type="date"
-            name="fechaHasta"
+            id="notificacion-fechaHasta" name="fechaHasta"
             value={filtrosPendientes.fechaHasta}
             onChange={handleFiltroChange}
             min={filtrosPendientes.fechaDesde || undefined}

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
+import { formatDate } from '../utils/dates'
 import PageContainer from '../components/PageContainer'
 import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
+import { useDepartamentos } from '../hooks/useDepartamentos'
 import { useEmpleados } from '../hooks/useEmpleados'
 import { useTiposCombustible } from '../hooks/useTiposCombustible'
 import { useVehiculos } from '../hooks/useVehiculos'
@@ -31,12 +33,13 @@ function todayInputValue() {
 }
 
 function formatFecha(value) {
-  return value ? new Date(value).toLocaleDateString() : '—'
+  return formatDate(value)
 }
 
 export default function SolicitudesRecurrentesPage() {
   const empleados = useEmpleados()
   const vehiculos = useVehiculos()
+  const departamentos = useDepartamentos()
   const tiposCombustible = useTiposCombustible()
 
   const [plantillas, setPlantillas] = useState([])
@@ -72,7 +75,14 @@ export default function SolicitudesRecurrentesPage() {
   }, [])
 
   function handleFormChange(e) {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setForm((f) => {
+      if (name === 'empleadoId') {
+        const empleado = empleados.find((item) => item.id === Number(value))
+        return { ...f, empleadoId: value, departamentoId: String(empleado?.departamentoId || ''), vehiculoId: '' }
+      }
+      return { ...f, [name]: value }
+    })
   }
 
   function openCreate() {
@@ -84,6 +94,7 @@ export default function SolicitudesRecurrentesPage() {
   const requiredFieldsFilled =
     form.empleadoId &&
     form.vehiculoId &&
+    form.departamentoId &&
     form.tipoCombustibleId &&
     form.cantidadSolicitada &&
     form.periodicidad &&
@@ -93,14 +104,13 @@ export default function SolicitudesRecurrentesPage() {
     e.preventDefault()
     setSubmitting(true)
     setFormError(null)
-    const emp = empleados.find((e) => String(e.id) === String(form.empleadoId))
     try {
       await apiRequest('/solicitudes-recurrentes', {
         method: 'POST',
         body: JSON.stringify({
           empleadoId: Number(form.empleadoId),
           vehiculoId: Number(form.vehiculoId),
-          departamentoId: emp ? emp.departamentoId : 0,
+          departamentoId: Number(form.departamentoId),
           tipoCombustibleId: Number(form.tipoCombustibleId),
           cantidadSolicitada: Number(form.cantidadSolicitada),
           periodicidad: form.periodicidad,
@@ -149,7 +159,7 @@ export default function SolicitudesRecurrentesPage() {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
           </svg>
-          + Nueva plantilla
+          Nueva plantilla
         </button>
       </div>
 
@@ -261,19 +271,19 @@ export default function SolicitudesRecurrentesPage() {
                 ))}
               </select>
             </Field>
-            {form.empleadoId && (() => {
-              const emp = empleados.find((e) => String(e.id) === String(form.empleadoId))
-              return emp ? (
-                <div className="rounded-md border border-tanque/20 bg-tanque/5 px-3 py-2 text-sm text-tanque">
-                  <span className="font-medium">Departamento: </span>{emp.departamentoNombre}
-                </div>
-              ) : null
-            })()}
             <Field label="Vehículo">
               <select name="vehiculoId" value={form.vehiculoId} onChange={handleFormChange} required className={inputCls}>
                 <option value="">Seleccionar...</option>
-                {vehiculos.filter((v) => v.activo).map((v) => (
+                {vehiculos.filter((v) => v.activo && (!form.departamentoId || v.departamentoId === Number(form.departamentoId))).map((v) => (
                   <option key={v.id} value={v.id}>{v.placa} — {v.marca} {v.modelo}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Departamento" hint="Se asigna automáticamente según el empleado">
+              <select name="departamentoId" value={form.departamentoId} disabled required className={inputCls}>
+                <option value="">Seleccionar...</option>
+                {departamentos.filter((d) => d.activo).map((d) => (
+                  <option key={d.id} value={d.id}>{d.nombre}</option>
                 ))}
               </select>
             </Field>

@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "FuelTrack Mobile (Emulador, acceso local)",
+      "cwd": "mobile",
+      "request": "launch",
+      "type": "dart",
+      "program": "mobile/lib/main.dart",
+      "args": [
+        "--dart-define=APP_ENV=development",
+        "--dart-define=AUTH_MODE=local",
+        "--dart-define=API_BASE_URL=http://10.0.2.2:5298/api/v1"
+      ]
+    },
+    {
+      "name": "FuelTrack Mobile Tests",
+      "cwd": "mobile",
+      "request": "launch",
+      "type": "dart",
+      "program": "mobile/test/flow_test.dart"
+    }
+  ]
+}

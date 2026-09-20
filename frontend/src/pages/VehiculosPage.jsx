@@ -141,6 +141,7 @@ export default function VehiculosPage() {
       departamentoId: veh.departamentoId,
       capacidadTanque: String(veh.capacidadTanque),
       odometro: String(veh.odometro),
+      activo: veh.activo,
     })
     setFieldErrors({})
     setFormError(null)
@@ -177,6 +178,7 @@ export default function VehiculosPage() {
       departamentoId: Number(form.departamentoId),
       capacidadTanque: Number(form.capacidadTanque),
       odometro: form.odometro ? Number(form.odometro) : 0,
+      ...(editingId ? { activo: Boolean(form.activo) } : {}),
     }
 
     try {
@@ -515,6 +517,11 @@ export default function VehiculosPage() {
                 />
               </Field>
             </div>
+
+            {editingId && <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" disabled={!esAdministrador && Boolean(vehiculos.find((item) => item.id === editingId)?.activo)} checked={Boolean(form.activo)} onChange={(e) => setForm((f) => ({ ...f, activo: e.target.checked }))} />
+              Vehículo activo
+            </label>}
 
             {formError && <p className="text-sm text-peligro">{formError}</p>}
 

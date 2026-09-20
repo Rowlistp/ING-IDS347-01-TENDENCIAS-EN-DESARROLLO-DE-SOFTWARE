@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
@@ -57,17 +57,20 @@ export default function InventarioPage() {
   const [transferenciaSubmitting, setTransferenciaSubmitting] = useState(false)
   const [transferenciaError, setTransferenciaError] = useState(null)
 
-  async function cargarInventarios() {
+  const inventoryRequest = useRef(0)
+  const cargarInventarios = useCallback(async () => {
+    const requestId = ++inventoryRequest.current
     try {
       const data = await apiRequest('/inventario')
+      if (requestId !== inventoryRequest.current) return
       setInventarios(data)
       setError(null)
     } catch (e) {
-      setError(e.message)
+      if (requestId === inventoryRequest.current) setError(e.message)
     } finally {
-      setLoading(false)
+      if (requestId === inventoryRequest.current) setLoading(false)
     }
-  }
+  }, [])
 
   async function cargarMovimientos() {
     setMovLoading(true)
@@ -85,7 +88,18 @@ export default function InventarioPage() {
 
   useEffect(() => {
     cargarInventarios()
-  }, [])
+    const refresh = () => { if (document.visibilityState === 'visible') cargarInventarios() }
+    const requests = inventoryRequest
+    const timer = window.setInterval(refresh, 5000)
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      ++requests.current
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [cargarInventarios])
 
   useEffect(() => {
     if (tab === 'historial') cargarMovimientos()
@@ -188,6 +202,7 @@ export default function InventarioPage() {
           >
             Historial de movimientos
           </button>
+          <button type="button" onClick={cargarInventarios} className="min-h-[38px] rounded px-3 py-1.5 text-sm text-tanque hover:bg-white">Actualizar</button>
         </div>
 
         {canAdjust && (
@@ -390,7 +405,7 @@ export default function InventarioPage() {
                 value={ajusteForm.magnitud}
                 onChange={handleAjusteChange}
                 required
-                min="0.0001"
+                min="0"
                 step="0.0001"
                 className={inputCls}
               />

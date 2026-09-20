@@ -12,7 +12,9 @@ final configProvider = Provider<AppConfig>(
 final sessionProvider = Provider<SessionController>((ref) {
   final config = ref.watch(configProvider);
   final session = SessionController(
-    KeycloakIdentityProvider(config),
+    config.localAuth
+        ? LocalIdentityProvider(config)
+        : KeycloakIdentityProvider(config),
     SecureTokenStore(config.storageKey),
   );
   ref.onDispose(session.dispose);

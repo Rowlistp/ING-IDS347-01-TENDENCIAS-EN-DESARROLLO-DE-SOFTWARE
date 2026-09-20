@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { formatDate } from '../utils/dates'
 import PageContainer from '../components/PageContainer'
 import apiRequest from '../services/api'
 
@@ -15,18 +16,18 @@ function StatCard({ label, value, sub }) {
   )
 }
 
-function BarRow({ label, value, max, color = 'bg-tanque' }) {
+function BarRow({ label, value, max, color = 'bg-tanque', unit = 'gal' }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm py-1">
       <div className="flex justify-between items-center sm:w-32 sm:shrink-0">
         <span className="text-acero text-xs sm:text-sm truncate font-medium">{label}</span>
-        <span className="sm:hidden font-mono num text-tinta font-semibold text-xs">{value.toFixed(1)} gal</span>
+        <span className="sm:hidden font-mono num text-tinta font-semibold text-xs">{value.toFixed(1)} {unit}</span>
       </div>
       <div className="flex-1 h-2.5 sm:h-3 rounded-full bg-acero/10 overflow-hidden w-full">
         <div className={`h-full rounded-full ${color} transition-all duration-300`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="hidden sm:inline-block w-20 text-right font-mono num text-tinta font-semibold text-xs sm:text-sm">{value.toFixed(1)} gal</span>
+      <span className="hidden sm:inline-block w-20 text-right font-mono num text-tinta font-semibold text-xs sm:text-sm">{value.toFixed(1)} {unit}</span>
     </div>
   )
 }
@@ -160,7 +161,7 @@ export default function DashboardPage() {
             {ultimos7Dias.map(d => (
               <BarRow
                 key={d.fecha}
-                label={new Date(d.fecha).toLocaleDateString('es', { weekday: 'short', day: 'numeric' })}
+                label={formatDate(d.fecha, { weekday: 'short', day: 'numeric' })}
                 value={d.volumenDespachado}
                 max={maxVol7}
               />
@@ -205,7 +206,7 @@ export default function DashboardPage() {
               ? <p className="text-sm text-acero/70">Sin datos.</p>
               : <div className="space-y-2">
                   {distribucionPorTipoCombustible.map(d => (
-                    <BarRow key={d.tipoCombustible} label={d.tipoCombustible} value={d.porcentaje} max={100} color="bg-exito" />
+                    <BarRow key={d.tipoCombustible} label={d.tipoCombustible} value={d.porcentaje} max={100} unit="%" color="bg-exito" />
                   ))}
                 </div>
             }

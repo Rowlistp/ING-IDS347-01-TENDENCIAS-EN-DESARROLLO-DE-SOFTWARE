@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
+import { decodeQrImage } from '../utils/qrImage'
 import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
@@ -146,7 +147,7 @@ export default function DespachosPage() {
         apiRequest('/tanques'),
       ])
       const estacionesActivas = (estacionesData || []).filter((e) => e.activo)
-      const tanquesActivos = (tanquesData || []).filter((t) => t.activo)
+      const tanquesActivos = (tanquesData || []).filter((t) => t.activo && t.tipoCombustibleActivo !== false)
       setEstaciones(estacionesActivas)
       setTanques(tanquesActivos)
       if (estacionesActivas.length > 0) {
@@ -311,12 +312,20 @@ export default function DespachosPage() {
     setValidating(true)
     try {
       const html5QrCode = new Html5Qrcode('html5-qr-file-dummy')
-      const decodedText = await html5QrCode.scanFile(file, true)
+      let decodedText
+      try {
+        decodedText = await html5QrCode.scanFile(file, true)
+      } catch {
+        decodedText = await decodeQrImage(file)
+      } finally {
+        html5QrCode.clear()
+      }
       await validarCodigoQr(decodedText)
     } catch {
       setFileError('No se encontró ningún código QR legible en la imagen seleccionada.')
     } finally {
       setValidating(false)
+      e.target.value = ''
     }
   }
 
@@ -420,8 +429,8 @@ export default function DespachosPage() {
 
       <form onSubmit={handleAplicarFiltro} className="mb-4 flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
         <div className="flex-1 sm:max-w-xs">
-          <label className="mb-1 block text-sm font-medium text-tinta">Filtrar por ID de ticket</label>
-          <input
+          <label htmlFor="despacho-ticket-filtro" className="mb-1 block text-sm font-medium text-tinta">Filtrar por ID de ticket</label>
+          <input id="despacho-ticket-filtro"
             type="text"
             value={filtroTicketId}
             onChange={(e) => setFiltroTicketId(e.target.value)}
@@ -791,7 +800,7 @@ export default function DespachosPage() {
                     <p className="text-xs text-acero">
                       Coloque el cursor en el campo y dispare su lector de código de barras USB, o pegue el contenido del código QR.
                     </p>
-                    <Field label="Payload del código QR" required hint="Formato con firma ECDSA generado por FuelTrack">
+                    <Field label="Contenido del código QR" required hint="Pega el contenido completo del QR firmado de FuelTrack">
                       <textarea
                         rows={5}
                         value={manualPayload}
