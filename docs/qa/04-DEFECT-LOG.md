@@ -2,24 +2,25 @@
 ## Sistema de Gesti?n y Control de Combustible ? FuelTrack ERP
 **Documento Oficial de Aseguramiento de Calidad (QA)**  
 **L?der de Calidad:** Rowlis Trinidad (Rowlistp@gmail.com)  
-**Fecha de Emisi?n:** 18 de Septiembre de 2026  
-**Versi?n:** 1.0 ? Consolidado de Fase de Estabilizaci?n, Redise?o y Validaciones  
+**Fecha de Emisión:** 19 de Septiembre de 2026  
+**Versión:** 1.1 — Consolidado de Interoperabilidad Móvil QR, Despachos y Refinamiento UI  
 
 ---
 
-## 1. RESUMEN EJECUTIVO Y ESTAD?STICAS DE DEFECTOS
+## 1. RESUMEN EJECUTIVO Y ESTADÍSTICAS DE DEFECTOS
 
 | Severidad | Abiertos | Resueltos | Mitigados / Documentados | Total |
 |---|---|---|---|---|
 | **Crítica** | 0 | 2 | 0 | 2 |
-| **Mayor** | 0 | 5 | 0 | 5 |
+| **Mayor** | 0 | 6 | 0 | 6 |
 | **Media** | 0 | 4 | 0 | 4 |
-| **Menor** | 0 | 0 | 0 | 0 |
-| **Total** | **0** | **11** | **0** | **11** |
+| **Menor** | 0 | 1 | 0 | 1 |
+| **Total** | **0** | **13** | **0** | **13** |
 
 **Tasa de Resolución:** 100.0%  
 **Estado del Sistema:** ✅ APROBADO PARA PRODUCCIÓN / CERTIFICADO  
 **Total Pruebas Automatizadas Backend:** 321/321 aprobadas (100%)  
+**Total Pruebas Automatizadas Móvil:** 26/26 aprobadas (100%), 0 advertencias (`flutter analyze`).
 **Estado Frontend:** 0 errores de linter (`oxlint`), compilación de producción exitosa (`vite build`).
 
 ---
@@ -39,6 +40,8 @@
 | **DEF-2026-009** | Solicitudes de Combustible | Ausencia de Cálculos Rápidos y Validación de Límites de Autorización | Media | P2 (Media) | ✅ Resuelto |
 | **DEF-2026-010** | Gestión de Tickets | Falta de Nomenclatura Controlada y Desacoplamiento de Acciones Críticas | Mayor | P1 (Alta) | ✅ Resuelto |
 | **DEF-2026-011** | Despachos & Estaciones | Bloqueo por Selección Involuntaria de Estación Inactiva (HTTP 409 ESTACION_INACTIVA) | Mayor | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-012** | Móvil & Despachos | Desincronización en Escaneo Móvil de Tickets QR y Datos Hardcodeados | Mayor | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-013** | UI/UX & Frontend Web | Duplicación de Icono y Carácter '+' en Botones de Acción Primaria | Menor | P3 (Baja) | ✅ Resuelto |
 
 ---
 
@@ -203,6 +206,55 @@
   - Prueba en vivo con API y PostgreSQL creando estación inactiva y verificando que el modal de despacho la excluye y confirma transacciones correctamente.
 
 ---
+### DEF-2026-012: Desincronización en Escaneo Móvil de Tickets QR y Datos Simulados Hardcodeados
+- **Severidad:** Mayor (Fallo en interoperabilidad entre aplicación web, backend y aplicación móvil en estación)
+- **Prioridad:** P1 (Alta)
+- **Estado:** ✅ Resuelto en `mobile/lib`, `backend/FuelTrack.Api` y `frontend/src/pages/TicketsPage.jsx`
+- **Componente:** `mobile/lib/features/scanner.dart`, `mobile/lib/core/api.dart`, `mobile/lib/core/models.dart`, `backend/FuelTrack.Api/Services/TicketService.cs`, `frontend/src/pages/TicketsPage.jsx`
+- **Descripción:** Al intentar validar un ticket de suministro mediante la aplicación móvil en un teléfono físico o emulador, el escaneo no leía los datos auténticos del código QR presentado en pantalla. En su lugar, la interfaz móvil presentaba información fija/simulada (`COM-2026-000001`, Carlos Rodríguez, etc.), omitiendo los atributos reales asociados a la solicitud (vehículo, placa, conductor y tipo de combustible). Asimismo, en el sistema web el ticket permanecía en estado "Creado" o no actualizaba su ciclo de vida a consumido/despachado de forma interactiva y sin intervención manual.
+- **Causa Raíz (RCA):**
+  1. En la aplicación Flutter (`scanner.dart`), la interfaz contaba con un botón "Simular QR" que inyectaba un código mock predeterminado y el controlador de cámara física no estaba vinculado al flujo de consulta en caliente.
+  2. En el backend (`TicketService.cs`), la búsqueda de tickets por código escaneado requería resolver tanto por el identificador GUID interno como por el correlativo `NumeroTicket` (`TCK-YYYY-XXXXXX`), además de propagar en el DTO de respuesta todos los metadatos de navegación (`Vehiculo`, `Conductor`, `Departamento`, `TipoCombustible`).
+  3. En el frontend (`TicketsPage.jsx`), el código QR renderizado en el comprobante no garantizaba la codificación estándar del código unívoco del ticket.
+  4. Los sockets del servidor backend escuchaban únicamente en `localhost`, imposibilitando la conexión directa por red Wi-Fi local desde el dispositivo móvil físico.
+- **Resolución / Acciones Correctivas:**
+  1. **Backend (`FuelTrack.Api`):**
+     - En `TicketService.cs`, se implementó la resolución dual de tickets: búsqueda directa por GUID (`Guid.TryParse`) con fallback inmediato por `NumeroTicket` normalizado.
+     - Se incluyó la carga ansiosa de entidades relacionadas (`Solicitud.Vehiculo`, `Solicitud.Empleado`, `Solicitud.TipoCombustible`) y se expuso la proyección completa en el DTO de respuesta del endpoint de escaneo.
+     - En `Program.cs` y `launchSettings.json`, se configuró el binding en `http://0.0.0.0:5298` para permitir comunicación abierta sobre la red local LAN y puente USB vía `adb reverse`.
+  2. **Frontend Web (`TicketsPage.jsx`):**
+     - Se vinculó el generador de código QR para codificar unívocamente el identificador del ticket emitido.
+     - Se integró recarga reactiva de estados para reflejar inmediatamente el consumo de tickets una vez procesado el despacho.
+  3. **Aplicación Móvil (`mobile/`):**
+     - Se eliminó el botón "Simular QR" en `scanner.dart`, dejando exclusivamente la captura óptica por cámara física y el acceso a digitación manual por teclado.
+     - Se depuraron los cuadros de diálogo de configuración de red en `SettingsScreen`, `ScanScreen` y `LoginScreen`, removiendo chips confusos de Wi-Fi/Bluetooth.
+     - En `models.dart` y `api.dart`, se implementó la deserialización exhaustiva de campos (`vehiculoPlaca`, `conductorNombre`, `tipoCombustibleNombre`, `galonesAutorizados`).
+- **Verificación:**
+  - 321/321 pruebas unitarias backend aprobadas (100% de éxito).
+  - 26/26 pruebas unitarias y de integración en Flutter aprobadas (`flutter test`).
+  - Análisis estático Dart sin advertencias (`flutter analyze`).
+  - Pruebas de escaneo en vivo entre navegador web (`http://localhost:5173/tickets`) y dispositivo móvil Samsung Galaxy Note 10+ en red local.
+
+---
+### DEF-2026-013: Duplicación de Icono y Carácter '+' en Botones de Acción Primaria en Frontend Web
+- **Severidad:** Menor (Inconsistencia estética y de usabilidad en interfaz gráfica)
+- **Prioridad:** P3 (Baja)
+- **Estado:** ✅ Resuelto en `frontend/src/pages/`
+- **Componente:** `SolicitudesPage.jsx`, `SolicitudesRecurrentesPage.jsx`, `TiposCombustiblePage.jsx`, `UsuariosPage.jsx`
+- **Descripción:** En múltiples vistas operativas del frontend web, los botones primarios para crear nuevos registros mostraban un doble signo de adición (`+ + Nueva solicitud`, `+ + Nueva plantilla`, `+ + Nuevo tipo de combustible`, `+ + Nuevo usuario`), generando un aspecto visual defectuoso y desalineado respecto al diseño corporativo.
+- **Causa Raíz (RCA):** Los componentes de botón renderizaban un icono SVG con el trazo de suma (`<svg ...><path d="M12 4v16m8-8H4" /></svg>`) y, adicionalmente, la cadena de texto de la etiqueta contenía el caracter literal `+ ` antes del nombre de la acción (ejemplo: `<svg/> + Nueva solicitud`), produciendo la repetición del símbolo.
+- **Resolución / Acciones Correctivas:**
+  1. En `SolicitudesPage.jsx`, se corrigió la etiqueta del botón a `"Nueva solicitud"`.
+  2. En `SolicitudesRecurrentesPage.jsx`, se corrigió la etiqueta del botón a `"Nueva plantilla"`.
+  3. En `TiposCombustiblePage.jsx`, se corrigió la etiqueta del botón a `"Nuevo tipo de combustible"`.
+  4. En `UsuariosPage.jsx`, se corrigió la etiqueta del botón a `"Nuevo usuario"`.
+  5. En `CierreDiarioPage.jsx` y `RecepcionesPage.jsx`, se armonizaron los textos descriptivos de estado vacío (`emptyMessage`) eliminando el prefijo `+ ` para coincidir exactamente con el rótulo del botón de acción.
+- **Verificación:**
+  - Auditoría exhaustiva mediante expresiones regulares en todo el árbol de componentes frontend (`frontend/src`).
+  - Linter `oxlint` ejecutado con 0 errores.
+  - Compilación de producción `vite build` completada con éxito.
+
+---
 
 ## 4. VERIFICACIÓN Y REGRESIÓN DE PRUEBAS
 
@@ -210,6 +262,10 @@ Todas las modificaciones fueron validadas contra la suite de pruebas automatizad
 - **Pruebas de Backend (.NET 10 / MSTest):**
   - Comando: `dotnet test backend/FuelTrack.Api.Tests`
   - Total pruebas: 321 exitosas, 0 fallidas, 78 ignoradas (integración PostgreSQL/Keycloak desacopladas).
+- **Pruebas de Móvil (Flutter / Dart Test):**
+  - Comando: `flutter test`
+  - Total pruebas: 26 exitosas, 0 fallidas (100% aprobado).
+  - Análisis estático: `flutter analyze` (0 problemas detectados).
 - **Linter de Frontend (oxlint):**
   - Comando: `npm run lint`
   - Total errores: 0, total advertencias: 0.
@@ -218,7 +274,7 @@ Todas las modificaciones fueron validadas contra la suite de pruebas automatizad
   - Resultado: `dist/` generado exitosamente (97 módulos transformados, 0 errores).
 
 ---
-**Certificaci?n de Calidad:**  
-Ingeniero L?der de Aseguramiento de Calidad: **Rowlis Trinidad**  
+**Certificación de Calidad:**  
+Ingeniero Líder de Aseguramiento de Calidad: **Rowlis Trinidad**  
 Firma: ___________________________  
-Fecha: 18 de Septiembre de 2026
+Fecha: 19 de Septiembre de 2026
