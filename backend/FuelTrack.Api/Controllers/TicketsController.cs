@@ -138,6 +138,17 @@ public sealed class TicketsController(TicketService tickets) : ControllerBase
         }
     }
 
+    [HttpGet("{id:guid}/qr")]
+    [Authorize(Roles = ReadRoles)]
+    public async Task<IActionResult> GetQr(Guid id, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentUserId(out var actorId))
+            return Unauthorized();
+
+        var png = await tickets.GetQrCodePngAsync(id, cancellationToken, OwnerFilter(actorId));
+        return png is null ? NotFound() : File(png, "image/png");
+    }
+
     private ActionResult<T> DomainError<T>(TicketDomainException exception)
         => StatusCode(exception.StatusCode, new { code = exception.Code, message = exception.Message });
 

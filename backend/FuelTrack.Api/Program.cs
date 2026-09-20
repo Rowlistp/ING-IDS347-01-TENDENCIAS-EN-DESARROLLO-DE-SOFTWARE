@@ -15,6 +15,7 @@ using Microsoft.Extensions.Options;
 using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.UseUrls(builder.Configuration["ASPNETCORE_URLS"] ?? "http://0.0.0.0:5298");
 // Capability URLs must never reach framework request/binding logs, even with Debug enabled.
 builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
 
