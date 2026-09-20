@@ -14,6 +14,7 @@ final sessionProvider = Provider<SessionController>((ref) {
   final session = SessionController(
     KeycloakIdentityProvider(config),
     SecureTokenStore(config.storageKey),
+    config,
   );
   ref.onDispose(session.dispose);
   return session;

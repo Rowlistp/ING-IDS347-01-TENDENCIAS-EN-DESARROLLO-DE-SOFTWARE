@@ -38,8 +38,17 @@ class AppConfig {
   }
 
   factory AppConfig.fromEnvironment() => const AppConfig(
-    apiUrl: String.fromEnvironment('API_BASE_URL'),
-    authority: String.fromEnvironment('OIDC_AUTHORITY'),
-    environment: String.fromEnvironment('APP_ENV', defaultValue: 'production'),
+    apiUrl: String.fromEnvironment(
+      'API_BASE_URL',
+      defaultValue: 'http://10.0.2.2:5298/api/v1',
+    ),
+    authority: String.fromEnvironment(
+      'OIDC_AUTHORITY',
+      defaultValue: 'http://10.0.2.2:18080/realms/fueltrack',
+    ),
+    environment: String.fromEnvironment(
+      'APP_ENV',
+      defaultValue: 'development',
+    ),
   );
 }

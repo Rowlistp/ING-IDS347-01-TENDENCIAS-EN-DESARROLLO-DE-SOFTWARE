@@ -70,3 +70,7 @@ class ApiFailure implements Exception {
   @override
   String toString() => message;
 }
+
+String friendlyError(Object error) => error is ApiFailure
+    ? error.message
+    : 'No se pudo completar la operación. Inténtalo nuevamente.';
