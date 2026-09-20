@@ -79,7 +79,17 @@ export default function SolicitudesPage() {
   }, [])
 
   function handleFormChange(e) {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setForm((f) => {
+      const next = { ...f, [name]: value }
+      if (name === 'vehiculoId') {
+        const v = vehiculos.find((veh) => String(veh.id) === String(value))
+        if (v && v.departamentoId) {
+          next.departamentoId = String(v.departamentoId)
+        }
+      }
+      return next
+    })
   }
 
   function openCreate() {
@@ -175,7 +185,7 @@ export default function SolicitudesPage() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
             </svg>
-            + Nueva solicitud
+            Nueva solicitud
           </button>
         </div>
       )}
@@ -386,7 +396,11 @@ export default function SolicitudesPage() {
               </select>
             </Field>
 
-            <Field label="Departamento" required>
+            <Field
+              label="Departamento"
+              required
+              hint={form.vehiculoId ? "Sincronizado automáticamente con el vehículo" : undefined}
+            >
               <select
                 name="departamentoId"
                 value={form.departamentoId}

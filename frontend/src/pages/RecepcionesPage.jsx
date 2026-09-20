@@ -227,7 +227,7 @@ export default function RecepcionesPage() {
           data={recepciones}
           keyField="id"
           onRowClick={(r) => openDetalle(r.id)}
-          emptyMessage="Sin recepciones registradas. Pulsa en '+ Registrar recepción' para ingresar combustible."
+          emptyMessage="Sin recepciones registradas. Pulsa en 'Registrar recepción' para ingresar combustible."
           columns={[
             {
               key: 'proveedorNombre',
