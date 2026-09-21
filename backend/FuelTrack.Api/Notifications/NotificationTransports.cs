@@ -40,7 +40,10 @@ public sealed class SmtpEmailSender(IOptions<NotificationOptions> options) : IEm
         if (!smtp.Enabled) return DeliveryResult.Error("SMTP_DESHABILITADO", true);
         try
         {
-            using var client = new SmtpClient { Timeout = options.Value.TransportTimeoutSeconds * 1000 };
+            // Revocation checking (OCSP/CRL) commonly cannot complete on restrictive networks;
+            // MailKit then rejects an otherwise valid certificate. Skip only the revocation
+            // check, not chain/hostname validation.
+            using var client = new SmtpClient { Timeout = options.Value.TransportTimeoutSeconds * 1000, CheckCertificateRevocation = false };
             using var message = BuildMessage(input);
             await client.ConnectAsync(smtp.Host, smtp.Port, smtp.UseSsl ? SecureSocketOptions.SslOnConnect : smtp.StartTls ? SecureSocketOptions.StartTls : SecureSocketOptions.None, ct);
             if (smtp.Username.Length > 0) await client.AuthenticateAsync(smtp.Username, smtp.Password, ct);
