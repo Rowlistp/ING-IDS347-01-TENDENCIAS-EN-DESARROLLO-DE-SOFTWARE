@@ -502,4 +502,144 @@ public sealed class EmpleadosControllerTests
         StringAssert.Contains(json, "NombreCompleto");
         Assert.IsFalse(json.Contains("Cedula") || json.Contains("Telefono") || json.Contains("Correo"));
     }
+
+    // ── Vehículo habitual ───────────────────────────────────────────────────
+
+    private static SaveEmpleadoRequest Req(string codigo, string cedula, int depId, bool activo = true, int? vehiculoHabitualId = null)
+        => new(codigo, "Empleado " + codigo, cedula, "Chofer", codigo.ToLower() + "@test.com",
+            "809-000-0100", depId, activo, null, vehiculoHabitualId);
+
+    [TestMethod]
+    public async Task Create_ConVehiculoHabitual_Retorna201_ConIdYPlaca()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (_, vehiculo, _) = await CrearDependenciasAsync(dep);
+
+        var result = await _controller.Create(Req("EMP-H01", "001-0000101-1", dep.Id, vehiculoHabitualId: vehiculo.Id), default);
+
+        var dto = (result.Result as CreatedAtActionResult)!.Value as EmpleadoDto;
+        Assert.AreEqual(vehiculo.Id, dto!.VehiculoHabitualId);
+        Assert.AreEqual("A000001", dto.VehiculoHabitualPlaca);
+    }
+
+    [TestMethod]
+    public async Task Create_SinVehiculoHabitual_LoDejaNulo()
+    {
+        var dep = await CrearDepartamentoAsync();
+
+        var result = await _controller.Create(Req("EMP-H02", "001-0000102-2", dep.Id), default);
+
+        var dto = (result.Result as CreatedAtActionResult)!.Value as EmpleadoDto;
+        Assert.IsNull(dto!.VehiculoHabitualId);
+        Assert.IsNull(dto.VehiculoHabitualPlaca);
+    }
+
+    [TestMethod]
+    public async Task Create_Returns400_CuandoVehiculoHabitualNoExiste()
+    {
+        var dep = await CrearDepartamentoAsync();
+
+        var result = await _controller.Create(Req("EMP-H03", "001-0000103-3", dep.Id, vehiculoHabitualId: 999), default);
+
+        var bad = result.Result as BadRequestObjectResult;
+        Assert.IsNotNull(bad);
+        StringAssert.Contains(bad.Value!.ToString()!, "VEHICULO_NOT_FOUND");
+        Assert.AreEqual(0, await _db.Empleados.CountAsync());
+    }
+
+    [TestMethod]
+    public async Task Create_Returns400_CuandoVehiculoHabitualInactivo()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (_, vehiculo, _) = await CrearDependenciasAsync(dep);
+        vehiculo.Activo = false;
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.Create(Req("EMP-H04", "001-0000104-4", dep.Id, vehiculoHabitualId: vehiculo.Id), default);
+
+        var bad = result.Result as BadRequestObjectResult;
+        Assert.IsNotNull(bad);
+        StringAssert.Contains(bad.Value!.ToString()!, "VEHICULO_INACTIVO");
+    }
+
+    [TestMethod]
+    public async Task Update_AsignaYLuegoQuitaVehiculoHabitual()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (emp, vehiculo, _) = await CrearDependenciasAsync(dep);
+
+        var asignado = ((await _controller.Update(emp.Id,
+            Req(emp.Codigo, emp.Cedula, dep.Id, vehiculoHabitualId: vehiculo.Id), default)).Result as OkObjectResult)!.Value as EmpleadoDto;
+        Assert.AreEqual(vehiculo.Id, asignado!.VehiculoHabitualId);
+        Assert.AreEqual("A000001", asignado.VehiculoHabitualPlaca);
+
+        var quitado = ((await _controller.Update(emp.Id,
+            Req(emp.Codigo, emp.Cedula, dep.Id), default)).Result as OkObjectResult)!.Value as EmpleadoDto;
+        Assert.IsNull(quitado!.VehiculoHabitualId);
+        Assert.IsNull(quitado.VehiculoHabitualPlaca);
+        Assert.IsNull((await _db.Empleados.AsNoTracking().FirstAsync(e => e.Id == emp.Id)).VehiculoHabitualId);
+    }
+
+    [TestMethod]
+    public async Task Update_Returns400_CuandoNuevoVehiculoHabitualInactivo_YNoModifica()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (emp, vehiculo, _) = await CrearDependenciasAsync(dep);
+        vehiculo.Activo = false;
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.Update(emp.Id,
+            Req(emp.Codigo, emp.Cedula, dep.Id, vehiculoHabitualId: vehiculo.Id), default);
+
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result.Result);
+        Assert.IsNull((await _db.Empleados.AsNoTracking().FirstAsync(e => e.Id == emp.Id)).VehiculoHabitualId);
+    }
+
+    [TestMethod]
+    public async Task Update_NoRechaza_CuandoElVehiculoHabitualActualSeDesactivoDespues()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (emp, vehiculo, _) = await CrearDependenciasAsync(dep);
+        emp.VehiculoHabitualId = vehiculo.Id;
+        await _db.SaveChangesAsync();
+        vehiculo.Activo = false;
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.Update(emp.Id,
+            Req(emp.Codigo, emp.Cedula, dep.Id, vehiculoHabitualId: vehiculo.Id), default);
+
+        var dto = (result.Result as OkObjectResult)!.Value as EmpleadoDto;
+        Assert.AreEqual(vehiculo.Id, dto!.VehiculoHabitualId);
+    }
+
+    [TestMethod]
+    public async Task GetAll_IncluyeVehiculoHabitualPlaca()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (emp, vehiculo, _) = await CrearDependenciasAsync(dep);
+        emp.VehiculoHabitualId = vehiculo.Id;
+        await _db.SaveChangesAsync();
+
+        var list = ((await _controller.GetAll(default)).Result as OkObjectResult)!.Value as List<EmpleadoDto>;
+
+        Assert.AreEqual(vehiculo.Id, list![0].VehiculoHabitualId);
+        Assert.AreEqual("A000001", list[0].VehiculoHabitualPlaca);
+    }
+
+    [TestMethod]
+    public async Task VincularUsuario_ConservaElVehiculoHabitual()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (emp, vehiculo, _) = await CrearDependenciasAsync(dep);
+        emp.VehiculoHabitualId = vehiculo.Id;
+        var user = new Usuario { NombreUsuario = "habitual.user", Activo = true };
+        _db.Usuarios.Add(user);
+        await _db.SaveChangesAsync();
+
+        var result = await _controller.VincularUsuario(emp.Id, new VincularUsuarioRequest(user.Id), default);
+
+        var dto = (result.Result as OkObjectResult)!.Value as EmpleadoDto;
+        Assert.AreEqual(vehiculo.Id, dto!.VehiculoHabitualId);
+        Assert.AreEqual(user.Id, dto.UsuarioId);
+    }
 }

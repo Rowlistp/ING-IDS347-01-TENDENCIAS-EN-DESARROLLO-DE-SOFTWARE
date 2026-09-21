@@ -8,6 +8,7 @@ import StatusBadge from '../components/StatusBadge'
 import { useAuth } from '../hooks/useAuth'
 import { useDepartamentos } from '../hooks/useDepartamentos'
 import { useUsuarios } from '../hooks/useUsuarios'
+import { useVehiculos } from '../hooks/useVehiculos'
 import apiRequest from '../services/api'
 import { canManageCatalogs } from '../utils/rbac'
 import {
@@ -31,6 +32,7 @@ const EMPTY_FORM = {
   departamentoId: '',
   activo: true,
   usuarioId: '',
+  vehiculoHabitualId: '',
 }
 
 export default function EmpleadosPage() {
@@ -40,6 +42,7 @@ export default function EmpleadosPage() {
   const [empleados, setEmpleados] = useState([])
   const departamentos = useDepartamentos()
   const usuarios = useUsuarios()
+  const vehiculos = useVehiculos()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -150,6 +153,7 @@ export default function EmpleadosPage() {
       departamentoId: emp.departamentoId,
       activo: emp.activo,
       usuarioId: emp.usuarioId ? String(emp.usuarioId) : '',
+      vehiculoHabitualId: emp.vehiculoHabitualId ? String(emp.vehiculoHabitualId) : '',
     })
     setFieldErrors({})
     setFormError(null)
@@ -212,6 +216,7 @@ export default function EmpleadosPage() {
       departamentoId: Number(form.departamentoId),
       activo: form.activo,
       usuarioId: form.usuarioId ? Number(form.usuarioId) : null,
+      vehiculoHabitualId: form.vehiculoHabitualId ? Number(form.vehiculoHabitualId) : null,
     }
 
     try {
@@ -313,6 +318,17 @@ export default function EmpleadosPage() {
               label: 'Departamento',
               priority: 'high',
               render: (emp) => <span className="text-acero">{emp.departamentoNombre}</span>,
+            },
+            {
+              key: 'vehiculoHabitualPlaca',
+              label: 'Vehículo habitual',
+              priority: 'med',
+              render: (emp) =>
+                emp.vehiculoHabitualPlaca ? (
+                  <span className="font-mono text-xs font-medium text-tinta">{emp.vehiculoHabitualPlaca}</span>
+                ) : (
+                  <span className="text-xs text-acero/60 italic">Sin asignar</span>
+                ),
             },
             {
               key: 'cargo',
@@ -525,6 +541,40 @@ export default function EmpleadosPage() {
                     {d.nombre}
                   </option>
                 ))}
+              </select>
+            </Field>
+
+            <Field
+              label="Vehículo habitual"
+              hint="Opcional. Se propone por defecto al crear solicitudes de este empleado; se puede cambiar en cada solicitud."
+            >
+              <select
+                name="vehiculoHabitualId"
+                value={form.vehiculoHabitualId}
+                onChange={handleFormChange}
+                className={inputCls}
+              >
+                <option value="">-- Sin vehículo habitual --</option>
+                {[
+                  ['Vehículos del departamento', (v) => String(v.departamentoId) === String(form.departamentoId)],
+                  ['Otros vehículos', (v) => String(v.departamentoId) !== String(form.departamentoId)],
+                ].map(([grupo, pertenece]) => {
+                  const opciones = vehiculos.filter(
+                    (v) => pertenece(v) && (v.activo !== false || String(v.id) === form.vehiculoHabitualId),
+                  )
+                  if (opciones.length === 0) return null
+                  return (
+                    <optgroup key={grupo} label={grupo}>
+                      {opciones.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.placa} — {v.marca} {v.modelo}
+                          {v.tipoCombustibleNombre ? ` · ${v.tipoCombustibleNombre}` : ''}
+                          {v.activo === false ? ' (inactivo)' : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )
+                })}
               </select>
             </Field>
 

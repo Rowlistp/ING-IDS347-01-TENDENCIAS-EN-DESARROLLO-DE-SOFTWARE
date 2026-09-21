@@ -17,6 +17,10 @@ public class Empleado
     public int? UsuarioId { get; set; }
     public Usuario? Usuario { get; set; }
 
+    // Vehículo habitual (opcional): valor por defecto al crear solicitudes, no una restricción.
+    public int? VehiculoHabitualId { get; set; }
+    public Vehiculo? VehiculoHabitual { get; set; }
+
     public ICollection<SolicitudCombustible> Solicitudes { get; set; } = new List<SolicitudCombustible>();
     public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
 }
