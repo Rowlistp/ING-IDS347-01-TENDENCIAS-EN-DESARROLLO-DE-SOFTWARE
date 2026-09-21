@@ -83,6 +83,10 @@ export default function LoginPage() {
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
         </form>
+
+        <p className="mt-5 border-t border-acero/20 pt-4 text-center text-xs text-acero">
+          ¿Olvidó su contraseña o necesita una cuenta? Contacte a un administrador del sistema.
+        </p>
       </div>
     </div>
   )
