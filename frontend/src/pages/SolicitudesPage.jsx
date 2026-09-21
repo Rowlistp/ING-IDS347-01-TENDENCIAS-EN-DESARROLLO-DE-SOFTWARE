@@ -78,16 +78,41 @@ export default function SolicitudesPage() {
     return () => { cancelado = true }
   }, [])
 
+  // El backend no liga vehículo ni combustible al empleado (solo el vehículo
+  // pertenece a un departamento), así que el único default derivable es:
+  // empleado → su departamento → vehículos activos de ese departamento
+  // (si hay uno solo, se preselecciona).
+  function vehiculosActivosDe(departamentoId) {
+    return vehiculos.filter((v) => v.activo !== false && String(v.departamentoId) === String(departamentoId))
+  }
+
+  function aplicarDepartamento(next, departamentoId) {
+    next.departamentoId = departamentoId ? String(departamentoId) : ''
+    const delDepto = departamentoId ? vehiculosActivosDe(departamentoId) : []
+    next.vehiculoId = delDepto.length === 1 ? String(delDepto[0].id) : ''
+    return next
+  }
+
   function handleFormChange(e) {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setForm((f) => {
+      const next = { ...f, [name]: value }
+      if (name === 'empleadoId') {
+        const emp = empleados.find((x) => String(x.id) === value)
+        return aplicarDepartamento(next, emp?.departamentoId)
+      }
+      if (name === 'departamentoId') return aplicarDepartamento(next, value)
+      return next
+    })
   }
 
   function openCreate() {
-    setForm({
-      ...EMPTY_FORM,
-      empleadoId: miEmpleado ? String(miEmpleado.id) : '',
-      departamentoId: miEmpleado ? String(miEmpleado.departamentoId) : '',
-    })
+    setForm(
+      aplicarDepartamento(
+        { ...EMPTY_FORM, empleadoId: miEmpleado ? String(miEmpleado.id) : '' },
+        miEmpleado?.departamentoId,
+      ),
+    )
     setFormError(null)
     setShowCreate(true)
   }
@@ -378,20 +403,38 @@ export default function SolicitudesPage() {
                 className={inputCls}
               >
                 <option value="">Seleccionar...</option>
-                {vehiculos.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.placa} — {v.marca} {v.modelo} ({v.ficha})
-                  </option>
-                ))}
+                {form.departamentoId && vehiculosActivosDe(form.departamentoId).length > 0 && (
+                  <optgroup label="Vehículos del departamento">
+                    {vehiculosActivosDe(form.departamentoId).map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.placa} — {v.marca} {v.modelo} ({v.ficha})
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                <optgroup label="Otros vehículos">
+                  {vehiculos
+                    .filter((v) => v.activo !== false && String(v.departamentoId) !== String(form.departamentoId))
+                    .map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.placa} — {v.marca} {v.modelo} ({v.ficha})
+                      </option>
+                    ))}
+                </optgroup>
               </select>
             </Field>
 
-            <Field label="Departamento" required>
+            <Field
+              label="Departamento"
+              required
+              hint={form.empleadoId ? 'Se completa según el empleado; puedes cambiarlo.' : undefined}
+            >
               <select
                 name="departamentoId"
                 value={form.departamentoId}
                 onChange={handleFormChange}
                 required
+                disabled={isSolicitanteOnly}
                 className={inputCls}
               >
                 <option value="">Seleccionar...</option>
