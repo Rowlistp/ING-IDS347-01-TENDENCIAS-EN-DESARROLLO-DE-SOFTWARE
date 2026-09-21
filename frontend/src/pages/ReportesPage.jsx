@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { formatDateTime } from '../utils/dates'
+import Field, { inputCls } from '../components/Field'
 import PageContainer from '../components/PageContainer'
 import apiRequest, { apiDownload } from '../services/api'
 import { getSequentialFilename, downloadBlob } from '../utils/download'
@@ -89,18 +91,24 @@ const FORMATOS = [
   { value: 'pdf', label: 'PDF', ext: 'pdf' },
 ]
 
-const FILTROS_VACIOS = { fechaDesde: '', fechaHasta: '', tanqueId: '', empleadoId: '', vehiculoId: '', departamentoId: '' }
+const FILTROS_VACIOS = { fechaDesde: '', fechaHasta: '', tanqueId: '', empleadoId: '', vehiculoId: '', departamentoId: '', tipoCombustibleId: '', estadoTicket: '' }
 
 function formatCelda(col, value) {
   if (value === null || value === undefined || value === '') return '—'
-  if (col.fecha) return new Date(value).toLocaleString()
+  if (col.fecha) return formatDateTime(value)
   if (col.num) return Number(value).toFixed(4)
   return String(value)
 }
 
 export default function ReportesPage() {
+  const [tiposCombustible, setTiposCombustible] = useState([])
+  useEffect(() => {
+    let cancelled = false
+    apiRequest('/tipos-combustible').then((data) => { if (!cancelled) setTiposCombustible(data) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [])
   const tanques = useTanques()
-  const empleados = useEmpleados()
+  const empleados = useEmpleados(true)
   const vehiculos = useVehiculos()
   const departamentos = useDepartamentos()
 
@@ -123,6 +131,8 @@ export default function ReportesPage() {
   useEffect(() => {
     let cancelado = false
     const params = new URLSearchParams({ tipo, pagina: String(pagina), tamanoPagina: String(TAMANO_PAGINA) })
+    if (filtros.tipoCombustibleId && tipo !== 'cierres') params.set('tipoCombustibleId', filtros.tipoCombustibleId)
+    if (filtros.estadoTicket && tipo === 'tickets') params.set('estadoTicket', filtros.estadoTicket)
     if (filtros.fechaDesde) params.set('fechaDesde', filtros.fechaDesde)
     if (filtros.fechaHasta) params.set('fechaHasta', filtros.fechaHasta)
     if (filtros.tanqueId && TIPOS_CON_FILTRO_TANQUE.includes(tipo)) params.set('tanqueId', filtros.tanqueId)
@@ -182,6 +192,8 @@ export default function ReportesPage() {
     setDescargando(formato.value)
     try {
       const params = new URLSearchParams({ tipo, formato: formato.value })
+      if (filtros.tipoCombustibleId && tipo !== 'cierres') params.set('tipoCombustibleId', filtros.tipoCombustibleId)
+      if (filtros.estadoTicket && tipo === 'tickets') params.set('estadoTicket', filtros.estadoTicket)
       if (filtros.fechaDesde) params.set('fechaDesde', filtros.fechaDesde)
       if (filtros.fechaHasta) params.set('fechaHasta', filtros.fechaHasta)
       if (filtros.tanqueId && TIPOS_CON_FILTRO_TANQUE.includes(tipo)) params.set('tanqueId', filtros.tanqueId)
@@ -211,14 +223,12 @@ export default function ReportesPage() {
   return (
     <PageContainer title="Reportes">
       <p className="mb-4 text-sm text-acero">
-        Los filtros disponibles varían según el tipo de reporte: fecha aplica a todos; tanque solo a despachos e
-        inventario; empleado, vehículo y departamento a solicitudes, despachos y tickets. Solo se muestran los
-        filtros que el backend soporta de verdad para el tipo seleccionado.
+        Selecciona el reporte y aplica los filtros que necesites. La exportación conserva los filtros aplicados.
       </p>
 
       <div className="mb-4">
-        <label className="mb-1 block text-sm font-medium text-acero">Tipo de reporte</label>
-        <select
+        <label htmlFor="reporte-tipo-reporte" className="mb-1 block text-sm font-medium text-acero">Tipo de reporte</label>
+        <select id="reporte-tipo-reporte"
           value={tipo}
           onChange={handleTipoChange}
           className="rounded-md border border-acero/40 px-3 py-2 text-sm text-tinta"
@@ -240,10 +250,10 @@ export default function ReportesPage() {
 
       <form onSubmit={handleAplicarFiltros} className="mb-4 flex flex-col md:flex-row md:items-end flex-wrap gap-3 rounded-lg border border-acero/15 bg-white p-3.5 shadow-sm">
         <div className="w-full sm:w-auto">
-          <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Desde</label>
+          <label htmlFor="reporte-fechaDesde" className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Desde</label>
           <input
             type="date"
-            name="fechaDesde"
+            id="reporte-fechaDesde" name="fechaDesde"
             value={filtrosPendientes.fechaDesde}
             onChange={handleFiltroChange}
             max={filtrosPendientes.fechaHasta || undefined}
@@ -251,10 +261,10 @@ export default function ReportesPage() {
           />
         </div>
         <div className="w-full sm:w-auto">
-          <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Hasta</label>
+          <label htmlFor="reporte-fechaHasta" className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Hasta</label>
           <input
             type="date"
-            name="fechaHasta"
+            id="reporte-fechaHasta" name="fechaHasta"
             value={filtrosPendientes.fechaHasta}
             onChange={handleFiltroChange}
             min={filtrosPendientes.fechaDesde || undefined}
@@ -263,9 +273,9 @@ export default function ReportesPage() {
         </div>
         {TIPOS_CON_FILTRO_TANQUE.includes(tipo) && (
           <div className="w-full sm:w-auto">
-            <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Tanque</label>
+            <label htmlFor="reporte-tanqueId" className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Tanque</label>
             <select
-              name="tanqueId"
+              id="reporte-tanqueId" name="tanqueId"
               value={filtrosPendientes.tanqueId}
               onChange={handleFiltroChange}
               className="w-full rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta min-h-[38px]"
@@ -280,9 +290,9 @@ export default function ReportesPage() {
         {TIPOS_CON_FILTRO_PERSONA.includes(tipo) && (
           <>
             <div className="w-full sm:w-auto">
-              <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Empleado</label>
+              <label htmlFor="reporte-empleadoId" className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Empleado</label>
               <select
-                name="empleadoId"
+                id="reporte-empleadoId" name="empleadoId"
                 value={filtrosPendientes.empleadoId}
                 onChange={handleFiltroChange}
                 className="w-full rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta min-h-[38px]"
@@ -294,9 +304,9 @@ export default function ReportesPage() {
               </select>
             </div>
             <div className="w-full sm:w-auto">
-              <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Vehículo</label>
+              <label htmlFor="reporte-vehiculoId" className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Vehículo</label>
               <select
-                name="vehiculoId"
+                id="reporte-vehiculoId" name="vehiculoId"
                 value={filtrosPendientes.vehiculoId}
                 onChange={handleFiltroChange}
                 className="w-full rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta min-h-[38px]"
@@ -308,9 +318,9 @@ export default function ReportesPage() {
               </select>
             </div>
             <div className="w-full sm:w-auto">
-              <label className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Departamento</label>
+              <label htmlFor="reporte-departamentoId" className="mb-1 block text-xs font-semibold text-acero uppercase tracking-wider">Departamento</label>
               <select
-                name="departamentoId"
+                id="reporte-departamentoId" name="departamentoId"
                 value={filtrosPendientes.departamentoId}
                 onChange={handleFiltroChange}
                 className="w-full rounded-md border border-acero/40 px-3 py-1.5 text-sm text-tinta min-h-[38px]"
@@ -323,6 +333,18 @@ export default function ReportesPage() {
             </div>
           </>
         )}
+        {tipo !== 'cierres' && <Field label="Combustible">
+          <select name="tipoCombustibleId" value={filtrosPendientes.tipoCombustibleId} onChange={handleFiltroChange} className={inputCls}>
+            <option value="">Todos</option>
+            {tiposCombustible.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+          </select>
+        </Field>}
+        {tipo === 'tickets' && <Field label="Estado del ticket">
+          <select name="estadoTicket" value={filtrosPendientes.estadoTicket} onChange={handleFiltroChange} className={inputCls}>
+            <option value="">Todos</option>
+            {['Creado', 'Enviado', 'Pendiente', 'ProximoAVencer', 'Vencido', 'Consumido', 'Anulado'].map((estado) => <option key={estado} value={estado}>{estado === 'ProximoAVencer' ? 'Próximo a vencer' : estado}</option>)}
+          </select>
+        </Field>}
         <div className="flex gap-2 w-full sm:w-auto">
           <button type="submit" className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 rounded-md bg-tanque px-4 py-2 text-sm font-semibold text-white hover:opacity-90 shadow-sm min-h-[38px] active:scale-[0.98]">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

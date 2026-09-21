@@ -532,5 +532,38 @@ public sealed class TanquesControllerTests
         var code = conflict.Value!.GetType().GetProperty("code")?.GetValue(conflict.Value)?.ToString();
         Assert.AreEqual("TIPO_COMBUSTIBLE_INACTIVO", code);
     }
+
+    [TestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public async Task Update_RechazaCapacidadInsuficienteOCambioCombustibleConExistencia(bool cambiaCombustible)
+    {
+        var tipo = await CrearTipoCombustibleAsync();
+        var otro = await CrearTipoCombustibleAsync("Diesel");
+        var tanque = new Tanque { Identificacion = "REG-01", Capacidad = 100m, TipoCombustibleId = tipo.Id, Activo = true };
+        _db.Tanques.Add(tanque);
+        _db.Inventarios.Add(new Inventario { Tanque = tanque, ExistenciaActual = 50m, Disponibilidad = 50m, UltimaActualizacion = DateTime.UtcNow });
+        await _db.SaveChangesAsync();
+        var result = await _controller.Update(tanque.Id, new SaveTanqueRequest("REG-01", cambiaCombustible ? 100m : 49m, 10m, cambiaCombustible ? otro.Id : tipo.Id), default);
+        Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
+        _db.ChangeTracker.Clear();
+        var guardado = await _db.Tanques.SingleAsync();
+        Assert.AreEqual(100m, guardado.Capacidad);
+        Assert.AreEqual(tipo.Id, guardado.TipoCombustibleId);
+        Assert.AreEqual(0, await _db.Auditorias.CountAsync());
+    }
+
+
+    [TestMethod]
+    public async Task Create_RechazaCombustibleInactivo_SinCrearTanqueNiInventario()
+    {
+        var tipo = await CrearTipoCombustibleAsync();
+        tipo.Activo = false;
+        await _db.SaveChangesAsync();
+        var result = await _controller.Create(new SaveTanqueRequest("T-INACTIVO", 200m, 20m, tipo.Id), default);
+        Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
+        Assert.AreEqual(0, await _db.Tanques.CountAsync());
+        Assert.AreEqual(0, await _db.Inventarios.CountAsync());
+    }
 }
 

@@ -41,6 +41,21 @@ public sealed class SolicitudRecurrenteService(IServiceScopeFactory scopeFactory
         {
             if (!DebeEjecutarse(plantilla, hoy)) continue;
 
+            var error = await SolicitudRelationsValidator.ValidateAsync(db, plantilla.EmpleadoId, plantilla.VehiculoId,
+                plantilla.DepartamentoId, plantilla.TipoCombustibleId, ct);
+            if (error is not null)
+            {
+                logger.LogWarning("Plantilla {Id} omitida: {Code}", plantilla.Id, error.Code);
+                continue;
+            }
+
+            // La reserva y la solicitud se confirman juntas; dos procesos no generan el mismo día.
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            var reservadas = await db.SolicitudesRecurrentes
+                .Where(p => p.Id == plantilla.Id && p.Activa && p.UltimaEjecucion == plantilla.UltimaEjecucion)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.UltimaEjecucion, hoy), ct);
+            if (reservadas == 0) continue;
+
             db.SolicitudesCombustible.Add(new SolicitudCombustible
             {
                 CantidadSolicitada = plantilla.CantidadSolicitada,
@@ -53,14 +68,13 @@ public sealed class SolicitudRecurrenteService(IServiceScopeFactory scopeFactory
                 TipoCombustibleId = plantilla.TipoCombustibleId
             });
 
-            plantilla.UltimaEjecucion = hoy;
-            db.Entry(plantilla).Property(p => p.UltimaEjecucion).IsModified = true;
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
             generadas++;
         }
 
         if (generadas > 0)
         {
-            await db.SaveChangesAsync(ct);
             logger.LogInformation("Solicitudes recurrentes generadas: {Count} para {Fecha}", generadas, hoy);
         }
     }

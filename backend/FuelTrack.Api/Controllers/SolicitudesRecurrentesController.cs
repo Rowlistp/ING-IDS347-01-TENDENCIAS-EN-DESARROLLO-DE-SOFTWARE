@@ -3,6 +3,7 @@ using FuelTrack.Api.DTOs.Solicitudes;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Security;
+using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -39,40 +40,11 @@ public sealed class SolicitudesRecurrentesController : ControllerBase
     public async Task<ActionResult<SolicitudRecurrenteDto>> Create(
         CreateSolicitudRecurrenteRequest req, CancellationToken ct)
     {
-        var empleado = await _db.Empleados.FirstOrDefaultAsync(e => e.Id == req.EmpleadoId, ct);
-        if (empleado is null)
-            return BadRequest(new { code = "EMPLEADO_NOT_FOUND", message = "El empleado no existe." });
-        if (!empleado.Activo)
-            return BadRequest(new { code = "EMPLEADO_INACTIVO", message = "No se puede crear una solicitud recurrente para un empleado inactivo." });
-
-        var vehiculo = await _db.Vehiculos.FirstOrDefaultAsync(v => v.Id == req.VehiculoId, ct);
-        if (vehiculo is null)
-            return BadRequest(new { code = "VEHICULO_NOT_FOUND", message = "El vehículo no existe." });
-        if (!vehiculo.Activo)
-            return BadRequest(new { code = "VEHICULO_INACTIVO", message = "No se puede crear una solicitud recurrente para un vehículo inactivo." });
-
-        if (req.DepartamentoId > 0)
-        {
-            var deptoReq = await _db.Departamentos.FirstOrDefaultAsync(d => d.Id == req.DepartamentoId, ct);
-            if (deptoReq is null)
-                return BadRequest(new { code = "DEPARTAMENTO_NOT_FOUND", message = "El departamento no existe." });
-
-            if (req.DepartamentoId != empleado.DepartamentoId)
-                return BadRequest(new { code = "DEPARTAMENTO_NO_COINCIDE", message = "El departamento no coincide con el departamento asignado al empleado." });
-        }
-
-        var departamento = await _db.Departamentos.FirstOrDefaultAsync(d => d.Id == empleado.DepartamentoId, ct);
-        if (departamento is null)
-            return BadRequest(new { code = "DEPARTAMENTO_NOT_FOUND", message = "El departamento no existe." });
-        if (!departamento.Activo)
-            return BadRequest(new { code = "DEPARTAMENTO_INACTIVO", message = "No se puede crear una solicitud recurrente para un departamento inactivo." });
-
-        var tipoCombustible = await _db.TiposCombustible.FirstOrDefaultAsync(t => t.Id == req.TipoCombustibleId, ct);
-        if (tipoCombustible is null)
-            return BadRequest(new { code = "TIPO_COMBUSTIBLE_NOT_FOUND", message = "El tipo de combustible no existe." });
-        if (!tipoCombustible.Activo)
-            return BadRequest(new { code = "TIPO_COMBUSTIBLE_INACTIVO", message = "No se puede crear una solicitud recurrente con un tipo de combustible inactivo." });
-
+        var departamentoId = req.DepartamentoId > 0 ? req.DepartamentoId :
+            await _db.Empleados.Where(e => e.Id == req.EmpleadoId).Select(e => e.DepartamentoId).SingleOrDefaultAsync(ct);
+        var error = await SolicitudRelationsValidator.ValidateAsync(_db, req.EmpleadoId, req.VehiculoId,
+            departamentoId, req.TipoCombustibleId, ct);
+        if (error is not null) return BadRequest(error);
         if (req.FechaFin.HasValue && req.FechaFin.Value <= req.FechaInicio)
             return BadRequest(new { code = "FECHA_FIN_INVALIDA", message = "FechaFin debe ser posterior a FechaInicio." });
 
@@ -84,7 +56,7 @@ public sealed class SolicitudesRecurrentesController : ControllerBase
             FechaFin = req.FechaFin,
             EmpleadoId = req.EmpleadoId,
             VehiculoId = req.VehiculoId,
-            DepartamentoId = empleado.DepartamentoId,
+            DepartamentoId = departamentoId,
             TipoCombustibleId = req.TipoCombustibleId,
             Activa = true
         };
@@ -121,14 +93,11 @@ public sealed class SolicitudesRecurrentesController : ControllerBase
         if (s.Activa)
             return Conflict(new { code = "YA_ACTIVA", message = "La plantilla ya está activa." });
 
-        if (!s.Empleado.Activo)
-            return Conflict(new { code = "EMPLEADO_INACTIVO", message = "No se puede activar la plantilla porque el empleado está inactivo." });
-        if (!s.Vehiculo.Activo)
-            return Conflict(new { code = "VEHICULO_INACTIVO", message = "No se puede activar la plantilla porque el vehículo está inactivo." });
-        if (!s.Departamento.Activo)
-            return Conflict(new { code = "DEPARTAMENTO_INACTIVO", message = "No se puede activar la plantilla porque el departamento está inactivo." });
-        if (!s.TipoCombustible.Activo)
-            return Conflict(new { code = "TIPO_COMBUSTIBLE_INACTIVO", message = "No se puede activar la plantilla porque el tipo de combustible está inactivo." });
+        var error = await SolicitudRelationsValidator.ValidateAsync(_db, s.EmpleadoId, s.VehiculoId,
+            s.DepartamentoId, s.TipoCombustibleId, ct);
+        if (error is not null) return BadRequest(error);
+        if (s.FechaFin < DateOnly.FromDateTime(DateTime.UtcNow))
+            return BadRequest(new { code = "PLANTILLA_VENCIDA", message = "La fecha de fin de la plantilla ya pasó. Cree una nueva plantilla." });
 
         s.Activa = true;
         await _db.SaveChangesAsync(ct);

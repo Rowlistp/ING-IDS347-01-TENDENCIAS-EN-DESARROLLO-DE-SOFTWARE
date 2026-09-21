@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useId, useRef } from 'react'
+import useDialogFocus from '../hooks/useDialogFocus'
 
 /**
  * ConfirmModal
@@ -28,6 +29,9 @@ export default function ConfirmModal({
   onClose,
   isLoading = false,
 }) {
+  const ref = useRef(null)
+  const titleId = useId()
+  useDialogFocus(ref, isOpen, () => { if (!isLoading) onClose?.() })
   if (!isOpen) return null
 
   const typeConfig = {
@@ -83,6 +87,9 @@ export default function ConfirmModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tinta/50 backdrop-blur-xs animate-fadeIn">
       <div
         className="w-full max-w-md rounded-2xl border border-acero/20 bg-white p-6 shadow-xl transition-all"
+        ref={ref}
+        tabIndex={-1}
+        aria-labelledby={titleId}
         role="dialog"
         aria-modal="true"
       >
@@ -93,7 +100,7 @@ export default function ConfirmModal({
             {currentConfig.icon}
           </div>
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-tanque leading-tight">{title}</h3>
+            <h3 id={titleId} className="text-base font-bold text-tanque leading-tight">{title}</h3>
             <div className="text-xs text-acero leading-relaxed">{message}</div>
           </div>
         </div>

@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+import useDialogFocus from '../hooks/useDialogFocus'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { canAccessRoute, ROLES } from '../utils/rbac'
@@ -212,6 +214,14 @@ const navGroups = [
 ]
 
 export default function Sidebar({ isOpen = false, onClose }) {
+  const dialogRef = useRef(null)
+  useDialogFocus(dialogRef, isOpen, onClose)
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 768px)')
+    const closeOnDesktop = () => { if (media.matches) onClose?.() }
+    media.addEventListener('change', closeOnDesktop)
+    return () => media.removeEventListener('change', closeOnDesktop)
+  }, [onClose])
   const { user } = useAuth()
   const isSolicitanteOnly =
     user?.roles?.includes(ROLES.SOLICITANTE) &&
@@ -244,9 +254,9 @@ export default function Sidebar({ isOpen = false, onClose }) {
         />
       )}
 
-      <aside
+      <aside ref={dialogRef} role={isOpen ? "dialog" : undefined} aria-modal={isOpen || undefined} aria-label="Menú principal" tabIndex={-1}
         className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-acero/30 bg-tanque transition-transform duration-200 ease-in-out md:static md:w-60 md:translate-x-0 ${
-          isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+          isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full invisible md:visible'
         }`}
       >
         {/* Logo / Branding y botón de cierre en móvil */}

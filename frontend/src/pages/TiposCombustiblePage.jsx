@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '../hooks/useAuth'
+import { ROLES } from '../utils/rbac'
 import ConfirmModal from '../components/ConfirmModal'
 import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
@@ -13,6 +15,8 @@ const EMPTY_FORM = {
 }
 
 export default function TiposCombustiblePage() {
+  const { user } = useAuth()
+  const esAdministrador = user?.roles?.includes(ROLES.ADMINISTRADOR)
   const [tipos, setTipos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -139,7 +143,7 @@ export default function TiposCombustiblePage() {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
           </svg>
-          + Nuevo tipo de combustible
+          Nuevo tipo de combustible
         </button>
       </div>
 
@@ -178,7 +182,7 @@ export default function TiposCombustiblePage() {
                 </svg>
                 Editar
               </button>
-              {t.activo && (
+              {t.activo && esAdministrador && (
                 <button
                   type="button"
                   onClick={() => handleDeactivate(t)}
@@ -215,7 +219,7 @@ export default function TiposCombustiblePage() {
 
             {editingId && (
               <label className="flex items-center gap-2 text-sm text-tinta">
-                <input type="checkbox" name="activo" checked={form.activo} onChange={handleFormChange} />
+                <input type="checkbox" name="activo" disabled={!esAdministrador && Boolean(tipos.find((item) => item.id === editingId)?.activo)} checked={form.activo} onChange={handleFormChange} />
                 Activo
               </label>
             )}

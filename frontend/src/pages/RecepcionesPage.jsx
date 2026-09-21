@@ -93,7 +93,7 @@ export default function RecepcionesPage() {
       errs.tanqueId = 'Debe seleccionar el tanque receptor.'
     }
 
-    const facturaErr = validateTextoMinimo(form.numeroFactura, 2, 'El número de factura o conduce')
+    const facturaErr = validateTextoMinimo(form.numeroFactura, 'El número de factura o conduce', 2)
     if (facturaErr) errs.numeroFactura = facturaErr
 
     const volErr = validateCapacidadCombustible(form.volumenRecibido, 'El volumen recibido')
@@ -227,7 +227,7 @@ export default function RecepcionesPage() {
           data={recepciones}
           keyField="id"
           onRowClick={(r) => openDetalle(r.id)}
-          emptyMessage="Sin recepciones registradas. Pulsa en '+ Registrar recepción' para ingresar combustible."
+          emptyMessage="Sin recepciones registradas. Pulsa en 'Registrar recepción' para ingresar combustible."
           columns={[
             {
               key: 'proveedorNombre',

@@ -168,7 +168,7 @@ public sealed class BusinessIntegrityValidationTests
         _db.Vehiculos.Add(veh);
         await _db.SaveChangesAsync();
 
-        var controller = new SolicitudesController(_db) { ControllerContext = CreateControllerContext() };
+        var controller = new SolicitudesController(_db, _audit) { ControllerContext = CreateControllerContext() };
         var req = new CreateSolicitudRequest(
             15m,
             emp.Id,
@@ -251,5 +251,98 @@ public sealed class BusinessIntegrityValidationTests
         var result = await controller.Ajustar(req, CancellationToken.None);
 
         Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
+    }
+
+    private async Task<Tanque> AddTankAsync(string name, bool activeFuel)
+    {
+        var tipo = new TipoCombustible { Nombre = name, Activo = activeFuel };
+        var tank = new Tanque { Identificacion = name, Capacidad = 100m, NivelCritico = 10m,
+            TipoCombustible = tipo, Activo = true };
+        _db.Tanques.Add(tank);
+        _db.Inventarios.Add(new Inventario { Tanque = tank, ExistenciaActual = 50m,
+            Disponibilidad = 50m, UltimaActualizacion = DateTime.UtcNow });
+        await _db.SaveChangesAsync();
+        return tank;
+    }
+
+    [TestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public async Task Transferir_CombustibleInactivo_NoModificaSaldosNiAuditoria(bool sourceInactive)
+    {
+        var source = await AddTankAsync("Origen", !sourceInactive);
+        var target = await AddTankAsync("Destino", sourceInactive);
+        var controller = new InventarioController(_db, _audit) { ControllerContext = CreateControllerContext() };
+        var response = await controller.Transferir(new TransferirRequest(source.Id, target.Id, 5m, "Validación"), default);
+        Assert.IsInstanceOfType<ConflictObjectResult>(response.Result);
+        var expectedCode = sourceInactive ? "TIPO_COMBUSTIBLE_ORIGEN_INACTIVO" : "TIPO_COMBUSTIBLE_DESTINO_INACTIVO";
+        StringAssert.Contains(((ConflictObjectResult)response.Result!).Value!.ToString(), expectedCode);
+        _db.ChangeTracker.Clear();
+        Assert.IsTrue(await _db.Inventarios.AllAsync(i => i.ExistenciaActual == 50m && i.Disponibilidad == 50m));
+        Assert.AreEqual(0, await _db.MovimientosInventario.CountAsync());
+        Assert.AreEqual(0, await _db.Auditorias.CountAsync());
+    }
+
+    [TestMethod]
+    public async Task Tanques_ListaYDetalle_ExponenCombustibleInactivo()
+    {
+        var tank = await AddTankAsync("Histórico", false);
+        var controller = new TanquesController(_db, _audit) { ControllerContext = CreateControllerContext() };
+        var list = (OkObjectResult)(await controller.GetAll(default)).Result!;
+        Assert.IsFalse(((List<TanqueDto>)list.Value!).Single().TipoCombustibleActivo);
+        var detail = (OkObjectResult)(await controller.GetById(tank.Id, default)).Result!;
+        Assert.IsFalse(((TanqueDto)detail.Value!).TipoCombustibleActivo);
+    }
+
+    [TestMethod]
+    [DataRow(false, false)]
+    [DataRow(true, false)]
+    [DataRow(false, true)]
+    [DataRow(true, true)]
+    public async Task Solicitudes_DepartamentoDerivado_ConservaCoherenciaDelVehiculo(bool recurrent, bool incompatibleVehicle)
+    {
+        var department = new Departamento { Nombre = "Empleado", Activo = true };
+        var vehicleDepartment = incompatibleVehicle ? new Departamento { Nombre = "Otro", Activo = true } : department;
+        var employee = new Empleado { Codigo = "DER-1", NombreCompleto = "Prueba", Cedula = "40200000009",
+            Cargo = "QA", Departamento = department, Activo = true };
+        var vehicle = new Vehiculo { Placa = "DER1234", Ficha = "DER1", Marca = "QA", Modelo = "QA",
+            Año = 2026, Tipo = "QA", CapacidadTanque = 20m, Departamento = vehicleDepartment, Activo = true };
+        var fuel = new TipoCombustible { Nombre = "Combustible", Activo = true };
+        _db.Empleados.Add(employee); _db.Vehiculos.Add(vehicle); _db.TiposCombustible.Add(fuel);
+        await _db.SaveChangesAsync();
+        if (recurrent)
+        {
+            var controller = new SolicitudesRecurrentesController(_db) { ControllerContext = CreateControllerContext() };
+            var result = await controller.Create(new CreateSolicitudRecurrenteRequest(5m, Periodicidad.Semanal,
+                DateOnly.FromDateTime(DateTime.UtcNow), null, employee.Id, vehicle.Id, 0, fuel.Id), default);
+            if (incompatibleVehicle)
+            {
+                Assert.IsInstanceOfType<BadRequestObjectResult>(result.Result);
+                Assert.AreEqual(0, await _db.SolicitudesRecurrentes.CountAsync());
+            }
+            else
+            {
+                Assert.IsInstanceOfType<CreatedAtActionResult>(result.Result);
+                Assert.AreEqual(department.Id, (await _db.SolicitudesRecurrentes.SingleAsync()).DepartamentoId);
+            }
+        }
+        else
+        {
+            var controller = new SolicitudesController(_db, _audit) { ControllerContext = CreateControllerContext() };
+            var result = await controller.Create(new CreateSolicitudRequest(5m, employee.Id, vehicle.Id, 0,
+                fuel.Id, DateTime.UtcNow.AddDays(7)), default);
+            if (incompatibleVehicle)
+            {
+                Assert.IsInstanceOfType<BadRequestObjectResult>(result.Result);
+                Assert.AreEqual(0, await _db.SolicitudesCombustible.CountAsync());
+                Assert.AreEqual(0, await _db.Auditorias.CountAsync());
+            }
+            else
+            {
+                Assert.IsInstanceOfType<CreatedAtActionResult>(result.Result);
+                Assert.AreEqual(department.Id, (await _db.SolicitudesCombustible.SingleAsync()).DepartamentoId);
+                Assert.AreEqual(1, await _db.Auditorias.CountAsync());
+            }
+        }
     }
 }

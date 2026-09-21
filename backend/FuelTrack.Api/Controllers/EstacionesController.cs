@@ -66,6 +66,9 @@ public sealed class EstacionesController(AppDbContext db) : ControllerBase
                 message = "No se puede desactivar la estación porque tiene despachos asociados."
             });
 
+        if (entity.Activo && !req.Activo && !User.IsInRole(Roles.Administrador))
+            return StatusCode(StatusCodes.Status403Forbidden, new { code = "DESACTIVACION_NO_AUTORIZADA", message = "Solo un administrador puede desactivar este registro." });
+
         entity.Nombre = req.Nombre;
         entity.Activo = req.Activo;
         await db.SaveChangesAsync(ct);

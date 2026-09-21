@@ -5,6 +5,7 @@ import PageContainer from '../components/PageContainer'
 import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
 import { useAuth } from '../hooks/useAuth'
+import { useDepartamentos } from '../hooks/useDepartamentos'
 import { useEmpleados } from '../hooks/useEmpleados'
 import { useVehiculos } from '../hooks/useVehiculos'
 import apiRequest from '../services/api'
@@ -22,7 +23,7 @@ const EMPTY_FORM = {
   departamentoId: '',
   tipoCombustibleId: '',
   cantidadSolicitada: '',
-  diasVigencia: '',
+  diasVigencia: '7',
 }
 
 export default function SolicitudesPage() {
@@ -32,6 +33,7 @@ export default function SolicitudesPage() {
   const [solicitudes, setSolicitudes] = useState([])
   const empleados = useEmpleados()
   const vehiculos = useVehiculos()
+  const departamentos = useDepartamentos()
   const [tiposCombustible, setTipos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -77,7 +79,14 @@ export default function SolicitudesPage() {
   }, [])
 
   function handleFormChange(e) {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    if (name === 'empleadoId') {
+      const empleado = empleados.find((item) => item.id === Number(value))
+      setForm((f) => ({ ...f, empleadoId: value, departamentoId: empleado ? String(empleado.departamentoId) : '', vehiculoId: '' }))
+    } else {
+      setForm((f) => ({ ...f, [name]: value }))
+    }
+
   }
 
   function openCreate() {
@@ -93,9 +102,11 @@ export default function SolicitudesPage() {
   const requiredFieldsFilled =
     (isSolicitanteOnly ? Boolean(miEmpleado) : Boolean(form.empleadoId)) &&
     form.vehiculoId &&
+    (isSolicitanteOnly ? Boolean(miEmpleado) : Boolean(form.departamentoId)) &&
     form.tipoCombustibleId &&
     form.cantidadSolicitada &&
     form.diasVigencia
+
 
   async function handleCreate(e) {
     e.preventDefault()
@@ -103,10 +114,7 @@ export default function SolicitudesPage() {
     setFormError(null)
 
     const empId = isSolicitanteOnly && miEmpleado ? miEmpleado.id : Number(form.empleadoId)
-    const emp = isSolicitanteOnly && miEmpleado
-      ? miEmpleado
-      : empleados.find((e) => String(e.id) === String(form.empleadoId))
-    const deptoId = emp ? emp.departamentoId : 0
+    const deptoId = isSolicitanteOnly && miEmpleado ? miEmpleado.departamentoId : Number(form.departamentoId)
 
     try {
       await apiRequest('/solicitudes', {
@@ -174,7 +182,7 @@ export default function SolicitudesPage() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
             </svg>
-            + Nueva solicitud
+            Nueva solicitud
           </button>
         </div>
       )}
@@ -358,7 +366,7 @@ export default function SolicitudesPage() {
                 ) : (
                   <>
                     <option value="">Seleccionar...</option>
-                    {empleados.map((e) => (
+                    {empleados.filter((e) => e.activo).map((e) => (
                       <option key={e.id} value={e.id}>
                         {e.nombreCompleto} ({e.codigo}) {e.usuarioNombre ? `[Usuario: ${e.usuarioNombre}]` : ''}
                       </option>
@@ -367,17 +375,6 @@ export default function SolicitudesPage() {
                 )}
               </select>
             </Field>
-
-            {/* Departamento derivado del empleado — solo lectura */}
-            {(() => {
-              const empId = isSolicitanteOnly && miEmpleado ? miEmpleado.id : form.empleadoId
-              const emp = empleados.find((e) => String(e.id) === String(empId)) || miEmpleado
-              return emp ? (
-                <div className="rounded-md border border-tanque/20 bg-tanque/5 px-3 py-2 text-sm text-tanque">
-                  <span className="font-medium">Departamento: </span>{emp.departamentoNombre}
-                </div>
-              ) : null
-            })()}
 
             <Field label="Vehículo" required>
               <select
@@ -388,9 +385,31 @@ export default function SolicitudesPage() {
                 className={inputCls}
               >
                 <option value="">Seleccionar...</option>
-                {vehiculos.map((v) => (
+                {vehiculos.filter((v) => v.activo && v.departamentoId === Number(form.departamentoId)).map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.placa} — {v.marca} {v.modelo} ({v.ficha})
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field
+              label="Departamento"
+              required
+              hint={form.vehiculoId ? "Empleado, vehículo y departamento deben coincidir" : undefined}
+            >
+              <select
+                name="departamentoId"
+                disabled
+                value={form.departamentoId}
+                onChange={handleFormChange}
+                required
+                className={inputCls}
+              >
+                <option value="">Seleccionar...</option>
+                {departamentos.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.nombre}
                   </option>
                 ))}
               </select>
@@ -413,7 +432,7 @@ export default function SolicitudesPage() {
               </select>
             </Field>
 
-            <Field label="Cantidad solicitada (galones)" required hint="Rango permitido: 1 a 500 galones">
+            <Field label="Cantidad solicitada (galones)" required hint="Indica el volumen requerido en galones">
               <input
                 type="number"
                 name="cantidadSolicitada"
@@ -426,7 +445,7 @@ export default function SolicitudesPage() {
               />
             </Field>
 
-            <Field label="Días de vigencia">
+            <Field label="Días de vigencia" required>
               <input
                 type="number"
                 name="diasVigencia"
@@ -434,7 +453,8 @@ export default function SolicitudesPage() {
                 onChange={handleFormChange}
                 min="1"
                 max="365"
-                placeholder="7 (por defecto)"
+                required
+                placeholder="7"
                 className={inputCls}
               />
             </Field>

@@ -153,13 +153,13 @@ if (!departamento.Activo)
             return Conflict(new { code = "FICHA_DUPLICADA",
                 message = "La ficha ya está registrada." });
 
-        if (entity.Activo && req.Activo == false && await _db.SolicitudesCombustible.AnyAsync(s => s.VehiculoId == id &&
-            (s.Estado == EstadoSolicitud.Pendiente || s.Estado == EstadoSolicitud.Aprobada), ct))
-            return Conflict(new
-            {
-                code = "VEHICULO_CON_SOLICITUDES_ACTIVAS",
-                message = "No se puede desactivar el vehículo porque tiene solicitudes pendientes o aprobadas."
-            });
+        if (entity.Activo && req.Activo == false)
+        {
+            if (!User.IsInRole(Roles.Administrador))
+                return StatusCode(StatusCodes.Status403Forbidden, new { code = "DESACTIVACION_NO_AUTORIZADA", message = "Solo un administrador puede desactivar este registro." });
+            var conflict = await ValidateDeactivationAsync(id, ct);
+            if (conflict is not null) return conflict;
+        }
 
         entity.Placa           = req.Placa;
         entity.Ficha           = req.Ficha;
@@ -195,13 +195,8 @@ if (!departamento.Activo)
         var entity = await _db.Vehiculos.FindAsync([id], ct);
         if (entity is null) return NotFound();
 
-        if (await _db.SolicitudesCombustible.AnyAsync(s => s.VehiculoId == id &&
-            (s.Estado == EstadoSolicitud.Pendiente || s.Estado == EstadoSolicitud.Aprobada), ct))
-            return Conflict(new
-            {
-                code = "VEHICULO_CON_SOLICITUDES_ACTIVAS",
-                message = "No se puede desactivar el vehículo porque tiene solicitudes pendientes o aprobadas."
-            });
+        var conflict = await ValidateDeactivationAsync(id, ct);
+        if (conflict is not null) return conflict;
 
         entity.Activo = false;
         await _db.SaveChangesAsync(ct);
@@ -210,5 +205,18 @@ if (!departamento.Activo)
             HttpContext.Connection.RemoteIpAddress?.ToString(), null, ct);
 
         return NoContent();
+    }
+
+    private async Task<ConflictObjectResult?> ValidateDeactivationAsync(int id, CancellationToken ct)
+    {
+        if (await _db.SolicitudesCombustible.AnyAsync(s => s.VehiculoId == id &&
+            (s.Estado == EstadoSolicitud.Pendiente || s.Estado == EstadoSolicitud.Aprobada), ct))
+            return Conflict(new
+            {
+                code = "VEHICULO_CON_SOLICITUDES_ACTIVAS",
+                message = "No se puede desactivar el vehículo porque tiene solicitudes pendientes o aprobadas."
+            });
+
+        return null;
     }
 }

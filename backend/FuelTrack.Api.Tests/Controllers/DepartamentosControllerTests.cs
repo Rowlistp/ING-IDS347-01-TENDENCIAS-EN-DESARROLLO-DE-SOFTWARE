@@ -40,7 +40,7 @@ public sealed class DepartamentosControllerTests
                 HttpContext = new DefaultHttpContext
                 {
                     User = new ClaimsPrincipal(new ClaimsIdentity(
-                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString())], "Test"))
+                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString()), new Claim(ClaimTypes.Role, "Administrador")], "Test"))
                 }
             }
         };
@@ -281,5 +281,37 @@ public sealed class DepartamentosControllerTests
 
         var result = await _controller.Deactivate(dep.Id, CancellationToken.None);
         Assert.IsInstanceOfType<ConflictObjectResult>(result);
+    }
+
+    [TestMethod]
+    public async Task Update_SupervisorNoPuedeDesactivar_NiModificarDatosEnRechazo()
+    {
+        var dep = new Departamento { Nombre = "Activo", Activo = true };
+        _db.Departamentos.Add(dep);
+        await _db.SaveChangesAsync();
+        _controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, _usuarioActorId.ToString()),
+            new Claim(ClaimTypes.Role, "Supervisor")], "Test"));
+        var result = await _controller.Update(dep.Id, new SaveDepartamentoRequest("No guardar", false), default);
+        Assert.AreEqual(403, ((ObjectResult)result.Result!).StatusCode);
+        await _db.Entry(dep).ReloadAsync();
+        Assert.IsTrue(dep.Activo);
+        Assert.AreEqual("Activo", dep.Nombre);
+    }
+
+    [TestMethod]
+    public async Task Update_AdministradorNoPuedeDesactivar_ConEmpleadoActivo()
+    {
+        var dep = new Departamento { Nombre = "TI", Activo = true };
+        _db.Departamentos.Add(dep);
+        await _db.SaveChangesAsync();
+        _db.Empleados.Add(new Empleado { Codigo = "E", NombreCompleto = "Empleado", Cedula = "C",
+            Cargo = "QA", Correo = "qa@test.com", Telefono = "8090000000", DepartamentoId = dep.Id, Activo = true });
+        await _db.SaveChangesAsync();
+        var result = await _controller.Update(dep.Id, new SaveDepartamentoRequest("No guardar", false), default);
+        Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
+        await _db.Entry(dep).ReloadAsync();
+        Assert.IsTrue(dep.Activo);
+        Assert.AreEqual("TI", dep.Nombre);
     }
 }

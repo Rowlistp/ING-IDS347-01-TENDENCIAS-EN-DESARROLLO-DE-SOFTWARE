@@ -36,26 +36,35 @@ class Ticket {
   final String state;
   final double quantity;
   final DateTime expires;
-  String get stateLabel => const {
-    'Creado': 'Creado',
-    'Enviado': 'Enviado',
-    'Pendiente': 'Pendiente',
-    'ProximoAVencer': 'Próximo a vencer',
-    'Vencido': 'Vencido',
-    'Consumido': 'Consumido',
-    'Anulado': 'Anulado',
-  }[state] ?? state;
+  String get stateLabel =>
+      const {
+        'Creado': 'Creado',
+        'Enviado': 'Enviado',
+        'Pendiente': 'Pendiente',
+        'ProximoAVencer': 'Próximo a vencer',
+        'Vencido': 'Vencido',
+        'Consumido': 'Consumido',
+        'Anulado': 'Anulado',
+      }[state] ??
+      state;
   factory Ticket.fromJson(Map<String, dynamic> j) => Ticket(
     id: j['id'] as String,
-    code: j['codigo'] as String,
-    employee: j['empleadoNombre'] as String,
+    code:
+        j['codigo'] as String? ??
+        '${j['prefijo'] ?? 'TCK'}-${DateTime.tryParse(j['fechaCreacion'] as String? ?? '')?.year ?? DateTime.now().year}-${(j['numeroSecuencial'] as int? ?? 1).toString().padLeft(6, '0')}',
+    employee: j['empleadoNombre'] as String? ?? 'Desconocido',
     department: j['departamentoNombre'] as String? ?? '',
-    vehicle: j['vehiculoPlaca'] as String,
-    fuel: j['tipoCombustibleNombre'] as String,
-    fuelId: j['tipoCombustibleId'] as int,
-    quantity: (j['cantidadAutorizada'] as num).toDouble(),
-    expires: DateTime.parse(j['fechaVencimiento'] as String),
-    state: j['estado'] as String,
+    vehicle:
+        j['vehiculoDescripcion'] as String? ??
+        j['vehiculoPlaca'] as String? ??
+        'Vehículo Asignado',
+    fuel: j['tipoCombustibleNombre'] as String? ?? 'Combustible',
+    fuelId: j['tipoCombustibleId'] as int? ?? 1,
+    quantity: (j['cantidadAutorizada'] as num?)?.toDouble() ?? 0.0,
+    expires:
+        DateTime.tryParse(j['fechaVencimiento'] as String? ?? '') ??
+        DateTime.now().add(const Duration(days: 7)),
+    state: j['estado'] as String? ?? 'Creado',
   );
 }
 

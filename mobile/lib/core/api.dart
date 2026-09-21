@@ -77,10 +77,9 @@ class HttpFuelTrackApi implements FuelTrackApi {
       .toList();
   @override
   Future<Ticket> validate(String payload) async {
-    final data = await request(
-      '/tickets/validar',
-      data: {'qrPayload': payload},
-    ) as Map<String, dynamic>;
+    final data =
+        await request('/tickets/validar', data: {'qrPayload': payload})
+            as Map<String, dynamic>;
     if (data['valido'] != true) {
       throw ApiFailure.fromCode(data['codigo'] as String);
     }
@@ -90,7 +89,12 @@ class HttpFuelTrackApi implements FuelTrackApi {
   @override
   Future<List<DispatchOption>> tanks(int fuelId) async =>
       (await request('/tanques') as List)
-          .where((j) => j['activo'] == true && j['tipoCombustibleId'] == fuelId)
+          .where(
+            (j) =>
+                j['activo'] == true &&
+                j['tipoCombustibleActivo'] != false &&
+                j['tipoCombustibleId'] == fuelId,
+          )
           .map(
             (j) => DispatchOption(
               j['id'] as int,
@@ -115,16 +119,17 @@ class HttpFuelTrackApi implements FuelTrackApi {
     String notes,
   ) async => DispatchResult.fromJson(
     await request(
-      '/despachos',
-      data: {
-        'ticketId': ticket.id,
-        'qrPayload': payload,
-        'tanqueId': tank,
-        'estacionId': station,
-        'galonesServidos': gallons,
-        'observaciones': notes,
-      },
-    ) as Map<String, dynamic>,
+          '/despachos',
+          data: {
+            'ticketId': ticket.id,
+            'qrPayload': payload,
+            'tanqueId': tank,
+            'estacionId': station,
+            'galonesServidos': gallons,
+            'observaciones': notes,
+          },
+        )
+        as Map<String, dynamic>,
   );
   @override
   Future<List<DispatchResult>> dispatches(String ticketId) async =>

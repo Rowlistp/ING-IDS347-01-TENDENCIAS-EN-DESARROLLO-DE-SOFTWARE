@@ -73,6 +73,14 @@ public sealed class DepartamentosController : ControllerBase
 
         var entity = await _db.Departamentos.FindAsync([id], ct);
         if (entity is null) return NotFound();
+        if (entity.Activo && req.Activo == false)
+        {
+            if (!User.IsInRole(Roles.Administrador))
+                return StatusCode(StatusCodes.Status403Forbidden, new { code = "DESACTIVACION_NO_AUTORIZADA", message = "Solo un administrador puede desactivar este registro." });
+            var conflict = await ValidateDeactivationAsync(id, ct);
+            if (conflict is not null) return conflict;
+        }
+
         entity.Nombre = req.Nombre;
         entity.Activo = req.Activo;
         await _db.SaveChangesAsync(ct);
@@ -92,6 +100,20 @@ public sealed class DepartamentosController : ControllerBase
         var entity = await _db.Departamentos.FindAsync([id], ct);
         if (entity is null) return NotFound();
 
+        var conflict = await ValidateDeactivationAsync(id, ct);
+        if (conflict is not null) return conflict;
+
+        entity.Activo = false;
+        await _db.SaveChangesAsync(ct);
+
+        await _audit.WriteAsync("DEPARTAMENTO_DESACTIVADO", "Departamento", entity.Id.ToString(), usuarioId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(), null, ct);
+
+        return NoContent();
+    }
+
+    private async Task<ConflictObjectResult?> ValidateDeactivationAsync(int id, CancellationToken ct)
+    {
         if (await _db.Empleados.AnyAsync(e => e.DepartamentoId == id && e.Activo, ct))
             return Conflict(new
             {
@@ -106,12 +128,6 @@ public sealed class DepartamentosController : ControllerBase
                 message = "No se puede desactivar el departamento porque tiene vehículos activos asignados."
             });
 
-        entity.Activo = false;
-        await _db.SaveChangesAsync(ct);
-
-        await _audit.WriteAsync("DEPARTAMENTO_DESACTIVADO", "Departamento", entity.Id.ToString(), usuarioId,
-            HttpContext.Connection.RemoteIpAddress?.ToString(), null, ct);
-
-        return NoContent();
+        return null;
     }
 }

@@ -554,7 +554,7 @@ export default function EmpleadosPage() {
 
             {editingId && (
               <label className="flex items-center gap-2 text-sm text-tinta cursor-pointer">
-                <input type="checkbox" name="activo" checked={form.activo} onChange={handleFormChange} className="rounded text-tanque focus:ring-tanque" />
+                <input type="checkbox" name="activo" disabled={!esAdministrador && Boolean(empleados.find((item) => item.id === editingId)?.activo)} checked={form.activo} onChange={handleFormChange} className="rounded text-tanque focus:ring-tanque" />
                 <span>Empleado activo en la organización</span>
               </label>
             )}

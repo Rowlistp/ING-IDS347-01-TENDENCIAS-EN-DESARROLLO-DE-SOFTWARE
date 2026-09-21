@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
@@ -68,25 +68,83 @@ export default function TicketsPage() {
   const [anulando, setAnulando] = useState(false)
   const [anularError, setAnularError] = useState(null)
 
-  async function cargarTickets() {
-    try {
-      const data = await apiRequest('/tickets')
-      setTickets(data)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
+  const [qrModalTicket, setQrModalTicket] = useState(null)
+  const [qrImageUrl, setQrImageUrl] = useState(null)
+  const [loadingQr, setLoadingQr] = useState(false)
+
+  const [qrError, setQrError] = useState(null)
+  const [qrAttempt, setQrAttempt] = useState(0)
+  const [lastSync, setLastSync] = useState(null)
+  const listRequest = useRef(null)
+  const qrId = qrModalTicket?.id
+  const qrUsable = qrModalTicket && ESTADOS_NO_TERMINALES.includes(qrModalTicket.estado)
+
+  function handleVerQr(ticket) {
+    setDetailTicket(null)
+    setQrImageUrl(null)
+    setQrError(null)
+    setLoadingQr(true)
+    setQrModalTicket(ticket)
   }
 
   useEffect(() => {
-    let cancelado = false
-    apiRequest('/tickets')
-      .then((data) => { if (!cancelado) setTickets(data) })
-      .catch((e) => { if (!cancelado) setError(e.message) })
-      .finally(() => { if (!cancelado) setLoading(false) })
-    return () => { cancelado = true }
+    if (!qrId || !qrUsable) return
+    const controller = new AbortController()
+    let url
+    apiDownload(`/tickets/${qrId}/qr`, { signal: controller.signal })
+      .then(({ blob }) => {
+        if (controller.signal.aborted) return
+        if (blob.type !== 'image/png') throw new Error('No se recibió la imagen del QR firmado.')
+        url = URL.createObjectURL(blob)
+        setQrImageUrl(url)
+      })
+      .catch((e) => { if (!controller.signal.aborted) setQrError(e.message) })
+      .finally(() => { if (!controller.signal.aborted) setLoadingQr(false) })
+    return () => {
+      controller.abort()
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [qrId, qrUsable, qrAttempt])
+
+  const cargarTickets = useCallback(async (silent = false) => {
+    if (silent && listRequest.current) return
+    listRequest.current?.abort()
+    const controller = new AbortController()
+    listRequest.current = controller
+    try {
+      const data = await apiRequest('/tickets', { signal: controller.signal })
+      if (controller.signal.aborted) return
+      setTickets(data)
+      setQrModalTicket((prev) => prev ? data.find((t) => t.id === prev.id) ?? null : null)
+      setDetailTicket((prev) => prev ? data.find((t) => t.id === prev.id) ?? null : null)
+      setError(null)
+      setLastSync(new Date())
+    } catch (e) {
+      if (!controller.signal.aborted) setError(e.message)
+    } finally {
+      if (listRequest.current === controller) {
+        listRequest.current = null
+        if (!controller.signal.aborted) setLoading(false)
+      }
+    }
   }, [])
+
+  useEffect(() => {
+    let active = true
+    Promise.resolve().then(() => { if (active) cargarTickets() })
+    const refresh = () => { if (document.visibilityState === 'visible') cargarTickets(true) }
+    const timer = setInterval(refresh, 3000)
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      active = false
+      clearInterval(timer)
+      listRequest.current?.abort()
+      listRequest.current = null
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [cargarTickets])
 
   const nextSequenceNumber = useMemo(() => {
     if (!tickets || tickets.length === 0) return 1
@@ -146,12 +204,12 @@ export default function TicketsPage() {
     setActionError(null)
     setSendingId(ticket.id)
     try {
-      await apiRequest(`/tickets/${ticket.id}/enviar`, { method: 'POST' })
-      setSuccessMessage(`Ticket ${ticket.codigo} enviado con éxito por los canales de notificación configurados.`)
+      const result = await apiRequest(`/tickets/${ticket.id}/enviar`, { method: 'POST' })
+      setSuccessMessage(`Ticket ${ticket.codigo} registrado para envío. Consulta el estado de cada canal en Notificaciones.`)
       setTimeout(() => setSuccessMessage(null), 6000)
       await cargarTickets()
       if (detailTicket && detailTicket.id === ticket.id) {
-        setDetailTicket((prev) => prev ? { ...prev, estado: 'Enviado' } : null)
+        setDetailTicket((prev) => prev ? { ...prev, ...result.ticket } : null)
       }
     } catch (e) {
       setActionError(e.message)
@@ -196,12 +254,27 @@ export default function TicketsPage() {
       )}
 
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
+        <div className="flex items-center gap-3">
           {!loading && !error && (
             <span className="text-sm text-acero">
               Total emitidos: <strong className="text-tinta font-mono">{tickets.length}</strong>
             </span>
           )}
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-exito/10 text-exito border border-exito/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-exito animate-pulse"></span>
+            {error ? 'Sin actualizar' : lastSync ? 'Actualización automática' : 'Conectando…'}
+          </span>
+          <button
+            type="button"
+            onClick={() => cargarTickets(false)}
+            className="p-1.5 rounded-md text-acero hover:text-tinta hover:bg-acero/10 transition-colors"
+            title="Actualizar tickets manualmente"
+            aria-label="Actualizar tickets manualmente"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
         </div>
         {canEmit && (
           <button
@@ -309,6 +382,28 @@ export default function TicketsPage() {
                   <circle cx="12" cy="12" r="3" />
                 </svg>
                 Ver
+              </button>
+              <button
+                type="button"
+                onClick={() => handleVerQr(t)}
+                className="inline-flex min-h-[38px] items-center gap-1 rounded-md border border-amber-500/40 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-500 hover:text-white transition-colors shadow-xs"
+                title="Ver código QR oficial para escanear con el celular"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="5" height="5" x="3" y="3" rx="1" />
+                  <rect width="5" height="5" x="16" y="3" rx="1" />
+                  <rect width="5" height="5" x="3" y="16" rx="1" />
+                  <path d="M21 16h-3a2 2 0 0 0-2 2v3" />
+                  <path d="M21 21v.01" />
+                  <path d="M12 7v3a2 2 0 0 1-2 2H7" />
+                  <path d="M3 12h.01" />
+                  <path d="M12 3h.01" />
+                  <path d="M12 16v.01" />
+                  <path d="M16 12h1" />
+                  <path d="M21 12v.01" />
+                  <path d="M12 21v-1" />
+                </svg>
+                QR
               </button>
               <button
                 type="button"
@@ -529,6 +624,7 @@ export default function TicketsPage() {
                     type="button"
                     onClick={() => {
                       setAnularModal({ id: detailTicket.id })
+                      setDetailTicket(null)
                       setMotivoAnulacion('')
                       setAnularError(null)
                     }}
@@ -561,6 +657,28 @@ export default function TicketsPage() {
 
                 <button
                   type="button"
+                  onClick={() => handleVerQr(detailTicket)}
+                  className="flex min-h-[38px] items-center gap-1.5 rounded-md border border-amber-500/50 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-500 hover:text-white transition-colors shadow-xs"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="5" height="5" x="3" y="3" rx="1" />
+                    <rect width="5" height="5" x="16" y="3" rx="1" />
+                    <rect width="5" height="5" x="3" y="16" rx="1" />
+                    <path d="M21 16h-3a2 2 0 0 0-2 2v3" />
+                    <path d="M21 21v.01" />
+                    <path d="M12 7v3a2 2 0 0 1-2 2H7" />
+                    <path d="M3 12h.01" />
+                    <path d="M12 3h.01" />
+                    <path d="M12 16v.01" />
+                    <path d="M16 12h1" />
+                    <path d="M21 12v.01" />
+                    <path d="M12 21v-1" />
+                  </svg>
+                  Ver Código QR
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => handleDescargarPdf(detailTicket)}
                   disabled={downloadingId === detailTicket.id}
                   className="flex min-h-[38px] items-center gap-1.5 rounded-md bg-tanque px-4 py-2 text-xs font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
@@ -573,6 +691,87 @@ export default function TicketsPage() {
                   {downloadingId === detailTicket.id ? 'Descargando…' : 'Descargar PDF oficial'}
                 </button>
               </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {qrModalTicket && (
+        <Modal title={`Código QR Oficial — ${qrModalTicket.codigo}`} onClose={() => setQrModalTicket(null)}>
+          <div className="space-y-4 text-center">
+            {qrModalTicket.estado === 'Consumido' ? (
+              <div className="rounded-md border border-exito/60 bg-exito/15 p-4 text-center">
+                <div className="flex items-center justify-center gap-2 text-exito font-bold text-base mb-1">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>¡Ticket Consumido con Éxito!</span>
+                </div>
+                <p className="text-xs text-acero">El combustible ya fue despachado y registrado en el inventario.</p>
+              </div>
+            ) : !qrUsable ? (
+              <p role="status" className="text-peligro">Este ticket está {ESTADO_LABEL[qrModalTicket.estado]?.toLowerCase()}. No puede utilizarse para despachar.</p>
+            ) : (
+              <div className="rounded-md border border-exito/30 bg-exito/5 p-3 text-xs text-acero flex items-center justify-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-exito animate-pulse"></span>
+                <span>Apunta la cámara de la aplicación móvil a este código para validar y despachar combustible.</span>
+              </div>
+            )}
+
+            {qrUsable && <div className="inline-block max-w-full p-4 bg-white rounded-lg border-2 border-dashed border-acero/30 shadow-md">
+              {loadingQr ? (
+                <div className="w-64 h-64 flex flex-col items-center justify-center gap-2 text-acero">
+                  <div className="w-8 h-8 border-2 border-tanque border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-xs">Cargando código QR oficial...</span>
+                </div>
+              ) : qrImageUrl ? (
+                <img
+                  src={qrImageUrl}
+                  alt={`QR ${qrModalTicket.codigo}`}
+                  className="w-64 max-w-full aspect-square object-contain mx-auto"
+                />
+              ) : (
+                <div role="alert" className="max-w-64 space-y-3 text-sm text-peligro">
+                  <p>{qrError || 'No se pudo cargar el código QR firmado.'}</p>
+                  <button type="button" className="min-h-[44px] underline" onClick={() => { setLoadingQr(true); setQrError(null); setQrImageUrl(null); setQrAttempt((n) => n + 1) }}>Reintentar QR</button>
+                </div>
+              )}
+            </div>}
+
+            <div className="bg-fondo p-3.5 rounded-md border border-acero/20 text-xs text-left grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-acero block">Conductor</span>
+                <strong className="text-tinta font-semibold">{qrModalTicket.empleadoNombre}</strong>
+              </div>
+              <div>
+                <span className="text-acero block">Vehículo / Placa</span>
+                <strong className="text-tinta font-mono font-semibold">{qrModalTicket.vehiculoPlaca}</strong>
+              </div>
+              <div>
+                <span className="text-acero block">Combustible</span>
+                <strong className="text-tinta font-semibold">{qrModalTicket.tipoCombustibleNombre}</strong>
+              </div>
+              <div>
+                <span className="text-acero block">Autorizado</span>
+                <strong className="text-tanque font-mono font-bold">{qrModalTicket.cantidadAutorizada} gal</strong>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-acero/20">
+              <button
+                type="button"
+                onClick={() => setQrModalTicket(null)}
+                className="rounded-md border px-4 py-2 text-sm text-tinta hover:bg-fondo"
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDescargarPdf(qrModalTicket)}
+                className="rounded-md bg-tanque px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+              >
+                Descargar PDF
+              </button>
             </div>
           </div>
         </Modal>

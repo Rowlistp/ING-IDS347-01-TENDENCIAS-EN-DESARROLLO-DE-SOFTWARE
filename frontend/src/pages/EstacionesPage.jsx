@@ -87,7 +87,7 @@ export default function EstacionesPage() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    const nombreErr = validateTextoMinimo(form.nombre, 3, 'El nombre de la estación')
+    const nombreErr = validateTextoMinimo(form.nombre, 'El nombre de la estación', 3)
     if (nombreErr) {
       setErrors({ nombre: nombreErr })
       return
