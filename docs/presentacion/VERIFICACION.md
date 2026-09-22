@@ -4,7 +4,7 @@ Fecha: 22/09/2026. Base revisada: main `c2deae0`. La PR #65 anterior ya está in
 
 | Verificación actual | Resultado |
 |---|---|
-| Servidor, PostgreSQL, Mailpit y Keycloak | 458 aprobadas, 0 fallidas y 0 omitidas |
+| Servidor, PostgreSQL, Mailpit y Keycloak | 463 aprobadas, 0 fallidas y 0 omitidas |
 | Web | 6 pruebas aprobadas; análisis y compilación correctos |
 | Navegador | 156 comprobaciones aprobadas: 152 de ocho perfiles × 19 rutas, plantilla histórica, PWA sin conexión y dashboard móvil/escritorio |
 | Errores de aplicación durante ese recorrido web | 0 excepciones JavaScript y 0 respuestas 5xx |
@@ -36,3 +36,7 @@ La evidencia detallada de comandos, TRX, capturas y resultados se conserva en `q
 SMS con Android físico/SIM y recepción real, entrega de correo en el entorno definitivo, lector/cámara físicos, login Keycloak nativo y distribución Android firmada. La infraestructura productiva debe acreditar TLS 1.3, AES-256, respaldo/restauración y disponibilidad. Persisten avisos no bloqueantes de tamaño del bundle y futura migración Kotlin del plugin de cámara.
 
 Ver [matriz SRS](MATRIZ-SRS.md), [guion](GUION-DEMO.md) y [Textbee](../29-TEXTBEE.md). No se declara cumplimiento productivo del 100%.
+
+## Ampliación para despliegue
+
+Contenedor completo probado con PostgreSQL: inicio de sesión, catálogos, solicitud, aprobación, emisión y PDF. Se corrigió el rechazo de fechas con offset por PostgreSQL y se comprobaron cinco variantes de zona horaria. La API normaliza las fechas JSON a UTC; entradas sin zona usan UTC. Suite completa: 463 aprobadas, ninguna omitida.

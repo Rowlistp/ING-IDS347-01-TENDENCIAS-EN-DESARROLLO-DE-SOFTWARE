@@ -61,3 +61,5 @@ Estos documentos amplían y organizan el SRS; cuando incluyen una propuesta téc
 - [Guion de demostración](presentacion/GUION-DEMO.md)
 - [Matriz completa SRS](presentacion/MATRIZ-SRS.md)
 - [Configuración Textbee](29-TEXTBEE.md)
+
+- [Demo gratuita, iPhone/SIM y comunicaciones](30-DEMO-GRATUITA.md)

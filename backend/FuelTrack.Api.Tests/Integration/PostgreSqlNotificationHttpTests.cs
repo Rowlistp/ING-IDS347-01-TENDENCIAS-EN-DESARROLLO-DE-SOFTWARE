@@ -62,7 +62,7 @@ public sealed partial class PostgreSqlSecurityTests
             var source = fixture.Ticket.Ticket;
             var requestResponse = await api.PostAsJsonAsync("/api/v1/solicitudes", new { cantidadSolicitada = 10,
                 empleadoId = source.EmpleadoId, vehiculoId = source.VehiculoId, departamentoId = source.DepartamentoId,
-                tipoCombustibleId = source.TipoCombustibleId, fechaVencimiento = DateTime.UtcNow.AddDays(1) });
+                tipoCombustibleId = source.TipoCombustibleId, fechaVencimiento = DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-ddTHH:mm:ss+00:00") });
             Assert.AreEqual(HttpStatusCode.Created, requestResponse.StatusCode);
             using var requestJson = JsonDocument.Parse(await requestResponse.Content.ReadAsStringAsync());
             var requestId = requestJson.RootElement.GetProperty("id").GetInt32();

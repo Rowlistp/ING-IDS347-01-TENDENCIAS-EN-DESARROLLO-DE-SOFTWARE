@@ -1,0 +1,33 @@
+# Demo only: free services sleep. Use an external PostgreSQL connection (e.g. Neon).
+services:
+  - type: web
+    name: fueltrack-demo
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_HTTP_PORTS
+        value: '8080'
+      - key: Database__MigrateOnStartup
+        value: 'true'
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Jwt__Key
+        generateValue: true
+      - key: Tickets__SigningPrivateKeyPkcs8Base64
+        sync: false
+      - key: Tickets__SigningPublicKeySpkiBase64
+        sync: false
+      - key: BootstrapAdmin__Username
+        sync: false
+      - key: BootstrapAdmin__Password
+        sync: false
+      - key: Notifications__WorkerEnabled
+        value: 'false'
+      - key: Notifications__Smtp__Enabled
+        value: 'false'
+      - key: Notifications__Sms__Enabled
+        value: 'false'

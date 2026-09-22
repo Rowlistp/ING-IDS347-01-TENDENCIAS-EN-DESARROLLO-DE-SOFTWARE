@@ -251,7 +251,11 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers()
-    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        o.JsonSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -290,6 +294,20 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+// The deployment image includes the SPA. API-only installations keep their current behavior.
+var serveWeb = File.Exists(Path.Combine(app.Environment.WebRootPath ?? "wwwroot", "index.html"));
+if (serveWeb)
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        OnPrepareResponse = context =>
+        {
+            if (context.File.Name is "index.html" or "sw.js")
+                context.Context.Response.Headers.CacheControl = "no-cache";
+        }
+    });
+}
 app.Use(async (context, next) =>
 {
     try { await next(context); }
@@ -304,10 +322,20 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
+if (serveWeb)
+{
+    // Unknown API paths must never return the SPA as a successful response.
+    app.Map("/api/{**path}", () => Results.NotFound());
+    app.MapFallbackToFile("index.html");
+}
 
 if (!app.Environment.IsEnvironment("Testing"))
 {
     using var scope = app.Services.CreateScope();
+    // Opt-in for a single-instance demonstration; production migrations are an explicit release step.
+    if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+        await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
     var seeder = scope.ServiceProvider.GetRequiredService<SecuritySeedService>();
     await seeder.SeedAsync();
 }
