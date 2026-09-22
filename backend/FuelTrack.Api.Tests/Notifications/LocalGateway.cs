@@ -10,6 +10,7 @@ internal sealed class LocalGateway : IAsyncDisposable
     private readonly HttpListener listener = new();
     private readonly Task loop;
     public readonly ConcurrentQueue<(string Body, string? Auth, string? Idempotency)> Requests = new();
+    public string AuthHeaderName { get; set; } = "Authorization";
     public int Status { get; set; } = 200;
     public string Response { get; set; } = "{\"messageId\":\"local-test-id\"}";
     public int DelayMs { get; set; }
@@ -28,7 +29,7 @@ internal sealed class LocalGateway : IAsyncDisposable
             {
                 var context = await listener.GetContextAsync();
                 using var reader = new StreamReader(context.Request.InputStream);
-                Requests.Enqueue((await reader.ReadToEndAsync(), context.Request.Headers["Authorization"], context.Request.Headers["Idempotency-Key"]));
+                Requests.Enqueue((await reader.ReadToEndAsync(), context.Request.Headers[AuthHeaderName], context.Request.Headers["Idempotency-Key"]));
                 if (DelayMs > 0) await Task.Delay(DelayMs);
                 try
                 {

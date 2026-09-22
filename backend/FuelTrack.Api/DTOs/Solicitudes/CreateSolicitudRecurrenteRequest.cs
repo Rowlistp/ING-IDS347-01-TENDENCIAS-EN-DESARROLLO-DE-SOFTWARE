@@ -11,5 +11,6 @@ public record CreateSolicitudRecurrenteRequest(
     [Required] int EmpleadoId,
     [Required] int VehiculoId,
     [Required] int DepartamentoId,
-    [Required] int TipoCombustibleId
+    [Required] int TipoCombustibleId,
+    bool UsarConsumoHistorico = false
 );

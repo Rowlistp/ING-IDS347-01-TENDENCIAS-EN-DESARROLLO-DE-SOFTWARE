@@ -23,10 +23,6 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final session = ref.watch(sessionProvider);
-    final isConnected = session.user != null;
-    final activeUrl = ref.read(configProvider).apiUrl;
-
     if (gate.payload == null) {
       return Scaffold(
         backgroundColor: Colors.black,
@@ -43,109 +39,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             ),
           ],
         ),
-        body: Stack(
-          children: [
-            ref.watch(scannerProvider)(scan),
-            Positioned(
-              top: 12,
-              left: 16,
-              right: 16,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _mostrarConfigServidor,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isConnected
-                          ? const Color(0xDD064E3B)
-                          : const Color(0xDD7C2D12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isConnected
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFFF97316),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          isConnected
-                              ? Icons.wifi_rounded
-                              : Icons.wifi_off_rounded,
-                          color: isConnected
-                              ? const Color(0xFF34D399)
-                              : const Color(0xFFFDBA74),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                isConnected
-                                    ? 'Sesión iniciada'
-                                    : 'Inicia sesión',
-                                style: TextStyle(
-                                  color: isConnected
-                                      ? const Color(0xFFD1FAE5)
-                                      : const Color(0xFFFFEDD5),
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              Text(
-                                activeUrl,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 10,
-                                  fontFamily: 'monospace',
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'Ver servidor',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+        body: ref.watch(scannerProvider)(scan),
       );
     }
 

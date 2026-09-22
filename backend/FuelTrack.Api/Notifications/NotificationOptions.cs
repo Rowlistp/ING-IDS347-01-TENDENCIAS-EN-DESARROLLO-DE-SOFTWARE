@@ -35,7 +35,9 @@ public sealed class NotificationOptions
             (!Smtp.Enabled || (Smtp.Host.Length > 0 && Smtp.Port is > 0 and <= 65535 && ValidEmail(Smtp.FromAddress) &&
                 !(Smtp.UseSsl && Smtp.StartTls) && ((Smtp.UseSsl || Smtp.StartTls) || (localEnvironment && AllowInsecureLocalTransport && Uri.CheckHostName(Smtp.Host) != UriHostNameType.Unknown && new[] { "localhost", "127.0.0.1", "::1" }.Contains(Smtp.Host))) &&
                 (Smtp.Username.Length == 0 || Smtp.Password.Length > 0))) &&
-            (!Sms.Enabled || (Url(Sms.BaseUrl) && Url(PublicBaseUrl) && Sms.ApiKey.Length > 0 &&
+            (!Sms.Enabled || (Sms.Provider is "Generic" or "Textbee" &&
+                (Sms.Provider != "Textbee" || Regex.IsMatch(Sms.DeviceId, "^[a-fA-F0-9]{24}$")) &&
+                Url(Sms.BaseUrl) && Url(PublicBaseUrl) && Sms.ApiKey.Length > 0 &&
                 Regex.IsMatch(Sms.AuthHeaderName, "^[A-Za-z][A-Za-z0-9-]{0,63}$") &&
                 !new[] { "host", "content-length", "content-type", "idempotency-key" }.Contains(Sms.AuthHeaderName.ToLowerInvariant()) &&
                 !Sms.ApiKey.Contains('\r') && !Sms.ApiKey.Contains('\n'))) &&
@@ -88,6 +90,8 @@ public sealed class SmtpOptions
 }
 public sealed class SmsOptions
 {
+    public string Provider { get; set; } = "Generic";
+    public string DeviceId { get; set; } = "";
     public bool Enabled { get; set; }
     public string BaseUrl { get; set; } = "";
     public string Sender { get; set; } = "FuelTrack";

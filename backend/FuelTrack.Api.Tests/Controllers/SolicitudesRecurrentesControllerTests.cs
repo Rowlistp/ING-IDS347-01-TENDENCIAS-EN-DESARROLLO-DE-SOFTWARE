@@ -323,4 +323,46 @@ public sealed class SolicitudesRecurrentesControllerTests
         await EjecutarServicioAsync();
         Assert.AreEqual(1, await _db.SolicitudesCombustible.CountAsync());
     }
+    [TestMethod]
+    public async Task Historico_SinDespachos_NoInventaCantidad()
+    {
+        var (e, v, d, t) = await CrearDependenciasAsync();
+        await _controller.Create(BuildRequest(e, v, d, t) with { UsarConsumoHistorico = true }, default);
+        await EjecutarServicioAsync();
+        Assert.AreEqual(0, await _db.SolicitudesCombustible.CountAsync());
+        Assert.IsNull((await _db.SolicitudesRecurrentes.AsNoTracking().SingleAsync()).UltimaEjecucion);
+    }
+
+    [TestMethod]
+    [DataRow(50, 30)] [DataRow(20, 20)] [DataRow(100, 30)]
+    public async Task Historico_PromedioAcotado_SinDuplicadosYConAuditoria(int limite, int esperado)
+    {
+        var (e, v, d, t) = await CrearDependenciasAsync();
+        var actor = new Usuario { NombreUsuario = "historico", PasswordHash = "fixture", Activo = true };
+        var estacion = new Estacion { Nombre = "Histórica", Activo = true };
+        var tanque = new Tanque { Identificacion = "HIST", Capacidad = 1000, TipoCombustibleId = t, Activo = true };
+        _db.AddRange(actor, estacion, tanque); await _db.SaveChangesAsync();
+        foreach (var (gal, dias) in new[] { (20m, 1), (40m, 90), (900m, 91), (800m, 0) })
+        {
+            var ticket = new Ticket
+            {
+                Id = Guid.NewGuid(), NumeroSecuencial = dias + 1, Prefijo = "HIST",
+                FechaCreacion = DateTime.UtcNow.AddDays(-dias), FechaVencimiento = DateTime.UtcNow.AddDays(1),
+                Estado = EstadoTicket.Consumido, CantidadAutorizada = gal,
+                EmpleadoId = e, VehiculoId = v, DepartamentoId = d, TipoCombustibleId = t,
+                HashSeguridad = "fixture", TokenValidacion = "fixture", FirmaDigital = "fixture", QrCodePng = []
+            };
+            _db.Tickets.Add(ticket);
+            _db.Despachos.Add(new Despacho { Ticket = ticket, TanqueId = tanque.Id, OperadorId = actor.Id,
+                EstacionId = estacion.Id, GalonesServidos = gal, Fecha = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-dias) });
+        }
+        await _db.SaveChangesAsync();
+        await _controller.Create(BuildRequest(e, v, d, t) with { UsarConsumoHistorico = true, CantidadSolicitada = limite }, default);
+        await EjecutarServicioAsync(); await EjecutarServicioAsync();
+        var solicitud = await _db.SolicitudesCombustible.SingleAsync();
+        Assert.AreEqual((decimal)esperado, solicitud.CantidadSolicitada);
+        Assert.AreEqual(EstadoSolicitud.Pendiente, solicitud.Estado);
+        Assert.AreEqual(1, await _db.Auditorias.CountAsync(a => a.Evento == "SOLICITUD_AUTOMATICA_CREADA"));
+    }
+
 }
