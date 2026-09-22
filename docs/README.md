@@ -63,3 +63,5 @@ Estos documentos amplían y organizan el SRS; cuando incluyen una propuesta téc
 - [Configuración Textbee](29-TEXTBEE.md)
 
 - [Demo gratuita, iPhone/SIM y comunicaciones](30-DEMO-GRATUITA.md)
+
+- [Ejecución local independiente y Android](31-EJECUCION-LOCAL.md)

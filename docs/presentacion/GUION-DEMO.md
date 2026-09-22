@@ -4,14 +4,14 @@
 
 La presentación editable tiene 19 diapositivas y notas para el expositor. No hay una duración obligatoria. Recorrido sugerido: explicar el problema y la solución, enseñar el flujo y sus controles, presentar tecnología y trabajo del equipo, ejecutar la demo y cerrar con la matriz de aceptación. Si el profesor interrumpe, responder usando el producto y retomar el paso pendiente.
 
-Reparto sugerido para seis integrantes (ajustable, no asigna nombres): apertura y necesidades; roles y solicitudes; tickets y seguridad; móvil y despacho; inventario, reportes y cierre; tecnología, calidad y pendientes de implantación. Una sola persona controla el equipo durante cada tramo de la demo.
+Reparto sugerido para seis integrantes (ajustable, no asigna nombres): apertura y necesidades; roles y solicitudes; tickets y seguridad; móvil y despacho; inventario, reportes y cierre; tecnología, calidad y preguntas del cliente. Una sola persona controla el equipo durante cada tramo de la demo.
 
 Frase de apertura: «FuelTrack permite solicitar, autorizar y despachar combustible, y después comprobar qué pasó con cada ticket y con el inventario. Vamos a mostrar una operación completa con distintos roles».
 
 ## Preparación del ensayo
 
 - Usar la base de demostración con datos ficticios. No activar notificaciones hacia números o correos ajenos al equipo.
-- Web local: http://127.0.0.1:5175. API local: http://127.0.0.1:5300/api/v1. En Android, configurar el mismo servidor y usar la conexión inversa USB/emulador explicada en mobile/README.md.
+- Web local: http://127.0.0.1:5351. API local: http://127.0.0.1:5351/api/v1. En Android, configurar el mismo servidor y usar la conexión inversa USB/emulador explicada en mobile/README.md.
 - Tener cuentas Administrador, Solicitante, Supervisor, Despachador y Auditor. Las credenciales van en un documento privado del equipo, nunca en diapositivas.
 - Tener un empleado activo y asociado al solicitante, vehículo del mismo departamento, combustible activo, estación activa y tanque compatible con al menos 10 galones disponibles.
 - Anotar la existencia y disponibilidad antes de empezar. Crear un ticket nuevo para cada ensayo; un ticket consumido no se reutiliza.

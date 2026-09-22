@@ -29,7 +29,7 @@ Revisión: 22/09/2026. Fuente: PDF original SRS Ticket Digitales v1.0 (agosto 20
 | RF-21 | Trazabilidad | Validado local | Eventos de creación, modificación, despacho, ajustes, anulación y acceso. Se añade auditoría de plantillas y solicitudes automáticas. Jobs identificados como PROGRAMADOR, sin IP de usuario ficticia. | AuditService; controladores; SolicitudRecurrenteService |
 | RF-22 | Dashboard | Validado local | Inventario, despachos, tickets activos/vencidos y consumo por departamento/vehículo. Se corrige distribución de tarjetas en escritorio. | DashboardServiceTests; DashboardPage; revisión visual |
 | RF-23 | Notificaciones | Parcial | Reglas de próximo vencimiento, vencido, inventario bajo, fallo de integración y ajustes. Entrega externa requiere proveedor/destinatarios y validación real. | NotificationRuleService; suite F9 |
-| RF-24 | API REST | Validado local | Servicios de tickets, inventario, despacho y reportes, con permisos y validaciones comunes. | 458 pruebas backend incluidas integración real y Keycloak |
+| RF-24 | API REST | Validado local | Servicios de tickets, inventario, despacho y reportes, con permisos y validaciones comunes. | 463 pruebas backend incluidas integración real y Keycloak |
 | RS-01 | Autenticación y sesiones | Validado local | Usuario/contraseña, renovación, revocación y Keycloak. MFA es opcional en el SRS; no se presenta como probado. | Suite Auth/Keycloak sin omitidas |
 | RS-02 | Autorización RBAC | Validado local | Roles y propiedad de recursos; revisión de ocho perfiles y 19 rutas. | Suite seguridad; matriz de navegador |
 | RS-03 | TLS 1.3 y AES-256 | Parcial | TLS 1.3 verificado en la demo pública (TLS_AES_256_GCM_SHA384). Falta acreditar AES-256 en reposo para BD y copias. | Demo Render/Neon; comprobación TLS 22/09/2026 |
@@ -41,7 +41,7 @@ Revisión: 22/09/2026. Fuente: PDF original SRS Ticket Digitales v1.0 (agosto 20
 | ARQ-BD | Base de datos | Validado local | PostgreSQL y Entity Framework Core. | AppDbContext; suite con PostgreSQL 16 |
 | ARQ-PWA | Web instalable | Validado local | Manifest, iconos y service worker de aviso sin conexión. No cachea API ni tickets, no despacha offline. Instalación final depende de HTTPS y navegador compatible. | frontend/public/manifest.webmanifest y sw.js; prueba navegador |
 | ARQ-ANDROID | Android y lectores | Parcial | Flutter y APK QA ejecutado en emulador. Pendientes lector físico opcional, cámara real y firma/distribución productiva. | mobile; evidencia Android |
-| OBJ-24H | Disponibilidad 24/7 | Pendiente externo | Requiere hosting, supervisión, recuperación y medición. La ejecución local no acredita 24/7. | Sin infraestructura productiva validada |
+| OBJ-24H | Disponibilidad 24/7 | Pendiente externo | Requiere hosting, supervisión, recuperación y medición. La ejecución local no acredita 24/7; Render Free tampoco lo garantiza por su suspensión automática. | Sin infraestructura productiva validada |
 | CA-01 | Tickets únicos | Validado local | Sin duplicidad y pruebas concurrentes. | Suite PostgreSQL de tickets |
 | CA-02 | Solo QR válido | Validado local | Rechaza identificadores sin firma, alteración, expiración y reuso. | TicketQr/Dispatch tests |
 | CA-03 | Inventario actualizado | Validado local | Despacho y saldo se confirman juntos; interfaz consulta datos vigentes. | Integración real PostgreSQL |

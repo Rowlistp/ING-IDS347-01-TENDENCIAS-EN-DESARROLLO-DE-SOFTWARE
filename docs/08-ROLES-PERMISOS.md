@@ -51,22 +51,9 @@ PostgreSQL después de resolver al usuario activo.
 | **Reportes** (`/reportes`) | Sí | Sí | No | Lectura/Desc | Lectura/Desc | No |
 | **Notificaciones** (`/notificaciones`) | Sí | Sí | No | Lectura | No | No |
 
-> Corregido 2026-09-18 tras contrastar contra `docs/SRS.md` (documento fuente)
-> y el código real, porque `CierresDiariosController`/`ReportesController`
-> (implementados el 06 y 17-sep) habían divergido de esta matriz sin
-> actualizarla:
-> - **Cierre diario**: el SRS (sección 3.3, Actores) asigna "Cierre diario"
->   explícitamente como responsabilidad del Despachador. El código lo excluía
->   por completo — eso era un bug del backend, no de esta tabla. Ya se corrigió
->   `CierresDiariosController` para incluir a Despachador (lectura y creación).
-> - **Reportes**: el SRS no le da a Supervisor ninguna responsabilidad de
->   reportes (solo Auditor: "Exportar reportes"), así que restringir
->   `ReportesController` a Admin/Auditor sí calza con el documento fuente. Se
->   corrige la tabla, no el código.
->
-> Antes de asumir cualquier otra celda de esta matriz como vigente, verificar
-> contra el SRS y el `[Authorize]` real del controller: es un documento de
-> planificación y ya divergió del código al menos en estos casos.
+La tabla describe módulos de la web. Los selectores mínimos de la API pueden tener permisos adicionales necesarios para otro flujo, sin acceso a la ficha completa. Un usuario con varios roles reúne sus permisos; Solicitante conserva el filtro por propietario cuando no dispone de un rol de gestión o consulta general.
+
+Revisado contra `frontend/src/utils/rbac.js` y los controladores actuales: Reportes permite Administrador, Supervisor, Auditor y Consulta. Despachador puede crear cierres y consultar exclusivamente sus despachos cuando no dispone de otro rol con consulta general.
 
 ## 4. Principio de mínimo privilegio
 

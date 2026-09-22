@@ -55,3 +55,9 @@ https://fueltrack-intec-demo.onrender.com — Render Free y PostgreSQL 18 en Neo
 - Túnel temporal retirado; la demo de Render no depende del equipo local.
 
 La pausa automática de Render Free y sus límites impiden prometer disponibilidad productiva. Correo externo y SMS se declaran por separado según la evidencia de entrega.
+
+## Independencia local y preparación de exposición
+
+22/09/2026: `compose.local.yaml` compila el código y arranca web/API en 5351 con PostgreSQL 16 y claves aleatorias propias. `infra/local/setup.py` conserva las claves si se repite. Se verificaron seis roles, solicitud, aprobación, emisión y PDF; 16 comprobaciones de API adicionales; despacho local de 2 galones, rechazo de reutilización, inventario 50 → 48 y persistencia tras reiniciar. El inventario de la versión alojada no cambió. No se usó Neon para esta base local.
+
+La presentación coloca integrantes en la diapositiva 2 y conserva 19 diapositivas con diagramas y logo. Se retiraron las menciones al iPhone y al alojamiento opcional; el estado real de cumplimiento permanece en la matriz, no se declara 100%. La imagen privada contiene 12 cuentas verificadas, seis roles por entorno.

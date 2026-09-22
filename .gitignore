@@ -1,3 +1,5 @@
 .worktrees/
 graphify-out/
 *.sql
+.env.local
+**/__pycache__/
