@@ -32,7 +32,7 @@ Revisión: 22/09/2026. Fuente: PDF original SRS Ticket Digitales v1.0 (agosto 20
 | RF-24 | API REST | Validado local | Servicios de tickets, inventario, despacho y reportes, con permisos y validaciones comunes. | 458 pruebas backend incluidas integración real y Keycloak |
 | RS-01 | Autenticación y sesiones | Validado local | Usuario/contraseña, renovación, revocación y Keycloak. MFA es opcional en el SRS; no se presenta como probado. | Suite Auth/Keycloak sin omitidas |
 | RS-02 | Autorización RBAC | Validado local | Roles y propiedad de recursos; revisión de ocho perfiles y 19 rutas. | Suite seguridad; matriz de navegador |
-| RS-03 | TLS 1.3 y AES-256 | Pendiente externo | Requiere desplegar y verificar TLS 1.3 y cifrado AES-256 de discos/BD y copias. El entorno HTTP local no lo acredita. | Sin evidencia del despliegue productivo |
+| RS-03 | TLS 1.3 y AES-256 | Parcial | TLS 1.3 verificado en la demo pública (TLS_AES_256_GCM_SHA384). Falta acreditar AES-256 en reposo para BD y copias. | Demo Render/Neon; comprobación TLS 22/09/2026 |
 | RS-04 | Seguridad QR | Validado local | ECDSA P-256, SHA-256 y token de validación. | TicketQrService; pruebas de firma y manipulación |
 | RS-05 | OAuth 2.0 y JWT | Validado local | Keycloak/PKCE y validación de tokens del servidor probados. Flujo nativo Android de producción permanece en RF-13. | Suite Keycloak y seguridad 22/09/2026 |
 | RS-06 | Auditoría inalterable | Validado local | Protección append-only en PostgreSQL y eventos del negocio. No equivale a impedir acciones de un superusuario de infraestructura. | Migración ProtectAuditAppendOnly; pruebas PostgreSQL |
@@ -62,4 +62,4 @@ Revisión: 22/09/2026. Fuente: PDF original SRS Ticket Digitales v1.0 (agosto 20
 
 Servidor: `bash backend/scripts/run-full-integration-tests.sh`. Web: `npm test`, `npm run lint`, `npm run build`. Móvil: `flutter analyze`, `flutter test`, APK QA. La nueva migración `AddHistoricalRecurringRequests` añade un booleano con valor false, conservando las plantillas existentes en modo fijo.
 
-La guía de exposición y ensayo está en [GUION-DEMO.md](GUION-DEMO.md). Los detalles de pruebas anteriores permanecen en [verificación de integración](../qa/06-VERIFICACION-INTEGRACION.md), diferenciados de la ejecución actual.
+La guía de exposición y ensayo está en [GUION-DEMO.md](Guion-demostracion.md). Los detalles de pruebas anteriores permanecen en verificación de integración del repositorio (docs/qa/06-VERIFICACION-INTEGRACION.md), diferenciados de la ejecución actual.

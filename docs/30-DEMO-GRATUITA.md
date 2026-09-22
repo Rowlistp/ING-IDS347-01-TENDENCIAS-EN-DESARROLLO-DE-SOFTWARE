@@ -2,6 +2,14 @@
 
 Revisión de fuentes oficiales: 22/09/2026. El objetivo es una demostración académica con datos ficticios. Los planes gratuitos tienen límites y no acreditan disponibilidad 24/7.
 
+## Demo publicada
+
+URL: https://fueltrack-intec-demo.onrender.com. Render Free y Neon Free, región Ohio. Versión de aplicación `7abc474`, publicada el 22/09/2026. Usuarios y claves se entregan por archivo privado y no forman parte del repositorio.
+
+Se verificaron login de cinco roles, permisos, solicitud/aprobación/ticket/PDF, bloqueo de sobrecapacidad y QR inválido, cola vacía y TLS 1.3. El APK de demostración online usa esta URL; continúa siendo una compilación debug. La demo incluye solo datos ficticios.
+
+El correo SMTP local se probó con Mailpit. La cuenta Brevo ya verificó teléfono; la integración externa y recepción real siguen pendientes. SMS real requiere Android físico con SIM. No se declara cumplimiento productivo total.
+
 ## Opciones revisadas
 
 | Opción | Uso | Límite relevante |

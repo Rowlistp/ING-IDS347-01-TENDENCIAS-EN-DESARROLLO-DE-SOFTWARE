@@ -35,8 +35,23 @@ La evidencia detallada de comandos, TRX, capturas y resultados se conserva en `q
 
 SMS con Android físico/SIM y recepción real, entrega de correo en el entorno definitivo, lector/cámara físicos, login Keycloak nativo y distribución Android firmada. La infraestructura productiva debe acreditar TLS 1.3, AES-256, respaldo/restauración y disponibilidad. Persisten avisos no bloqueantes de tamaño del bundle y futura migración Kotlin del plugin de cámara.
 
-Ver [matriz SRS](MATRIZ-SRS.md), [guion](GUION-DEMO.md) y [Textbee](../29-TEXTBEE.md). No se declara cumplimiento productivo del 100%.
+Ver [matriz SRS](Matriz-SRS.md), [guion](Guion-demostracion.md) y [Textbee](Textbee-configuracion.md). No se declara cumplimiento productivo del 100%.
 
 ## Ampliación para despliegue
 
 Contenedor completo probado con PostgreSQL: inicio de sesión, catálogos, solicitud, aprobación, emisión y PDF. Se corrigió el rechazo de fechas con offset por PostgreSQL y se comprobaron cinco variantes de zona horaria. La API normaliza las fechas JSON a UTC; entradas sin zona usan UTC. Suite completa: 463 aprobadas, ninguna omitida.
+
+## Demo pública verificada
+
+https://fueltrack-intec-demo.onrender.com — Render Free y PostgreSQL 18 en Neon, región Ohio. Commit desplegado `7abc474`. Se corrigió la configuración privada de conexión y Render confirma «Live».
+
+- Creación de cuatro cuentas adicionales y catálogos ficticios; inventario inicial 50 galones.
+- Solicitud, aprobación, emisión y descarga de PDF ejecutadas contra el servicio público.
+- 15 comprobaciones adicionales: login de cinco roles, 401 sin sesión, 403 para roles sin permisos, 409 por sobrecapacidad y QR inválido, PDF y cola de notificaciones vacía.
+- Navegador real: login, dashboard, inventario y tickets; sin avisos ni errores de consola en ese recorrido.
+- Conexión pública comprobada con TLS 1.3 y TLS_AES_256_GCM_SHA384. Esto no acredita cifrado de discos ni copias.
+- APK `FuelTrack-Demo-Online.apk` construido con la URL HTTPS pública. No equivale a validación en teléfono físico.
+- Tres comprobaciones de GitHub de la PR #68 aprobadas: servidor, notificaciones y Android.
+- Túnel temporal retirado; la demo de Render no depende del equipo local.
+
+La pausa automática de Render Free y sus límites impiden prometer disponibilidad productiva. Correo externo y SMS se declaran por separado según la evidencia de entrega.
