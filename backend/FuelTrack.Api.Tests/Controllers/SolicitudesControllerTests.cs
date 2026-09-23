@@ -5,6 +5,7 @@ using FuelTrack.Api.DTOs.Solicitudes;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Security;
+using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
@@ -29,10 +30,12 @@ public sealed class SolicitudesControllerTests
             .Options;
         _db = new AppDbContext(options);
         await _db.Database.EnsureCreatedAsync();
+        _db.Usuarios.Add(new Usuario { Id = 1, NombreUsuario = "admin-regression", Activo = true });
+        await _db.SaveChangesAsync();
         _controller = CrearController(1, Roles.Administrador);
     }
 
-    private SolicitudesController CrearController(int usuarioId, string rol) => new(_db)
+    private SolicitudesController CrearController(int usuarioId, string rol) => new(_db, new AuditService(_db))
     {
         ControllerContext = new ControllerContext
         {
@@ -563,5 +566,79 @@ public sealed class SolicitudesControllerTests
         var objResult = result.Result as ObjectResult;
         Assert.IsNotNull(objResult);
         Assert.AreEqual(StatusCodes.Status403Forbidden, objResult.StatusCode);
+    }
+
+    [TestMethod]
+    public async Task Create_RechazaDepartamentoIncompatibleSinGuardarNiAuditar()
+    {
+        var (empleado, vehiculo, depto, tipo) = await CrearDependenciasAsync();
+        var otro = new Departamento { Nombre = "Otro", Activo = true };
+        _db.Departamentos.Add(otro);
+        await _db.SaveChangesAsync();
+        var result = await _controller.Create(new CreateSolicitudRequest(10m, empleado.Id, vehiculo.Id, otro.Id, tipo.Id, null), default);
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result.Result);
+        Assert.AreEqual(0, await _db.SolicitudesCombustible.CountAsync());
+        Assert.AreEqual(0, await _db.Auditorias.CountAsync());
+    }
+
+    [TestMethod]
+    public async Task Aprobar_RevalidaRelacionesYCantidadYAuditaUnicamenteExito()
+    {
+        var (empleado, vehiculo, depto, tipo) = await CrearDependenciasAsync();
+        await _controller.Create(new CreateSolicitudRequest(10m, empleado.Id, vehiculo.Id, depto.Id, tipo.Id, null), default);
+        var solicitud = await _db.SolicitudesCombustible.SingleAsync();
+        var otro = new Departamento { Nombre = "Reasignado", Activo = true };
+        _db.Departamentos.Add(otro);
+        vehiculo.Departamento = otro;
+        await _db.SaveChangesAsync();
+        Assert.IsInstanceOfType<ConflictObjectResult>((await _controller.Aprobar(solicitud.Id, new AprobarSolicitudRequest(10m), default)).Result);
+        vehiculo.DepartamentoId = depto.Id;
+        await _db.SaveChangesAsync();
+        Assert.IsInstanceOfType<BadRequestObjectResult>((await _controller.Aprobar(solicitud.Id, new AprobarSolicitudRequest(11m), default)).Result);
+        Assert.AreEqual(EstadoSolicitud.Pendiente, solicitud.Estado);
+        Assert.AreEqual(1, await _db.Auditorias.CountAsync());
+        Assert.IsInstanceOfType<OkObjectResult>((await _controller.Aprobar(solicitud.Id, new AprobarSolicitudRequest(10m), default)).Result);
+        Assert.IsTrue(await _db.Auditorias.AnyAsync(a => a.Evento == "SOLICITUD_APROBADA" && a.UsuarioId == 1 && a.IdentificadorRegistro == solicitud.Id.ToString()));
+    }
+
+    [TestMethod]
+    public async Task Rechazar_AuditaActorYNoPermiteDobleProceso()
+    {
+        var (empleado, vehiculo, depto, tipo) = await CrearDependenciasAsync();
+        await _controller.Create(new CreateSolicitudRequest(10m, empleado.Id, vehiculo.Id, depto.Id, tipo.Id, null), default);
+        var solicitud = await _db.SolicitudesCombustible.SingleAsync();
+        Assert.IsInstanceOfType<OkObjectResult>((await _controller.Rechazar(solicitud.Id, new RechazarSolicitudRequest("Sin disponibilidad"), default)).Result);
+        Assert.IsInstanceOfType<ConflictObjectResult>((await _controller.Aprobar(solicitud.Id, new AprobarSolicitudRequest(10m), default)).Result);
+        Assert.AreEqual(2, await _db.Auditorias.CountAsync());
+        Assert.IsTrue(await _db.Auditorias.AnyAsync(a => a.Evento == "SOLICITUD_RECHAZADA" && a.UsuarioId == 1));
+    }
+
+    [TestMethod]
+    public async Task Create_FalloAuditoriaRevierteSolicitud()
+    {
+        var (empleado, vehiculo, depto, tipo) = await CrearDependenciasAsync();
+        var controller = CrearController(99999, Roles.Administrador);
+        await Assert.ThrowsExactlyAsync<DbUpdateException>(() => controller.Create(new CreateSolicitudRequest(10m, empleado.Id, vehiculo.Id, depto.Id, tipo.Id, null), default));
+        _db.ChangeTracker.Clear();
+        Assert.AreEqual(0, await _db.SolicitudesCombustible.CountAsync());
+        Assert.AreEqual(0, await _db.Auditorias.CountAsync());
+    }
+
+
+    [TestMethod]
+    public async Task DecisionConLecturaObsoleta_NoSobrescribeLaDecisionDeOtroOperador()
+    {
+        var (empleado, vehiculo, depto, tipo) = await CrearDependenciasAsync();
+        await _controller.Create(new CreateSolicitudRequest(10m, empleado.Id, vehiculo.Id, depto.Id, tipo.Id, null), default);
+        var solicitud = await _db.SolicitudesCombustible.SingleAsync();
+        // Otra conexión decide después de la lectura; el objeto local sigue Pendiente.
+        await _db.SolicitudesCombustible.Where(s => s.Id == solicitud.Id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(s => s.Estado, EstadoSolicitud.Rechazada));
+        var result = await _controller.Aprobar(solicitud.Id, new AprobarSolicitudRequest(10m), default);
+        Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
+        await _db.Entry(solicitud).ReloadAsync();
+        Assert.AreEqual(EstadoSolicitud.Rechazada, solicitud.Estado);
+        Assert.IsNull(solicitud.CantidadAutorizada);
+        Assert.AreEqual(1, await _db.Auditorias.CountAsync());
     }
 }

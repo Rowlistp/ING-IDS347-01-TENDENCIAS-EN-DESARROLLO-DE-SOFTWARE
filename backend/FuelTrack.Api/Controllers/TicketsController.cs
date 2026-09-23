@@ -145,8 +145,16 @@ public sealed class TicketsController(TicketService tickets) : ControllerBase
         if (!TryGetCurrentUserId(out var actorId))
             return Unauthorized();
 
-        var png = await tickets.GetQrCodePngAsync(id, cancellationToken, OwnerFilter(actorId));
-        return png is null ? NotFound() : File(png, "image/png");
+        Response.Headers.CacheControl = "no-store";
+        try
+        {
+            var png = await tickets.GetQrCodePngAsync(id, cancellationToken, OwnerFilter(actorId));
+            return png is null ? NotFound() : File(png, "image/png");
+        }
+        catch (TicketDomainException exception)
+        {
+            return StatusCode(exception.StatusCode, new { code = exception.Code, message = exception.Message });
+        }
     }
 
     private ActionResult<T> DomainError<T>(TicketDomainException exception)

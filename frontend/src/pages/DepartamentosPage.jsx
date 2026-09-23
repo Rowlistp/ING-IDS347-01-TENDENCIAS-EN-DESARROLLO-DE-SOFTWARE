@@ -83,7 +83,7 @@ export default function DepartamentosPage() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    const nombreErr = validateTextoMinimo(form.nombre, 3, 'El nombre del departamento')
+    const nombreErr = validateTextoMinimo(form.nombre, 'El nombre del departamento', 3)
     if (nombreErr) {
       setErrors({ nombre: nombreErr })
       return
@@ -229,7 +229,7 @@ export default function DepartamentosPage() {
 
             {editingId && (
               <label className="flex items-center gap-2 text-sm text-tinta">
-                <input type="checkbox" name="activo" checked={form.activo} onChange={handleFormChange} />
+                <input type="checkbox" name="activo" disabled={!esAdministrador && Boolean(departamentos.find((item) => item.id === editingId)?.activo)} checked={form.activo} onChange={handleFormChange} />
                 Activo
               </label>
             )}

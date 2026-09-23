@@ -82,6 +82,14 @@ public sealed class ProveedoresController : ControllerBase
             return Conflict(new { code = "RNC_DUPLICADO",
                 message = "Ya existe un proveedor con ese RNC." });
 
+        if (entity.Activo && req.Activo == false)
+        {
+            if (!User.IsInRole(Roles.Administrador))
+                return StatusCode(StatusCodes.Status403Forbidden, new { code = "DESACTIVACION_NO_AUTORIZADA", message = "Solo un administrador puede desactivar este registro." });
+            var conflict = await ValidateDeactivationAsync(id, ct);
+            if (conflict is not null) return conflict;
+        }
+
         entity.Rnc = req.Rnc;
         entity.Nombre = req.Nombre;
         entity.Activo = req.Activo;
@@ -102,12 +110,8 @@ public sealed class ProveedoresController : ControllerBase
         var entity = await _db.Proveedores.FindAsync([id], ct);
         if (entity is null) return NotFound();
 
-        if (await _db.RecepcionesCombustible.AnyAsync(r => r.ProveedorId == id, ct))
-            return Conflict(new
-            {
-                code = "PROVEEDOR_CON_RECEPCIONES",
-                message = "No se puede desactivar el proveedor porque tiene recepciones de combustible registradas."
-            });
+        var conflict = await ValidateDeactivationAsync(id, ct);
+        if (conflict is not null) return conflict;
 
         entity.Activo = false;
         await _db.SaveChangesAsync(ct);
@@ -116,5 +120,17 @@ public sealed class ProveedoresController : ControllerBase
             HttpContext.Connection.RemoteIpAddress?.ToString(), null, ct);
 
         return NoContent();
+    }
+
+    private async Task<ConflictObjectResult?> ValidateDeactivationAsync(int id, CancellationToken ct)
+    {
+        if (await _db.RecepcionesCombustible.AnyAsync(r => r.ProveedorId == id, ct))
+            return Conflict(new
+            {
+                code = "PROVEEDOR_CON_RECEPCIONES",
+                message = "No se puede desactivar el proveedor porque tiene recepciones de combustible registradas."
+            });
+
+        return null;
     }
 }

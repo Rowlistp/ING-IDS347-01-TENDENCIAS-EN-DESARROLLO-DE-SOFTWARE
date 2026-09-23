@@ -63,7 +63,8 @@ class ApiFailure implements Exception {
               'Indique galones positivos con hasta cuatro decimales.',
           'TANQUE_INACTIVO': 'El tanque seleccionado está inactivo.',
           'ESTACION_INACTIVA': 'La estación está inactiva.',
-          'CONCURRENCIA_CONFLICTO': 'Los datos cambiaron. Consulta el estado antes de confirmar nuevamente.',
+          'CONCURRENCIA_CONFLICTO':
+              'Los datos cambiaron. Consulta el estado antes de confirmar nuevamente.',
         }[code] ??
         'No se pudo completar la operación. Consulta el estado y revisa los datos.',
   );

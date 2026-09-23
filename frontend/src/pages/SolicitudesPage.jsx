@@ -23,7 +23,7 @@ const EMPTY_FORM = {
   departamentoId: '',
   tipoCombustibleId: '',
   cantidadSolicitada: '',
-  diasVigencia: '',
+  diasVigencia: '7',
 }
 
 export default function SolicitudesPage() {
@@ -80,16 +80,19 @@ export default function SolicitudesPage() {
 
   function handleFormChange(e) {
     const { name, value } = e.target
-    setForm((f) => {
-      const next = { ...f, [name]: value }
-      if (name === 'vehiculoId') {
-        const v = vehiculos.find((veh) => String(veh.id) === String(value))
-        if (v && v.departamentoId) {
-          next.departamentoId = String(v.departamentoId)
-        }
-      }
-      return next
-    })
+    if (name === 'empleadoId') {
+      const empleado = empleados.find((item) => String(item.id) === String(value))
+      setForm((f) => ({ ...f, empleadoId: value, departamentoId: empleado ? String(empleado.departamentoId) : '', vehiculoId: '' }))
+    } else if (name === 'vehiculoId') {
+      const v = vehiculos.find((veh) => String(veh.id) === String(value))
+      setForm((f) => ({
+        ...f,
+        vehiculoId: value,
+        departamentoId: (v && v.departamentoId) ? String(v.departamentoId) : f.departamentoId
+      }))
+    } else {
+      setForm((f) => ({ ...f, [name]: value }))
+    }
   }
 
   function openCreate() {
@@ -369,7 +372,7 @@ export default function SolicitudesPage() {
                 ) : (
                   <>
                     <option value="">Seleccionar...</option>
-                    {empleados.map((e) => (
+                    {empleados.filter((e) => e.activo).map((e) => (
                       <option key={e.id} value={e.id}>
                         {e.nombreCompleto} ({e.codigo}) {e.usuarioNombre ? `[Usuario: ${e.usuarioNombre}]` : ''}
                       </option>
@@ -388,7 +391,7 @@ export default function SolicitudesPage() {
                 className={inputCls}
               >
                 <option value="">Seleccionar...</option>
-                {vehiculos.map((v) => (
+                {vehiculos.filter((v) => v.activo && v.departamentoId === Number(form.departamentoId)).map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.placa} — {v.marca} {v.modelo} ({v.ficha})
                   </option>
@@ -399,10 +402,11 @@ export default function SolicitudesPage() {
             <Field
               label="Departamento"
               required
-              hint={form.vehiculoId ? "Sincronizado automáticamente con el vehículo" : undefined}
+              hint={form.vehiculoId ? "Empleado, vehículo y departamento deben coincidir" : undefined}
             >
               <select
                 name="departamentoId"
+                disabled
                 value={form.departamentoId}
                 onChange={handleFormChange}
                 required
@@ -426,7 +430,7 @@ export default function SolicitudesPage() {
                 className={inputCls}
               >
                 <option value="">Seleccionar...</option>
-                {tiposCombustible.map((t) => (
+                {tiposCombustible.filter((t) => t.activo).map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.nombre}
                   </option>
@@ -434,7 +438,7 @@ export default function SolicitudesPage() {
               </select>
             </Field>
 
-            <Field label="Cantidad solicitada (galones)" required hint="Rango permitido: 1 a 500 galones">
+            <Field label="Cantidad solicitada (galones)" required hint="Indica el volumen requerido en galones">
               <input
                 type="number"
                 name="cantidadSolicitada"
@@ -447,7 +451,7 @@ export default function SolicitudesPage() {
               />
             </Field>
 
-            <Field label="Días de vigencia">
+            <Field label="Días de vigencia" required>
               <input
                 type="number"
                 name="diasVigencia"
@@ -455,7 +459,8 @@ export default function SolicitudesPage() {
                 onChange={handleFormChange}
                 min="1"
                 max="365"
-                placeholder="7 (por defecto)"
+                required
+                placeholder="7"
                 className={inputCls}
               />
             </Field>

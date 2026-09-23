@@ -109,11 +109,16 @@ Rutas implementadas actualmente por Builder 1:
 
 ```text
 GET    /api/v1/empleados
+GET    /api/v1/empleados/opciones
 GET    /api/v1/empleados/{id}
 POST   /api/v1/empleados
 PUT    /api/v1/empleados/{id}
 DELETE /api/v1/empleados/{id}  # desactivación lógica
 ```
+
+`GET /empleados` y `GET /empleados/{id}`: Administrador/Supervisor/Auditor leen fichas; Solicitante solo la propia (ajena: 404). Otros roles: 403.
+
+`GET /empleados/opciones`: Administrador/Supervisor/Auditor/Consulta; devuelve únicamente `{id,nombreCompleto}` para filtros, sin cédula, contacto ni ficha personal.
 
 ### Vehículos
 
@@ -393,3 +398,21 @@ GET /api/v1/dashboard/resumen
 - Idempotencia.
 - Rate limiting.
 - OpenAPI/Swagger final.
+
+## QR de ticket persistido — integración 20/09/2026
+
+`GET /api/v1/tickets/{id:guid}/qr`: roles Administrador, Supervisor, Despachador, Auditor, Consulta y Solicitante. Para Solicitante sin otro rol operativo, se limita al propietario vinculado. Requiere identidad local resuelta.
+
+- 200: `image/png`, imagen firmada persistida; `Cache-Control: no-store`.
+- 401/403: identidad o permiso insuficiente.
+- 404: ticket inexistente o fuera del alcance del propietario.
+- 409: `{code: "QR_NO_DISPONIBLE", message: ...}` si falta el PNG persistido.
+
+No genera contenido alternativo sin firma. `POST /api/v1/tickets/validar` recibe `{qrPayload}` y exige FTQR1 firmado, vigencia y estado. Un correlativo o GUID no sirve como QR válido. La respuesta de validación expresa rechazo de negocio sin autorizar despacho.
+
+## Integración sobre main d86e7c9 — contratos conservados
+
+- Las respuestas de tanques incluyen `tipoCombustibleActivo` (booleano). Los clientes excluyen tanques con combustible inactivo de ajustes, transferencias, recepciones y despacho. El servidor vuelve a comprobar las reglas al confirmar; el filtro de pantalla no sustituye esta comprobación.
+- Ajustes y recepciones en combustible inactivo: 409 `TIPO_COMBUSTIBLE_INACTIVO`. Transferencias: 409 `TIPO_COMBUSTIBLE_ORIGEN_INACTIVO` o `TIPO_COMBUSTIBLE_DESTINO_INACTIVO`. Un rechazo no cambia saldo ni crea movimiento/auditoría de éxito.
+- Solicitudes manuales/recurrentes: cuando `departamentoId` no es positivo, se deriva del empleado. Si se envía uno positivo, debe existir y coincidir. El vehículo también debe pertenecer a ese departamento; todos los catálogos deben estar activos. La reactivación, aprobación, emisión y generación recurrente conservan su revalidación.
+- Se conservan los contratos de capacidad, compatibilidad, privacidad y autorización documentados en esta copia. El campo agregado por main no requiere migración de base de datos.

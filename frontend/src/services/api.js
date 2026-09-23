@@ -2,6 +2,15 @@ import { getToken, clearSession } from './auth'
 
 const API_URL = import.meta.env.VITE_API_URL
 
+async function fetchWithConnectionMessage(url, options) {
+  try {
+    return await fetch(url, options)
+  } catch (error) {
+    if (error.name === 'AbortError' || error.name === 'TimeoutError') throw error
+    throw new Error('No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.')
+  }
+}
+
 export async function apiRequest(endpoint, options = {}) {
   const token = getToken()
   const headers = {
@@ -13,7 +22,7 @@ export async function apiRequest(endpoint, options = {}) {
     headers.Authorization = `Bearer ${token}`
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  const response = await fetchWithConnectionMessage(`${API_URL}${endpoint}`, {
     ...options,
     headers,
   })
@@ -36,14 +45,14 @@ export async function apiRequest(endpoint, options = {}) {
   return response.json()
 }
 
-export async function apiDownload(endpoint) {
+export async function apiDownload(endpoint, options = {}) {
   const token = getToken()
   const headers = {}
   if (token) {
     headers.Authorization = `Bearer ${token}`
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, { headers })
+  const response = await fetchWithConnectionMessage(`${API_URL}${endpoint}`, { ...options, headers })
 
   if (!response.ok) {
     if (response.status === 401) {

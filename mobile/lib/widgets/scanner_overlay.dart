@@ -97,7 +97,10 @@ class _CornerBorderPainter extends CustomPainter {
     final pathTL = Path()
       ..moveTo(0, cornerLength)
       ..lineTo(0, borderRadius)
-      ..arcToPoint(Offset(borderRadius, 0), radius: Radius.circular(borderRadius))
+      ..arcToPoint(
+        Offset(borderRadius, 0),
+        radius: Radius.circular(borderRadius),
+      )
       ..lineTo(cornerLength, 0);
     canvas.drawPath(pathTL, paint);
 
@@ -105,7 +108,10 @@ class _CornerBorderPainter extends CustomPainter {
     final pathTR = Path()
       ..moveTo(w - cornerLength, 0)
       ..lineTo(w - borderRadius, 0)
-      ..arcToPoint(Offset(w, borderRadius), radius: Radius.circular(borderRadius))
+      ..arcToPoint(
+        Offset(w, borderRadius),
+        radius: Radius.circular(borderRadius),
+      )
       ..lineTo(w, cornerLength);
     canvas.drawPath(pathTR, paint);
 
@@ -113,7 +119,10 @@ class _CornerBorderPainter extends CustomPainter {
     final pathBL = Path()
       ..moveTo(0, h - cornerLength)
       ..lineTo(0, h - borderRadius)
-      ..arcToPoint(Offset(borderRadius, h), radius: Radius.circular(borderRadius))
+      ..arcToPoint(
+        Offset(borderRadius, h),
+        radius: Radius.circular(borderRadius),
+      )
       ..lineTo(cornerLength, h);
     canvas.drawPath(pathBL, paint);
 
@@ -121,7 +130,10 @@ class _CornerBorderPainter extends CustomPainter {
     final pathBR = Path()
       ..moveTo(w - cornerLength, h)
       ..lineTo(w - borderRadius, h)
-      ..arcToPoint(Offset(w, h - borderRadius), radius: Radius.circular(borderRadius))
+      ..arcToPoint(
+        Offset(w, h - borderRadius),
+        radius: Radius.circular(borderRadius),
+      )
       ..lineTo(w, h - cornerLength);
     canvas.drawPath(pathBR, paint);
   }

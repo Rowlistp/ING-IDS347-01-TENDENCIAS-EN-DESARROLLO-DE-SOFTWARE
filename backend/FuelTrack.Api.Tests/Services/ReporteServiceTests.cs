@@ -385,4 +385,23 @@ public sealed class ReporteServiceTests
         Assert.AreEqual(0x25, bytes[0]);
         Assert.AreEqual(0x50, bytes[1]);
     }
+
+    [TestMethod]
+    public async Task Tickets_FiltraCombustibleYEstadoTambienAlExportar()
+    {
+        var (depto, vehiculo, empleado) = await CreateContextAsync("Operaciones", "A123456");
+        var incluido = await SeedTicketAsync(depto, vehiculo, empleado);
+        incluido.Estado = EstadoTicket.Consumido;
+        await SeedTicketAsync(depto, vehiculo, empleado);
+        await _db.SaveChangesAsync();
+        var query = new ReporteQuery("tickets", null, null, null, null, null, null, 1, 20, _tipoId, EstadoTicket.Consumido);
+        var result = await _service.GetAsync(query, default);
+        Assert.AreEqual(1, result.Total);
+        var empty = await _service.GetAsync(query with { TipoCombustibleId = _tipoId + 99 }, default);
+        Assert.AreEqual(0, empty.Total);
+        var csv = Encoding.UTF8.GetString(await _service.ExportarAsync(query, "csv", default));
+        Assert.IsTrue(csv.Contains("Consumido"));
+        Assert.IsFalse(csv.Contains("Creado"));
+    }
+
 }

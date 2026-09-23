@@ -63,6 +63,12 @@ ITEMS = [
     ("DEF-2026-008", "Reportes & Notificaciones", "Bloqueo Fechas Invertidas (Desde > Hasta)", "Media", "P2", "Cerrado", "DEF-2026-008_Carencia_Control_Fechas_Invertidas_Reportes_Notificaciones.docx"),
     ("DEF-2026-009", "Solicitudes Combustible", "Cálculos Rápidos Aprobación y Cuota Autorizada", "Media", "P2", "Cerrado", "DEF-2026-009_Ausencia_Calculo_Rapido_Aprobacion_Solicitudes.docx"),
     ("DEF-2026-010", "Gestión de Tickets", "Selector Prefijos Oficiales y Desacoplamiento Tabla", "Mayor", "P1", "Cerrado", "DEF-2026-010_Falta_Nomenclatura_Controlada_Y_Auditoria_Tickets.docx"),
+    ("DEF-2026-011", "Despachos & Estaciones", "Bloqueo por Estación Inactiva en Frontend", "Mayor", "P1", "Cerrado", "DEF-2026-011_Bloqueo_Despacho_Estacion_Inactiva_Frontend.docx"),
+    ("DEF-2026-012", "Tanques & Inventario", "Bloqueo Creación Tanque con Combustible Inactivo", "Mayor", "P1", "Cerrado", "DEF-2026-012_Creacion_Tanque_Combustible_Inactivo_Permitida.docx"),
+    ("DEF-2026-013", "Solicitudes Recurrentes", "Bloqueo Entidades Inactivas y Derivación Depto", "Mayor", "P1", "Cerrado", "DEF-2026-013_Solicitudes_Recurrentes_Entidades_Inactivas_Y_Departamento.docx"),
+    ("DEF-2026-014", "Solicitudes Combustible", "Validación y Derivación de Departamento de Empleado", "Mayor", "P1", "Cerrado", "DEF-2026-014_Solicitudes_Departamento_Inconsistente_Con_Empleado.docx"),
+    ("DEF-2026-015", "Recepciones Combustible", "Bloqueo Recepción en Tanque con Combustible Inactivo", "Mayor", "P1", "Cerrado", "DEF-2026-015_Recepcion_Tanque_Combustible_Inactivo_Permitida.docx"),
+    ("DEF-2026-016", "Inventario & Tanques", "Bloqueo Ajuste y Transferencia con Combustible Inactivo", "Mayor", "P1", "Cerrado", "DEF-2026-016_Inventario_Ajuste_Y_Transferencia_Combustible_Inactivo.docx"),
 ]
 
 def main():
@@ -108,7 +114,7 @@ def main():
     r_b2.font.size = Pt(10)
     r_b2.font.color.rgb = RGBColor(0xE2, 0x9B, 0x2E)
 
-    r_b3 = p_b.add_run("TOTAL: 10 DEFECTOS AUDITADOS  •  10 CERRADOS (100% RESUELTOS)")
+    r_b3 = p_b.add_run("TOTAL: 16 DEFECTOS AUDITADOS  •  16 CERRADOS (100% RESUELTOS)")
     r_b3.bold = True
     r_b3.font.name = "Arial"
     r_b3.font.size = Pt(9.5)
@@ -127,10 +133,10 @@ def main():
     p_intro = doc.add_paragraph()
     p_intro.paragraph_format.line_spacing = 1.15
     p_intro.add_run(
-        "El presente índice consolida formalmente los diez (10) informes técnicos individuales de defectos, "
+        "El presente índice consolida formalmente los dieciséis (16) informes técnicos individuales de defectos, "
         "mejoras de interfaz, validaciones de dominio dominicano y robustecimiento de seguridad implementados "
         "en la plataforma FuelTrack. Todas las no conformidades fueron verificadas con 100% de pruebas exitosas "
-        "en backend (284/284 pruebas unitarias en .NET 10) y compilación limpia sin errores de linter en frontend."
+        "en backend (326/326 pruebas unitarias en .NET 10) y compilación limpia sin errores de linter en frontend."
     ).font.size = Pt(9.5)
 
     t_res = doc.add_table(rows=5, cols=5)
@@ -150,9 +156,9 @@ def main():
 
     res_data = [
         ("Crítica", "0", "2", "0", "2"),
-        ("Mayor", "0", "4", "0", "4"),
+        ("Mayor", "0", "10", "0", "10"),
         ("Media", "0", "4", "0", "4"),
-        ("Total General", "0", "10", "0", "10"),
+        ("Total General", "0", "16", "0", "16"),
     ]
 
     for r_idx, row in enumerate(res_data, start=1):

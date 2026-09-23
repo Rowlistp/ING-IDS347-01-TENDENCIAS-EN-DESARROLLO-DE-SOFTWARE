@@ -38,13 +38,30 @@ class LiveTestApi extends HttpFuelTrackApi {
   }) => networkZone.run(() => super.request(path, data: data, query: query));
 }
 
+// El inicio monta la lista de tickets en segundo plano. Su IO real necesita
+// avanzar además del reloj de animaciones del test.
+Future<void> settleLive(WidgetTester tester) async {
+  for (var attempt = 0; attempt < 150; attempt++) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    if (!tester.binding.hasScheduledFrame) return;
+  }
+  fail('La interfaz no terminó de cargar con la API real.');
+}
+
 void main() {
   testWidgets(
     'Live Flutter UI to PostgreSQL dispatch; replay rejected; rollback intact',
     (tester) async {
-      final fixture = jsonDecode(
-        File(const String.fromEnvironment('E2E_FIXTURE')).readAsStringSync(),
-      ) as Map<String, dynamic>;
+      final fixture =
+          jsonDecode(
+                File(
+                  const String.fromEnvironment('E2E_FIXTURE'),
+                ).readAsStringSync(),
+              )
+              as Map<String, dynamic>;
       // Restablece IO real en este test explícito; las suites unitarias siguen aisladas.
       HttpOverrides.global = null;
       final session = SessionController(
@@ -63,29 +80,32 @@ void main() {
         session,
         networkZone,
       );
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            sessionProvider.overrideWithValue(session),
-            apiProvider.overrideWithValue(api),
-            scannerProvider.overrideWithValue(
-              (onScan) => Center(
-                child: FilledButton(
-                  onPressed: () => onScan(fixture['qrPayload'] as String),
-                  child: const Text('QR del ticket emitido'),
+      await tester.runAsync(() async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              sessionProvider.overrideWithValue(session),
+              apiProvider.overrideWithValue(api),
+              scannerProvider.overrideWithValue(
+                (onScan) => Center(
+                  child: FilledButton(
+                    onPressed: () => onScan(fixture['qrPayload'] as String),
+                    child: const Text('QR del ticket emitido'),
+                  ),
                 ),
               ),
-            ),
-          ],
-          child: const FuelTrackApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
+            ],
+            child: const FuelTrackApp(),
+          ),
+        );
+        await Future<void>.delayed(const Duration(seconds: 1));
+      });
+      await settleLive(tester);
       await tester.runAsync(() async {
         await tester.tap(find.text('Iniciar sesión'));
         await Future<void>.delayed(const Duration(seconds: 1));
       });
-      await tester.pumpAndSettle();
+      await settleLive(tester);
       await tester.runAsync(() async {
         final checked = await api.validate(fixture['qrPayload'] as String);
         expect(
@@ -98,7 +118,7 @@ void main() {
         );
       });
       await tester.tap(find.text('Escanear QR'));
-      await tester.pumpAndSettle();
+      await settleLive(tester);
       await tester.runAsync(() async {
         await tester.tap(find.text('QR del ticket emitido'));
         await Future<void>.delayed(const Duration(seconds: 1));
@@ -107,7 +127,7 @@ void main() {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(seconds: 1)),
       );
-      await tester.pumpAndSettle();
+      await settleLive(tester);
       expect(find.text('Ticket válido'), findsOneWidget);
       await tester.runAsync(() async {
         await tester.tap(find.text('Continuar al despacho'));
@@ -117,7 +137,7 @@ void main() {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(seconds: 1)),
       );
-      await tester.pumpAndSettle();
+      await settleLive(tester);
       expect(
         find.byType(ErrorNotice),
         findsNothing,
@@ -127,26 +147,26 @@ void main() {
             .join('; '),
       );
       await tester.tap(find.byType(DropdownButtonFormField<int>).at(0));
-      await tester.pumpAndSettle();
+      await settleLive(tester);
       await tester.tap(find.text('Tanque E2E').last);
-      await tester.pumpAndSettle();
+      await settleLive(tester);
       await tester.ensureVisible(
         find.byType(DropdownButtonFormField<int>).at(1),
       );
       await tester.tap(find.byType(DropdownButtonFormField<int>).at(1));
-      await tester.pumpAndSettle();
+      await settleLive(tester);
       await tester.tap(find.text('Estación E2E').last);
-      await tester.pumpAndSettle();
+      await settleLive(tester);
       await tester.enterText(find.byType(TextFormField).first, '5');
       await tester.ensureVisible(find.byType(CheckboxListTile));
       await tester.tap(find.byType(CheckboxListTile));
-      await tester.pumpAndSettle();
+      await settleLive(tester);
       await tester.ensureVisible(find.text('Confirmar despacho'));
       await tester.runAsync(() async {
         await tester.tap(find.text('Confirmar despacho'));
         await Future<void>.delayed(const Duration(seconds: 1));
       });
-      await tester.pumpAndSettle();
+      await settleLive(tester);
       expect(find.text('Despacho registrado'), findsOneWidget);
       expect(find.text('Ticket Consumido'), findsOneWidget);
       await tester.runAsync(() async {
@@ -168,7 +188,10 @@ void main() {
           ),
           throwsA(isA<ApiFailure>()),
         );
-        expect((await api.validate(fixture['rollbackQr'] as String)).state, 'Creado');
+        expect(
+          (await api.validate(fixture['rollbackQr'] as String)).state,
+          'Creado',
+        );
       });
     },
   );

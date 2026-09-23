@@ -1,0 +1,194 @@
+[
+  {
+    "file": "PublicSans-Thin.ttf",
+    "sha256": "6ea8418365c4bc2233ac58b8137def33c4b70aa04c43de6c5ef289232d1b13f6",
+    "bytes": 56000,
+    "url": "https://fonts.gstatic.com/s/a/6ea8418365c4bc2233ac58b8137def33c4b70aa04c43de6c5ef289232d1b13f6.ttf"
+  },
+  {
+    "file": "PublicSans-ExtraLight.ttf",
+    "sha256": "60131434ced04c7f59aacbd79cf69adc226d92d14c6a5c738c7f8c9bf0455b91",
+    "bytes": 56176,
+    "url": "https://fonts.gstatic.com/s/a/60131434ced04c7f59aacbd79cf69adc226d92d14c6a5c738c7f8c9bf0455b91.ttf"
+  },
+  {
+    "file": "PublicSans-Light.ttf",
+    "sha256": "1308384d7fc7d181e62a8de34922b538eb69d17be290c3b2f0e80030bb63f537",
+    "bytes": 56176,
+    "url": "https://fonts.gstatic.com/s/a/1308384d7fc7d181e62a8de34922b538eb69d17be290c3b2f0e80030bb63f537.ttf"
+  },
+  {
+    "file": "PublicSans-Regular.ttf",
+    "sha256": "8438b02b95d3c0a2c45f7baf1996c09784f12ebc53b612e0b1fb0b3b5184c716",
+    "bytes": 56148,
+    "url": "https://fonts.gstatic.com/s/a/8438b02b95d3c0a2c45f7baf1996c09784f12ebc53b612e0b1fb0b3b5184c716.ttf"
+  },
+  {
+    "file": "PublicSans-Medium.ttf",
+    "sha256": "40333c48f487783516d11532acb6afbc3e9d4cd29a6d55024daa029721ef853d",
+    "bytes": 56140,
+    "url": "https://fonts.gstatic.com/s/a/40333c48f487783516d11532acb6afbc3e9d4cd29a6d55024daa029721ef853d.ttf"
+  },
+  {
+    "file": "PublicSans-SemiBold.ttf",
+    "sha256": "5c2f174151a5fcb7302b3ed9097e4f3f23bb7602bd17104dbe6b2a5483eb4301",
+    "bytes": 56220,
+    "url": "https://fonts.gstatic.com/s/a/5c2f174151a5fcb7302b3ed9097e4f3f23bb7602bd17104dbe6b2a5483eb4301.ttf"
+  },
+  {
+    "file": "PublicSans-Bold.ttf",
+    "sha256": "8296db15313eae78eae07d4c602805a9e66cbc25f9141cd7c0f6ecf5e921f1d8",
+    "bytes": 56340,
+    "url": "https://fonts.gstatic.com/s/a/8296db15313eae78eae07d4c602805a9e66cbc25f9141cd7c0f6ecf5e921f1d8.ttf"
+  },
+  {
+    "file": "PublicSans-ExtraBold.ttf",
+    "sha256": "347cd9e352f9f4791ccd4d06f19fece2009f7d7234f120e2b59a9fdaafc1d4df",
+    "bytes": 56508,
+    "url": "https://fonts.gstatic.com/s/a/347cd9e352f9f4791ccd4d06f19fece2009f7d7234f120e2b59a9fdaafc1d4df.ttf"
+  },
+  {
+    "file": "PublicSans-Black.ttf",
+    "sha256": "26c46654adc8142976a064c4af6d2291a6b94ee91726892fd9dabb772525c14e",
+    "bytes": 56476,
+    "url": "https://fonts.gstatic.com/s/a/26c46654adc8142976a064c4af6d2291a6b94ee91726892fd9dabb772525c14e.ttf"
+  },
+  {
+    "file": "PublicSans-ThinItalic.ttf",
+    "sha256": "4825bbdc0d36bb55506fc90b79a317c09bc8083f9e0c7f3f03c170d0c3716540",
+    "bytes": 58248,
+    "url": "https://fonts.gstatic.com/s/a/4825bbdc0d36bb55506fc90b79a317c09bc8083f9e0c7f3f03c170d0c3716540.ttf"
+  },
+  {
+    "file": "PublicSans-ExtraLightItalic.ttf",
+    "sha256": "9288a3cf48605fb591e21ad2593268b31994c30d4a940202eac385db7aa71f71",
+    "bytes": 58476,
+    "url": "https://fonts.gstatic.com/s/a/9288a3cf48605fb591e21ad2593268b31994c30d4a940202eac385db7aa71f71.ttf"
+  },
+  {
+    "file": "PublicSans-LightItalic.ttf",
+    "sha256": "eba930c02cec1ad0cf373c8d959632ecfee3f599d6bca766b53a6cbce74e4d02",
+    "bytes": 58424,
+    "url": "https://fonts.gstatic.com/s/a/eba930c02cec1ad0cf373c8d959632ecfee3f599d6bca766b53a6cbce74e4d02.ttf"
+  },
+  {
+    "file": "PublicSans-Italic.ttf",
+    "sha256": "3f5a477e856517b39160173d9c990311269615026835e3c4a4a0d9af2fe8b417",
+    "bytes": 58280,
+    "url": "https://fonts.gstatic.com/s/a/3f5a477e856517b39160173d9c990311269615026835e3c4a4a0d9af2fe8b417.ttf"
+  },
+  {
+    "file": "PublicSans-MediumItalic.ttf",
+    "sha256": "711991586dd356e44a8035078478c79db4ea5099d4dc9b3f0af7ad7452b444b8",
+    "bytes": 58400,
+    "url": "https://fonts.gstatic.com/s/a/711991586dd356e44a8035078478c79db4ea5099d4dc9b3f0af7ad7452b444b8.ttf"
+  },
+  {
+    "file": "PublicSans-SemiBoldItalic.ttf",
+    "sha256": "44dfc0a482e3b9c44d987365373df96b3f9f8445d88c3dd3ca930e5975e207b5",
+    "bytes": 58536,
+    "url": "https://fonts.gstatic.com/s/a/44dfc0a482e3b9c44d987365373df96b3f9f8445d88c3dd3ca930e5975e207b5.ttf"
+  },
+  {
+    "file": "PublicSans-BoldItalic.ttf",
+    "sha256": "4eb85b4c1a25c1bbf9ed241995cb7a7814610cb93275954de3cd4cd151ce77db",
+    "bytes": 58684,
+    "url": "https://fonts.gstatic.com/s/a/4eb85b4c1a25c1bbf9ed241995cb7a7814610cb93275954de3cd4cd151ce77db.ttf"
+  },
+  {
+    "file": "PublicSans-ExtraBoldItalic.ttf",
+    "sha256": "361346e32b52cfadb8cec1018a13a67da5ce8885a119dd0a0389ae447e6bb86b",
+    "bytes": 58892,
+    "url": "https://fonts.gstatic.com/s/a/361346e32b52cfadb8cec1018a13a67da5ce8885a119dd0a0389ae447e6bb86b.ttf"
+  },
+  {
+    "file": "PublicSans-BlackItalic.ttf",
+    "sha256": "a9db4f5fd18aecd49af8c9d28aadfb6fe1817e377197851a4b80d1ff8e14ac3c",
+    "bytes": 58868,
+    "url": "https://fonts.gstatic.com/s/a/a9db4f5fd18aecd49af8c9d28aadfb6fe1817e377197851a4b80d1ff8e14ac3c.ttf"
+  },
+  {
+    "file": "IBMPlexMono-Thin.ttf",
+    "sha256": "28b47d79415935b4eb7e21b4ab6567b49ec8c5654769456ec98e2193e8998fdd",
+    "bytes": 77016,
+    "url": "https://fonts.gstatic.com/s/a/28b47d79415935b4eb7e21b4ab6567b49ec8c5654769456ec98e2193e8998fdd.ttf"
+  },
+  {
+    "file": "IBMPlexMono-ThinItalic.ttf",
+    "sha256": "29dc9c11fa19d718d763725de56a911b985eec34ff0ce19cbdfbe81438f1f5f4",
+    "bytes": 83652,
+    "url": "https://fonts.gstatic.com/s/a/29dc9c11fa19d718d763725de56a911b985eec34ff0ce19cbdfbe81438f1f5f4.ttf"
+  },
+  {
+    "file": "IBMPlexMono-ExtraLight.ttf",
+    "sha256": "777e2bfad74ee25085099fe319dec1ab75fa07afe1fd95511691a7d785e5e76a",
+    "bytes": 76620,
+    "url": "https://fonts.gstatic.com/s/a/777e2bfad74ee25085099fe319dec1ab75fa07afe1fd95511691a7d785e5e76a.ttf"
+  },
+  {
+    "file": "IBMPlexMono-ExtraLightItalic.ttf",
+    "sha256": "dec2d3b718edf9c988b7bc4bf9cc2ff98c0a73b3704321db9bd77c8c10da9f57",
+    "bytes": 83624,
+    "url": "https://fonts.gstatic.com/s/a/dec2d3b718edf9c988b7bc4bf9cc2ff98c0a73b3704321db9bd77c8c10da9f57.ttf"
+  },
+  {
+    "file": "IBMPlexMono-Light.ttf",
+    "sha256": "fb12a959f0a3b900dfb41e969e19ea06d7fd0e546d20848c74d7c0a09bb9fcc5",
+    "bytes": 76372,
+    "url": "https://fonts.gstatic.com/s/a/fb12a959f0a3b900dfb41e969e19ea06d7fd0e546d20848c74d7c0a09bb9fcc5.ttf"
+  },
+  {
+    "file": "IBMPlexMono-LightItalic.ttf",
+    "sha256": "fcb360ec811b8ad1bcbcaa48f01ac3b20321699d2c2a44ac2061d61f1856356f",
+    "bytes": 83248,
+    "url": "https://fonts.gstatic.com/s/a/fcb360ec811b8ad1bcbcaa48f01ac3b20321699d2c2a44ac2061d61f1856356f.ttf"
+  },
+  {
+    "file": "IBMPlexMono-Regular.ttf",
+    "sha256": "d37b0be393abb9e88603a9493e97d0ca660146b93fad3897d22358f3a93e7a05",
+    "bytes": 76988,
+    "url": "https://fonts.gstatic.com/s/a/d37b0be393abb9e88603a9493e97d0ca660146b93fad3897d22358f3a93e7a05.ttf"
+  },
+  {
+    "file": "IBMPlexMono-Italic.ttf",
+    "sha256": "129654d831d41d7c91e3068d3a41048ac376d3268e6fa37d70a32655f80b28df",
+    "bytes": 84068,
+    "url": "https://fonts.gstatic.com/s/a/129654d831d41d7c91e3068d3a41048ac376d3268e6fa37d70a32655f80b28df.ttf"
+  },
+  {
+    "file": "IBMPlexMono-Medium.ttf",
+    "sha256": "ccde6e24d2f07f518ab9860bb438d768dade104dd9f4a5e8c7442885ff4bad81",
+    "bytes": 76544,
+    "url": "https://fonts.gstatic.com/s/a/ccde6e24d2f07f518ab9860bb438d768dade104dd9f4a5e8c7442885ff4bad81.ttf"
+  },
+  {
+    "file": "IBMPlexMono-MediumItalic.ttf",
+    "sha256": "7c4d06a8e36553d03d27fce5ed3e3190fffb6f1809b94cafcb51831e43550b5c",
+    "bytes": 83312,
+    "url": "https://fonts.gstatic.com/s/a/7c4d06a8e36553d03d27fce5ed3e3190fffb6f1809b94cafcb51831e43550b5c.ttf"
+  },
+  {
+    "file": "IBMPlexMono-SemiBold.ttf",
+    "sha256": "f22d51089f8e130bf17474587afa91909c802be2733c8f6e79f33eb7318b2d77",
+    "bytes": 76516,
+    "url": "https://fonts.gstatic.com/s/a/f22d51089f8e130bf17474587afa91909c802be2733c8f6e79f33eb7318b2d77.ttf"
+  },
+  {
+    "file": "IBMPlexMono-SemiBoldItalic.ttf",
+    "sha256": "c53a0ff962598476827ac59e2871f2edc365bbf0bf021477f6adea969df952b6",
+    "bytes": 82964,
+    "url": "https://fonts.gstatic.com/s/a/c53a0ff962598476827ac59e2871f2edc365bbf0bf021477f6adea969df952b6.ttf"
+  },
+  {
+    "file": "IBMPlexMono-Bold.ttf",
+    "sha256": "655d8d7800662579d0ec6d4b4cfdffd1f647a5f24575f42d4bb0b295f0dd8779",
+    "bytes": 76560,
+    "url": "https://fonts.gstatic.com/s/a/655d8d7800662579d0ec6d4b4cfdffd1f647a5f24575f42d4bb0b295f0dd8779.ttf"
+  },
+  {
+    "file": "IBMPlexMono-BoldItalic.ttf",
+    "sha256": "dc02aef1a17967582c7dc41541adcfa296295b0b2419a6a94e018112c560a30a",
+    "bytes": 83348,
+    "url": "https://fonts.gstatic.com/s/a/dc02aef1a17967582c7dc41541adcfa296295b0b2419a6a94e018112c560a30a.ttf"
+  }
+]

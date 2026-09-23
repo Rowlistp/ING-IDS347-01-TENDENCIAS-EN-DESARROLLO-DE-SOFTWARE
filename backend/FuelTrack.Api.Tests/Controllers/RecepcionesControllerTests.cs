@@ -226,4 +226,20 @@ public sealed class RecepcionesControllerTests
         Assert.AreEqual("RecepcionCombustible", auditoria.EntidadAfectada);
         Assert.AreEqual(usuarioId, auditoria.UsuarioId);
     }
+
+    [TestMethod]
+    public async Task Create_RechazaSobrecapacidad_SinRecepcionMovimientoNiCambioDeSaldo()
+    {
+        var (proveedor, tanque, usuario) = await CrearDependenciasAsync();
+        var inv = await _db.Inventarios.SingleAsync();
+        inv.ExistenciaActual = 4900m;
+        inv.Disponibilidad = 4900m;
+        await _db.SaveChangesAsync();
+        var result = await CrearController(usuario).Create(new CreateRecepcionRequest(proveedor, tanque, "EXCESO", 101m, DateTime.UtcNow), default);
+        Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
+        Assert.AreEqual(0, await _db.RecepcionesCombustible.CountAsync());
+        Assert.AreEqual(0, await _db.MovimientosInventario.CountAsync());
+        await _db.Entry(inv).ReloadAsync();
+        Assert.AreEqual(4900m, inv.ExistenciaActual);
+    }
 }

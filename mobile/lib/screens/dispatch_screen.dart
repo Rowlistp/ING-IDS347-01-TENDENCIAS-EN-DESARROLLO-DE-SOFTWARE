@@ -7,7 +7,6 @@ import '../core/models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/dispatch_receipt_dialog.dart';
 
-
 class DispatchFormScreen extends ConsumerStatefulWidget {
   const DispatchFormScreen({
     super.key,
@@ -52,14 +51,18 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
   }
 
   void _updateRemaining() {
-    final entered = double.tryParse(gallons.text.trim()) ?? 0;
+    final entered =
+        double.tryParse(gallons.text.trim().replaceAll(',', '.')) ?? 0;
     setState(() {
-      _remaining = (widget.ticket.quantity - entered).clamp(0, widget.ticket.quantity);
+      _remaining = (widget.ticket.quantity - entered).clamp(
+        0,
+        widget.ticket.quantity,
+      );
     });
   }
 
   Future<void> load() async {
-    if (!ref.read(sessionProvider).user!.canDispatch) {
+    if (!(ref.read(sessionProvider).user?.canDispatch ?? false)) {
       setState(() => loading = false);
       return;
     }
@@ -89,7 +92,9 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
   }
 
   Future<void> submit() async {
-    if (busy || uncertain || !confirmed || !form.currentState!.validate()) return;
+    if (busy || uncertain || !confirmed || !form.currentState!.validate()) {
+      return;
+    }
     setState(() {
       busy = true;
       error = null;
@@ -97,7 +102,9 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
 
     final amount = double.parse(gallons.text.trim().replaceAll(',', '.'));
     try {
-      final outcome = await ref.read(apiProvider).dispatch(
+      final outcome = await ref
+          .read(apiProvider)
+          .dispatch(
             widget.ticket,
             widget.payload,
             tank!,
@@ -134,7 +141,8 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
         if (mounted) {
           setState(() {
             uncertain = false;
-            error = 'No hay despacho registrado. Verifica los datos antes de confirmar.';
+            error =
+                'No hay despacho registrado. Verifica los datos antes de confirmar.';
           });
         }
       }
@@ -146,7 +154,7 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!ref.read(sessionProvider).user!.canDispatch) {
+    if (!(ref.read(sessionProvider).user?.canDispatch ?? false)) {
       return Scaffold(
         appBar: AppBar(title: const Text('Despacho')),
         body: const Center(
@@ -207,7 +215,8 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'TICKET AUTORIZADO',
@@ -233,12 +242,17 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                                 ),
                                 const SizedBox(width: 8),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: AppColors.primaryLight,
                                     borderRadius: BorderRadius.circular(3),
                                     border: Border.all(
-                                      color: AppColors.primary.withValues(alpha: 0.3),
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.3,
+                                      ),
                                     ),
                                   ),
                                   child: Text(
@@ -254,14 +268,18 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                               ],
                             ),
                             const SizedBox(height: 12),
-                            const Divider(height: 1, color: AppColors.cardBorder),
+                            const Divider(
+                              height: 1,
+                              color: AppColors.cardBorder,
+                            ),
                             const SizedBox(height: 10),
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'CONDUCTOR',
@@ -288,7 +306,8 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'VEHÍCULO / PLACA',
@@ -317,17 +336,22 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                             const SizedBox(height: 12),
                             // Indicador de combustible
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.background,
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(color: AppColors.cardBorder),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'AUTORIZADO',
@@ -349,7 +373,11 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                                       ),
                                     ],
                                   ),
-                                  const Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.textMuted),
+                                  const Icon(
+                                    Icons.arrow_forward_rounded,
+                                    size: 16,
+                                    color: AppColors.textMuted,
+                                  ),
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
@@ -368,7 +396,9 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                                         style: AppTheme.mono(
                                           fontSize: 15,
                                           fontWeight: FontWeight.w700,
-                                          color: _remaining == 0 ? AppColors.statusConsumed : AppColors.accent,
+                                          color: _remaining == 0
+                                              ? AppColors.statusConsumed
+                                              : AppColors.accent,
                                         ),
                                       ),
                                     ],
@@ -387,13 +417,23 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                       initialValue: tank,
                       decoration: const InputDecoration(
                         labelText: 'Tanque de combustible',
-                        prefixIcon: Icon(Icons.storage_rounded, color: AppColors.textSecondary),
+                        prefixIcon: Icon(
+                          Icons.storage_rounded,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       items: tanks
-                          .map((t) => DropdownMenuItem(value: t.id, child: Text(t.label)))
+                          .map(
+                            (t) => DropdownMenuItem(
+                              value: t.id,
+                              child: Text(t.label),
+                            ),
+                          )
                           .toList(),
                       onChanged: (val) => setState(() => tank = val),
-                      validator: (val) => val == null ? 'Selecciona un tanque compatible' : null,
+                      validator: (val) => val == null
+                          ? 'Selecciona un tanque compatible'
+                          : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -402,13 +442,22 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                       initialValue: station,
                       decoration: const InputDecoration(
                         labelText: 'Estación de servicio',
-                        prefixIcon: Icon(Icons.ev_station_rounded, color: AppColors.textSecondary),
+                        prefixIcon: Icon(
+                          Icons.ev_station_rounded,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       items: stations
-                          .map((s) => DropdownMenuItem(value: s.id, child: Text(s.label)))
+                          .map(
+                            (s) => DropdownMenuItem(
+                              value: s.id,
+                              child: Text(s.label),
+                            ),
+                          )
                           .toList(),
                       onChanged: (val) => setState(() => station = val),
-                      validator: (val) => val == null ? 'Selecciona una estación activa' : null,
+                      validator: (val) =>
+                          val == null ? 'Selecciona una estación activa' : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -416,14 +465,20 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                     TextFormField(
                       controller: gallons,
                       enabled: !busy,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: const InputDecoration(
                         labelText: 'Galones a despachar',
                         hintText: '0.00',
-                        prefixIcon: Icon(Icons.speed_rounded, color: AppColors.textSecondary),
+                        prefixIcon: Icon(
+                          Icons.speed_rounded,
+                          color: AppColors.textSecondary,
+                        ),
                         suffixText: 'gal',
                       ),
-                      validator: (val) => validateGallons(val, widget.ticket.quantity),
+                      validator: (val) =>
+                          validateGallons(val, widget.ticket.quantity),
                     ),
                     const SizedBox(height: 16),
 
@@ -435,7 +490,10 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Observaciones (opcional)',
                         hintText: 'Detalles del suministro…',
-                        prefixIcon: Icon(Icons.notes_rounded, color: AppColors.textSecondary),
+                        prefixIcon: Icon(
+                          Icons.notes_rounded,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       maxLines: 2,
                     ),
@@ -445,14 +503,22 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                     Card(
                       child: CheckboxListTile(
                         value: confirmed,
-                        onChanged: busy ? null : (val) => setState(() => confirmed = val ?? false),
+                        onChanged: busy
+                            ? null
+                            : (val) => setState(() => confirmed = val ?? false),
                         activeColor: AppColors.primary,
                         title: const Text(
                           'Confirmo la identidad del conductor y la placa del vehículo',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -467,7 +533,11 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                         ),
                         child: const Text(
                           'No hay tanques o estaciones disponibles. Contacta al administrador.',
-                          style: TextStyle(color: AppColors.statusExpired, fontSize: 13, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: AppColors.statusExpired,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
 
@@ -481,7 +551,11 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                         ),
                         child: Text(
                           error!,
-                          style: const TextStyle(color: AppColors.statusExpired, fontSize: 13, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            color: AppColors.statusExpired,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
 
@@ -497,16 +571,28 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                             ? const SizedBox(
                                 width: 22,
                                 height: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
                               )
                             : const Text(
                                 'Consultar resultado',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                       )
                     else
                       FilledButton(
-                        onPressed: (!confirmed || busy || tanks.isEmpty || stations.isEmpty) ? null : submit,
+                        onPressed:
+                            (!confirmed ||
+                                busy ||
+                                tanks.isEmpty ||
+                                stations.isEmpty)
+                            ? null
+                            : submit,
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           minimumSize: const Size.fromHeight(54),
@@ -515,11 +601,17 @@ class _DispatchFormScreenState extends ConsumerState<DispatchFormScreen> {
                             ? const SizedBox(
                                 width: 22,
                                 height: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
                               )
                             : const Text(
                                 'Confirmar despacho',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                       ),
                   ],

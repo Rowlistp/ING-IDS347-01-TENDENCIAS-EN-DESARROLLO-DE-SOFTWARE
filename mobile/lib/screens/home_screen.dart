@@ -8,7 +8,6 @@ import 'scan_screen.dart';
 import 'tickets_screen.dart';
 import 'settings_screen.dart';
 
-
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -44,7 +43,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            Container(width: 1, height: 14, color: Colors.white.withValues(alpha: 0.3)),
+            Container(
+              width: 1,
+              height: 14,
+              color: Colors.white.withValues(alpha: 0.3),
+            ),
             const SizedBox(width: 8),
             Text(
               tabTitles[_currentTab],
@@ -77,7 +80,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: Colors.white,
-          border: Border(top: BorderSide(color: AppColors.cardBorder, width: 1)),
+          border: Border(
+            top: BorderSide(color: AppColors.cardBorder, width: 1),
+          ),
         ),
         child: NavigationBar(
           selectedIndex: _currentTab,
@@ -85,24 +90,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           destinations: [
             const NavigationDestination(
               icon: Icon(Icons.dashboard_outlined, size: 22),
-              selectedIcon: Icon(Icons.dashboard_rounded, size: 22, color: AppColors.primary),
+              selectedIcon: Icon(
+                Icons.dashboard_rounded,
+                size: 22,
+                color: AppColors.primary,
+              ),
               label: 'Inicio',
             ),
             NavigationDestination(
               icon: const Icon(Icons.qr_code_scanner_outlined, size: 22),
-              selectedIcon: const Icon(Icons.qr_code_scanner_rounded, size: 22, color: AppColors.primary),
+              selectedIcon: const Icon(
+                Icons.qr_code_scanner_rounded,
+                size: 22,
+                color: AppColors.primary,
+              ),
               label: 'Escanear QR',
               enabled: user.canValidate,
             ),
 
             const NavigationDestination(
               icon: Icon(Icons.receipt_long_outlined, size: 22),
-              selectedIcon: Icon(Icons.receipt_long_rounded, size: 22, color: AppColors.primary),
+              selectedIcon: Icon(
+                Icons.receipt_long_rounded,
+                size: 22,
+                color: AppColors.primary,
+              ),
               label: 'Tickets',
             ),
             const NavigationDestination(
               icon: Icon(Icons.settings_outlined, size: 22),
-              selectedIcon: Icon(Icons.settings_rounded, size: 22, color: AppColors.primary),
+              selectedIcon: Icon(
+                Icons.settings_rounded,
+                size: 22,
+                color: AppColors.primary,
+              ),
               label: 'Configuración',
             ),
           ],
@@ -131,7 +152,6 @@ class _DashboardTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-
         // ── Tarjeta de operador — fondo tanque igual que sidebar web ─────────
         Container(
           padding: const EdgeInsets.all(18),
@@ -151,7 +171,11 @@ class _DashboardTab extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Icon(Icons.person_rounded, color: Colors.white, size: 22),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -188,24 +212,30 @@ class _DashboardTab extends StatelessWidget {
                   spacing: 6,
                   runSpacing: 4,
                   children: user.roles
-
-                      .map((r) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(3),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                      .map(
+                        (r) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(3),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25),
                             ),
-                            child: Text(
-                              r.toUpperCase(),
-                              style: GoogleFonts.publicSans(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.5,
-                              ),
+                          ),
+                          child: Text(
+                            r.toUpperCase(),
+                            style: GoogleFonts.publicSans(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
                             ),
-                          ))
+                          ),
+                        ),
+                      )
                       .toList(),
                 ),
               ],
@@ -281,9 +311,10 @@ class _DashboardTab extends StatelessWidget {
                     icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
                     label: Text(
                       'Escanear',
-                      style: GoogleFonts.publicSans(fontWeight: FontWeight.w600),
+                      style: GoogleFonts.publicSans(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-
                   ),
                 ),
               ],
@@ -341,7 +372,10 @@ class _DashboardTab extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.textMuted,
+                    ),
                   ],
                 ),
               ),

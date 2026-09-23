@@ -66,31 +66,52 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen> {
                   child: TextField(
                     onChanged: (val) =>
                         setState(() => _searchQuery = val.trim().toLowerCase()),
-                    style: GoogleFonts.publicSans(fontSize: 13, color: AppColors.textPrimary),
+                    style: GoogleFonts.publicSans(
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Buscar por código, conductor o placa…',
-                      hintStyle: GoogleFonts.publicSans(fontSize: 13, color: AppColors.textMuted),
-                      prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textSecondary),
+                      hintStyle: GoogleFonts.publicSans(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear_rounded, size: 16),
-                              onPressed: () => setState(() => _searchQuery = ''),
+                              onPressed: () =>
+                                  setState(() => _searchQuery = ''),
                             )
                           : null,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 0,
+                      ),
                       filled: true,
                       fillColor: AppColors.background,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4),
-                        borderSide: const BorderSide(color: AppColors.cardBorder),
+                        borderSide: const BorderSide(
+                          color: AppColors.cardBorder,
+                        ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4),
-                        borderSide: const BorderSide(color: AppColors.cardBorder),
+                        borderSide: const BorderSide(
+                          color: AppColors.cardBorder,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(4),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 1.5,
+                        ),
                       ),
                     ),
                   ),
@@ -112,20 +133,29 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen> {
                         onTap: () => setState(() => _selectedFilter = filter),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
                             color: selected ? AppColors.primary : Colors.white,
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
-                              color: selected ? AppColors.primary : AppColors.cardBorder,
+                              color: selected
+                                  ? AppColors.primary
+                                  : AppColors.cardBorder,
                             ),
                           ),
                           child: Text(
                             filter,
                             style: GoogleFonts.publicSans(
                               fontSize: 12,
-                              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                              color: selected ? Colors.white : AppColors.textSecondary,
+                              fontWeight: selected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: selected
+                                  ? Colors.white
+                                  : AppColors.textSecondary,
                             ),
                           ),
                         ),
@@ -202,7 +232,9 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen> {
                               icon: const Icon(Icons.refresh_rounded, size: 16),
                               label: Text(
                                 'Reintentar',
-                                style: GoogleFonts.publicSans(fontWeight: FontWeight.w600),
+                                style: GoogleFonts.publicSans(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),
@@ -214,12 +246,14 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen> {
 
                 final tickets = snapshot.data ?? [];
                 final filtered = tickets.where((t) {
-                  final matchesSearch = _searchQuery.isEmpty ||
+                  final matchesSearch =
+                      _searchQuery.isEmpty ||
                       t.code.toLowerCase().contains(_searchQuery) ||
                       t.employee.toLowerCase().contains(_searchQuery) ||
                       t.vehicle.toLowerCase().contains(_searchQuery);
 
-                  final matchesFilter = _selectedFilter == 'Todos' ||
+                  final matchesFilter =
+                      _selectedFilter == 'Todos' ||
                       t.state == _selectedFilter ||
                       t.stateLabel == _selectedFilter;
 
@@ -257,7 +291,8 @@ class _TicketsScreenState extends ConsumerState<TicketsScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            _searchQuery.isNotEmpty || _selectedFilter != 'Todos'
+                            _searchQuery.isNotEmpty ||
+                                    _selectedFilter != 'Todos'
                                 ? 'Ajusta los filtros de búsqueda.'
                                 : 'No hay tickets disponibles para tu usuario.',
                             textAlign: TextAlign.center,

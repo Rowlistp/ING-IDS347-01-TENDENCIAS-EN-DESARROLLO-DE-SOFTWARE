@@ -157,53 +157,7 @@ public sealed class TicketService(
         CancellationToken cancellationToken)
     {
         if (!qr.TryValidate(payload, out var data, out var payloadHash, out var signature) || data is null)
-        {
-            var trimmed = payload?.Trim() ?? string.Empty;
-            Ticket? fallbackTicket = null;
-
-            if (Guid.TryParse(trimmed, out var parsedGuid))
-            {
-                fallbackTicket = await TicketQuery(asTracking: true)
-                    .SingleOrDefaultAsync(item => item.Id == parsedGuid, cancellationToken);
-            }
-            else
-            {
-                var match = System.Text.RegularExpressions.Regex.Match(trimmed, @"^([A-Za-z0-9]+)-(\d{4})-(\d+)$");
-                if (match.Success &&
-                    int.TryParse(match.Groups[2].Value, out var y) &&
-                    int.TryParse(match.Groups[3].Value, out var s))
-                {
-                    var p = match.Groups[1].Value;
-                    fallbackTicket = await TicketQuery(asTracking: true)
-                        .SingleOrDefaultAsync(item => item.Prefijo == p && item.FechaCreacion.Year == y && item.NumeroSecuencial == s, cancellationToken);
-                }
-            }
-
-            if (fallbackTicket != null)
-            {
-                if (fallbackTicket.Estado == EstadoTicket.Anulado)
-                    return TicketValidationResponse.Invalid("TICKET_ANULADO", "El ticket está anulado.");
-                if (fallbackTicket.Estado == EstadoTicket.Consumido)
-                    return TicketValidationResponse.Invalid("TICKET_CONSUMIDO", "El ticket ya fue consumido.");
-
-                if (NormalizeUtc(DateTime.UtcNow) >= fallbackTicket.FechaVencimiento)
-                {
-                    if (fallbackTicket.Estado != EstadoTicket.Vencido)
-                    {
-                        fallbackTicket.Estado = EstadoTicket.Vencido;
-                        await db.SaveChangesAsync(cancellationToken);
-                    }
-                    return TicketValidationResponse.Invalid("TICKET_VENCIDO", "El ticket está vencido.");
-                }
-
-                if (fallbackTicket.Estado == EstadoTicket.Vencido)
-                    return TicketValidationResponse.Invalid("TICKET_VENCIDO", "El ticket está vencido.");
-
-                return TicketValidationResponse.Valid(ToResponse(fallbackTicket));
-            }
-
             return TicketValidationResponse.Invalid("QR_INVALIDO", "El QR es inválido o fue alterado.");
-        }
 
         var ticket = await TicketQuery(asTracking: true)
             .SingleOrDefaultAsync(item => item.Id == data.TicketId, cancellationToken);
@@ -362,12 +316,7 @@ public sealed class TicketService(
                 (ownerUserId == null || item.Empleado.UsuarioId == ownerUserId), cancellationToken);
         if (ticket is null) return null;
         if (ticket.QrCodePng is { Length: > 100 }) return ticket.QrCodePng;
-
-        using var qrData = QRCoder.QRCodeGenerator.GenerateQrCode(
-            $"{ticket.Prefijo}-{ticket.FechaCreacion.Year}-{ticket.NumeroSecuencial:000000}",
-            QRCoder.QRCodeGenerator.ECCLevel.Q);
-        using var qrCode = new QRCoder.PngByteQRCode(qrData);
-        return qrCode.GetGraphic(8);
+        throw Error(409, "QR_NO_DISPONIBLE", "El ticket no tiene un QR firmado disponible. Contacta al administrador.");
     }
 
     private IQueryable<Ticket> TicketQuery(bool asTracking)
@@ -391,9 +340,10 @@ public sealed class TicketService(
             throw Error(400, "DEPARTAMENTO_INACTIVO", "El departamento de la solicitud está inactivo.");
         if (!solicitud.TipoCombustible.Activo)
             throw Error(400, "COMBUSTIBLE_INACTIVO", "El tipo de combustible está inactivo.");
-        if (solicitud.Vehiculo.DepartamentoId != solicitud.DepartamentoId)
+        if (solicitud.Empleado.DepartamentoId != solicitud.DepartamentoId ||
+            solicitud.Vehiculo.DepartamentoId != solicitud.DepartamentoId)
         {
-            throw Error(400, "RELACIONES_SOLICITUD_INVALIDAS", "El vehículo no coincide con el departamento de la solicitud.");
+            throw Error(400, "RELACIONES_SOLICITUD_INVALIDAS", "Empleado, vehículo y departamento no coinciden.");
         }
     }
 

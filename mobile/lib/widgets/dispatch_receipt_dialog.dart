@@ -46,7 +46,9 @@ class DispatchReceiptDialog extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.statusConsumedBg,
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppColors.statusConsumed.withValues(alpha: 0.4)),
+                    border: Border.all(
+                      color: AppColors.statusConsumed.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: const Icon(
                     Icons.check_rounded,
@@ -96,7 +98,11 @@ class DispatchReceiptDialog extends StatelessWidget {
                 children: [
                   _ReceiptRow(label: 'Ticket', value: result.code, mono: true),
                   const SizedBox(height: 8),
-                  _ReceiptRow(label: 'No. Despacho', value: '#${result.id}', mono: true),
+                  _ReceiptRow(
+                    label: 'No. Despacho',
+                    value: '#${result.id}',
+                    mono: true,
+                  ),
                   const Divider(height: 18, color: AppColors.cardBorder),
                   _ReceiptRow(
                     label: 'Galones servidos',

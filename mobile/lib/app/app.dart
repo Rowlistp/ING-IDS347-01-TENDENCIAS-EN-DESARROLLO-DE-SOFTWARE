@@ -19,11 +19,11 @@ class FuelTrackApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'FuelTrack',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        home: const SessionScreen(),
-      );
+    title: 'FuelTrack',
+    debugShowCheckedModeBanner: false,
+    theme: AppTheme.lightTheme,
+    home: const SessionScreen(),
+  );
 }
 
 class SessionScreen extends ConsumerWidget {
@@ -49,34 +49,39 @@ class ErrorNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.statusExpiredBg,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.statusExpired.withValues(alpha: 0.2)),
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.statusExpiredBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.statusExpired.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppColors.statusExpired,
+            size: 20,
           ),
-          child: Row(
-            children: [
-              const Icon(Icons.error_outline_rounded, color: AppColors.statusExpired, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    message,
-                    style: const TextStyle(
-                      color: AppColors.statusExpired,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Semantics(
+              liveRegion: true,
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: AppColors.statusExpired,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
-

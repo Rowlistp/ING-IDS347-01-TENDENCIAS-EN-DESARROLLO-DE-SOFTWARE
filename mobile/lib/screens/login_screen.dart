@@ -14,7 +14,17 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  bool busy = false;
+  bool busy = true;
+  final username = TextEditingController();
+  final password = TextEditingController();
+
+  @override
+  void dispose() {
+    username.dispose();
+    password.dispose();
+    super.dispose();
+  }
+
   String? error;
 
   @override
@@ -37,22 +47,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> login() async {
+    if (busy) return;
     setState(() {
       busy = true;
       error = null;
     });
     try {
       final session = ref.read(sessionProvider);
-      if (session.isKeycloak) {
-        await session.loginWithBackend();
-      } else {
-        await session.login();
-      }
+      await session.login(username: username.text, password: password.text);
+      password.clear();
       final user = await ref.read(apiProvider).me();
       if (mounted) session.setUser(user);
     } on FlutterAppAuthUserCancelledException {
       // Cancelar vuelve a login
     } catch (e) {
+      await ref.read(sessionProvider).expire();
       if (mounted) setState(() => error = friendlyError(e));
     }
     if (mounted) setState(() => busy = false);
@@ -61,7 +70,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary, // fondo tanque oscuro, igual que la web
+      backgroundColor:
+          AppColors.primary, // fondo tanque oscuro, igual que la web
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -119,7 +129,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           color: AppColors.statusExpiredBg,
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: AppColors.statusExpired.withValues(alpha: 0.4),
+                            color: AppColors.statusExpired.withValues(
+                              alpha: 0.4,
+                            ),
                           ),
                         ),
                         child: Row(
@@ -147,6 +159,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
 
                     // Botón de ingreso
+                    if (ref.watch(sessionProvider).requiresCredentials) ...[
+                      TextField(
+                        controller: username,
+                        enabled: !busy,
+                        autocorrect: false,
+                        autofillHints: const [AutofillHints.username],
+                        decoration: const InputDecoration(labelText: 'Usuario'),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: password,
+                        enabled: !busy,
+                        obscureText: true,
+                        autofillHints: const [AutofillHints.password],
+                        onSubmitted: (_) => login(),
+                        decoration: const InputDecoration(
+                          labelText: 'Contraseña',
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                     SizedBox(
                       height: 44,
                       child: FilledButton(
@@ -167,67 +200,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
                                 ),
                               )
                             : const Text('Iniciar sesión'),
-
                       ),
                     ),
                     const SizedBox(height: 10),
 
-                    TextButton.icon(
-                      onPressed: () async {
-                        final session = ref.read(sessionProvider);
-                        final controller = TextEditingController(
-                          text: session.activeBaseUrl ?? 'http://10.0.0.11:5298/api/v1',
-                        );
-                        final newUrl = await showDialog<String>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Configurar IP del Servidor'),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Ingresa la dirección o IP del servidor API:',
-                                  style: TextStyle(fontSize: 13),
-                                ),
-                                const SizedBox(height: 12),
-                                TextField(
-                                  controller: controller,
-                                  decoration: const InputDecoration(
-                                    border: OutlineInputBorder(),
-                                    labelText: 'URL de la API',
-                                    hintText: 'http://10.0.0.11:5298/api/v1',
-                                  ),
-                                ),
-                              ],
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text('Cancelar'),
-                              ),
-                              FilledButton(
-                                onPressed: () => Navigator.pop(ctx, controller.text),
-                                child: const Text('Guardar'),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (newUrl != null && newUrl.isNotEmpty) {
-                          await session.setServerUrl(newUrl);
-                          if (context.mounted) {
-                            setState(() {});
-                          }
-                        }
-                      },
-                      icon: const Icon(Icons.settings_ethernet_rounded, size: 14, color: AppColors.textMuted),
-                      label: Text(
-                        'Servidor: ${ref.watch(sessionProvider).activeBaseUrl ?? 'Automático'}',
-                        style: GoogleFonts.publicSans(fontSize: 11, color: AppColors.textMuted),
+                    Text(
+                      'Servidor configurado: ${ref.watch(configProvider).apiUrl}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
                       ),
                     ),
 

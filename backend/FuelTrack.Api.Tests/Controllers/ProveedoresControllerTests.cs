@@ -40,7 +40,7 @@ public sealed class ProveedoresControllerTests
                 HttpContext = new DefaultHttpContext
                 {
                     User = new ClaimsPrincipal(new ClaimsIdentity(
-                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString())], "Test"))
+                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString()), new Claim(ClaimTypes.Role, "Administrador")], "Test"))
                 }
             }
         };
@@ -229,4 +229,19 @@ public sealed class ProveedoresControllerTests
         await _db.Entry(proveedor).ReloadAsync();
         Assert.IsFalse(proveedor.Activo);
     }
+
+    [TestMethod]
+    public async Task Update_SupervisorNoPuedeDesactivarPorEdicion()
+    {
+        var entity = new Proveedor { Rnc = "101000001", Nombre = "Proveedor", Activo = true };
+        _db.Proveedores.Add(entity);
+        await _db.SaveChangesAsync();
+        _controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, _usuarioActorId.ToString()), new Claim(ClaimTypes.Role, "Supervisor")], "Test"));
+        var result = await _controller.Update(entity.Id, new SaveProveedorRequest("101000001", "Proveedor", false), default);
+        Assert.AreEqual(403, ((ObjectResult)result.Result!).StatusCode);
+        _db.ChangeTracker.Clear();
+        Assert.IsTrue((await _db.Proveedores.SingleAsync()).Activo);
+        Assert.AreEqual(0, await _db.Auditorias.CountAsync());
+    }
+
 }

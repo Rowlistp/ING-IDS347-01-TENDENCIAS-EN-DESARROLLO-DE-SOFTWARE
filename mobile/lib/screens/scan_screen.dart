@@ -24,8 +24,8 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionProvider);
-    final isConnected = !session.isBypass && session.user != null;
-    final activeUrl = session.activeBaseUrl ?? 'http://10.0.0.11:5298/api/v1';
+    final isConnected = session.user != null;
+    final activeUrl = ref.read(configProvider).apiUrl;
 
     if (gate.payload == null) {
       return Scaffold(
@@ -38,7 +38,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           actions: [
             IconButton(
               icon: const Icon(Icons.settings_outlined),
-              tooltip: 'Configurar Servidor',
+              tooltip: 'Servidor configurado',
               onPressed: _mostrarConfigServidor,
             ),
           ],
@@ -56,12 +56,19 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                   onTap: _mostrarConfigServidor,
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
-                      color: isConnected ? const Color(0xDD064E3B) : const Color(0xDD7C2D12),
+                      color: isConnected
+                          ? const Color(0xDD064E3B)
+                          : const Color(0xDD7C2D12),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isConnected ? const Color(0xFF10B981) : const Color(0xFFF97316),
+                        color: isConnected
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFFF97316),
                         width: 1,
                       ),
                       boxShadow: [
@@ -75,8 +82,12 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                     child: Row(
                       children: [
                         Icon(
-                          isConnected ? Icons.wifi_rounded : Icons.wifi_off_rounded,
-                          color: isConnected ? const Color(0xFF34D399) : const Color(0xFFFDBA74),
+                          isConnected
+                              ? Icons.wifi_rounded
+                              : Icons.wifi_off_rounded,
+                          color: isConnected
+                              ? const Color(0xFF34D399)
+                              : const Color(0xFFFDBA74),
                           size: 18,
                         ),
                         const SizedBox(width: 8),
@@ -86,9 +97,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                isConnected ? 'Conectado a FuelTrack API' : 'Sin conexión con el Servidor',
+                                isConnected
+                                    ? 'Sesión iniciada'
+                                    : 'Inicia sesión',
                                 style: TextStyle(
-                                  color: isConnected ? const Color(0xFFD1FAE5) : const Color(0xFFFFEDD5),
+                                  color: isConnected
+                                      ? const Color(0xFFD1FAE5)
+                                      : const Color(0xFFFFEDD5),
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                 ),
@@ -106,14 +121,21 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
-                            'Configurar',
-                            style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                            'Ver servidor',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -211,7 +233,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.check_circle_rounded, color: AppColors.statusConsumed, size: 28),
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.statusConsumed,
+                  size: 28,
+                ),
                 const SizedBox(width: 10),
                 const Text(
                   'Ticket válido',
@@ -275,89 +301,17 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   });
 
   void _mostrarConfigServidor() {
-    final session = ref.read(sessionProvider);
-    final controller = TextEditingController(
-      text: session.activeBaseUrl ?? 'http://10.0.0.11:5298/api/v1',
-    );
-    var probando = false;
-
     showDialog<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (dialogCtx, setDlgState) => AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.dns_rounded, color: AppColors.primary),
-              SizedBox(width: 8),
-              Text('Servidor FuelTrack', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ],
+      builder: (ctx) => AlertDialog(
+        title: const Text('Servidor FuelTrack'),
+        content: Text(ref.read(configProvider).apiUrl),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cerrar'),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Ingresa la dirección del servidor central FuelTrack:',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  labelText: 'URL de la API',
-                  hintText: 'http://10.0.0.11:5298/api/v1',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.link_rounded),
-                ),
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-              ),
-              if (probando) ...[
-                const SizedBox(height: 16),
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
-                    SizedBox(width: 10),
-                    Text('Conectando al servidor...', style: TextStyle(fontSize: 13)),
-                  ],
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cerrar'),
-            ),
-            FilledButton.icon(
-              icon: const Icon(Icons.check_circle_outline, size: 18),
-              label: const Text('Guardar y Conectar'),
-              onPressed: probando
-                  ? null
-                  : () async {
-                      setDlgState(() => probando = true);
-                      final url = controller.text.trim();
-                      await session.setServerUrl(url);
-                      await session.loginWithBackend();
-                      setDlgState(() => probando = false);
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (!mounted) return;
-                      final ok = !session.isBypass;
-                      final messenger = ScaffoldMessenger.of(context);
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            ok
-                                ? '✓ Conexión establecida con éxito: ${session.activeBaseUrl}'
-                                : '⚠️ No se pudo contactar el servidor en esa dirección. Verifica tu red Wi-Fi.',
-                          ),
-                          backgroundColor: ok ? AppColors.statusConsumed : AppColors.statusExpired,
-                        ),
-                      );
-                    },
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }

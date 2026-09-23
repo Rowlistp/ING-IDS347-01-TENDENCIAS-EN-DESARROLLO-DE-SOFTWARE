@@ -6,11 +6,7 @@ import 'status_badge.dart';
 
 /// Tarjeta de ticket — estilo "rounded-sm border" alineado con la web.
 class TicketCard extends StatelessWidget {
-  const TicketCard({
-    super.key,
-    required this.ticket,
-    this.onTap,
-  });
+  const TicketCard({super.key, required this.ticket, this.onTap});
 
   final Ticket ticket;
   final VoidCallback? onTap;
@@ -171,7 +167,8 @@ class _DetailItem extends StatelessWidget {
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: valueStyle ??
+          style:
+              valueStyle ??
               GoogleFonts.publicSans(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,

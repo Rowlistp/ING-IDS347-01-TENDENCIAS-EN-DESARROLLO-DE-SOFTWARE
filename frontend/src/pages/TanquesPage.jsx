@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '../hooks/useAuth'
+import { ROLES } from '../utils/rbac'
 import ConfirmModal from '../components/ConfirmModal'
 import Field, { inputCls, inputClsError } from '../components/Field'
 import Modal from '../components/Modal'
@@ -23,6 +25,8 @@ const EMPTY_FORM = {
 }
 
 export default function TanquesPage() {
+  const { user } = useAuth()
+  const esAdministrador = user?.roles?.includes(ROLES.ADMINISTRADOR)
   const tiposCombustible = useTiposCombustible()
 
   const [tanques, setTanques] = useState([])
@@ -282,7 +286,7 @@ export default function TanquesPage() {
                 </svg>
                 Editar
               </button>
-              <button
+              {(!t.activo || esAdministrador) && <button
                 type="button"
                 onClick={() => handleToggleStatus(t)}
                 disabled={statusChangingId === t.id}
@@ -305,7 +309,7 @@ export default function TanquesPage() {
                 {statusChangingId === t.id
                   ? (t.activo ? 'Desactivando...' : 'Reactivando...')
                   : (t.activo ? 'Desactivar' : 'Reactivar')}
-              </button>
+              </button>}
             </div>
           )}
         />
@@ -327,7 +331,7 @@ export default function TanquesPage() {
                 className={fieldErrors.tipoCombustibleId ? inputClsError : inputCls}
               >
                 <option value="">Seleccione un tipo de combustible</option>
-                {tiposCombustible.map((t) => (
+                {tiposCombustible.filter((t) => t.activo || (editingId && t.id === Number(form.tipoCombustibleId))).map((t) => (
                   <option key={t.id} value={t.id}>{t.nombre}</option>
                 ))}
               </select>
@@ -411,7 +415,7 @@ export default function TanquesPage() {
               <label className="flex items-center gap-2 cursor-pointer pt-1 text-sm text-tinta">
                 <input
                   type="checkbox"
-                  name="activo"
+                  name="activo" disabled={!esAdministrador && Boolean(tanques.find((item) => item.id === editingId)?.activo)}
                   checked={Boolean(form.activo)}
                   onChange={handleFormChange}
                   className="h-4 w-4 rounded border-acero/30 text-tanque focus:ring-tanque"

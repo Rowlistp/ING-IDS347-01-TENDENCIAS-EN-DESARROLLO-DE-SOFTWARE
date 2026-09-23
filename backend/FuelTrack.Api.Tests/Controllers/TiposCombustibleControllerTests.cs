@@ -41,7 +41,7 @@ public sealed class TiposCombustibleControllerTests
                 HttpContext = new DefaultHttpContext
                 {
                     User = new ClaimsPrincipal(new ClaimsIdentity(
-                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString())], "Test"))
+                        [new Claim(ClaimTypes.NameIdentifier, usuarioActor.Id.ToString()), new Claim(ClaimTypes.Role, "Administrador")], "Test"))
                 }
             }
         };
@@ -363,4 +363,19 @@ public sealed class TiposCombustibleControllerTests
         var result = await _controller.Deactivate(tipo.Id, CancellationToken.None);
         Assert.IsInstanceOfType<NoContentResult>(result);
     }
+
+    [TestMethod]
+    public async Task Update_SupervisorNoPuedeDesactivarPorEdicion()
+    {
+        var entity = new TipoCombustible { Nombre = "Combustible", Activo = true };
+        _db.TiposCombustible.Add(entity);
+        await _db.SaveChangesAsync();
+        _controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, _usuarioActorId.ToString()), new Claim(ClaimTypes.Role, "Supervisor")], "Test"));
+        var result = await _controller.Update(entity.Id, new SaveTipoCombustibleRequest("Combustible", false), default);
+        Assert.AreEqual(403, ((ObjectResult)result.Result!).StatusCode);
+        _db.ChangeTracker.Clear();
+        Assert.IsTrue((await _db.TiposCombustible.SingleAsync()).Activo);
+        Assert.AreEqual(0, await _db.Auditorias.CountAsync());
+    }
+
 }

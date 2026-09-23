@@ -5,11 +5,7 @@ import '../theme/app_theme.dart';
 /// Badge de estado estilo "bandas de medidor" — igual que StatusBadge.jsx de la web.
 /// Borde definido + fondo semitransparente + texto uppercase + letter-spacing.
 class StatusBadge extends StatelessWidget {
-  const StatusBadge({
-    super.key,
-    required this.status,
-    this.label,
-  });
+  const StatusBadge({super.key, required this.status, this.label});
 
   final String status;
   final String? label;

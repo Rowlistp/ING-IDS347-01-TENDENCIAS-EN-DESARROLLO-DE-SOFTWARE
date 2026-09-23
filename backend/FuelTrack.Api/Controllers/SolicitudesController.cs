@@ -4,6 +4,7 @@ using FuelTrack.Api.DTOs.Solicitudes;
 using FuelTrack.Api.Models;
 using FuelTrack.Api.Models.Enums;
 using FuelTrack.Api.Security;
+using FuelTrack.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,12 @@ public sealed class SolicitudesController : ControllerBase
         [Roles.Administrador, Roles.Supervisor, Roles.Despachador, Roles.Auditor, Roles.Consulta];
 
     private readonly AppDbContext _db;
-    public SolicitudesController(AppDbContext db) => _db = db;
+    private readonly AuditService _audit;
+    public SolicitudesController(AppDbContext db, AuditService audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<SolicitudDto>>> GetAll(CancellationToken ct)
@@ -70,7 +76,7 @@ public sealed class SolicitudesController : ControllerBase
     [Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor},{Roles.Solicitante}")]
     public async Task<ActionResult<SolicitudDto>> Create(CreateSolicitudRequest req, CancellationToken ct)
     {
-        if (TryGetCurrentUserId(out var actorId))
+        if (!TryGetCurrentUserId(out var actorId)) return Unauthorized();
         {
             var ownerId = OwnerFilter(actorId);
             if (ownerId.HasValue)
@@ -119,8 +125,9 @@ if (!vehiculo.Activo)
     });
 
 
+var departamentoId = req.DepartamentoId > 0 ? req.DepartamentoId : empleado.DepartamentoId;
 var departamento = await _db.Departamentos
-    .FirstOrDefaultAsync(d => d.Id == req.DepartamentoId, ct);
+    .FirstOrDefaultAsync(d => d.Id == departamentoId, ct);
 
 if (departamento is null)
     return BadRequest(new
@@ -153,20 +160,26 @@ if (!tipoCombustible.Activo)
         code = "TIPO_COMBUSTIBLE_INACTIVO",
         message = "No se puede crear una solicitud con un tipo de combustible inactivo."
     });
+        if (empleado.DepartamentoId != departamento.Id || vehiculo.DepartamentoId != departamento.Id)
+            return BadRequest(new { code = "SOLICITUD_RELACIONES_INVALIDAS", message = "El empleado y el vehículo deben pertenecer al departamento de la solicitud." });
+
         var solicitud = new SolicitudCombustible
         {
             CantidadSolicitada = req.CantidadSolicitada,
             EmpleadoId = req.EmpleadoId,
             VehiculoId = req.VehiculoId,
-            DepartamentoId = req.DepartamentoId,
+            DepartamentoId = empleado.DepartamentoId,
             TipoCombustibleId = req.TipoCombustibleId,
             FechaVencimiento = req.FechaVencimiento,
             TipoSolicitud = "Manual",
             Estado = EstadoSolicitud.Pendiente,
             FechaSolicitud = DateTime.UtcNow
         };
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
         _db.SolicitudesCombustible.Add(solicitud);
         await _db.SaveChangesAsync(ct);
+        await RegistrarAuditoriaAsync("SOLICITUD_CREADA", solicitud, actorId, ct);
+        await transaction.CommitAsync(ct);
 
         await _db.Entry(solicitud).Reference(s => s.Empleado).LoadAsync(ct);
         await _db.Entry(solicitud).Reference(s => s.Vehiculo).LoadAsync(ct);
@@ -180,6 +193,7 @@ if (!tipoCombustible.Activo)
     [Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor}")]
     public async Task<ActionResult<SolicitudDto>> Aprobar(int id, AprobarSolicitudRequest req, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var actorId)) return Unauthorized();
         var solicitud = await _db.SolicitudesCombustible
             .Include(s => s.Empleado)
             .Include(s => s.Vehiculo)
@@ -191,9 +205,22 @@ if (!tipoCombustible.Activo)
         if (solicitud.Estado != EstadoSolicitud.Pendiente)
             return Conflict(new { code = "SOLICITUD_YA_PROCESADA", message = "La solicitud ya fue procesada." });
 
-        solicitud.Estado = EstadoSolicitud.Aprobada;
-        solicitud.CantidadAutorizada = req.CantidadAutorizada;
-        await _db.SaveChangesAsync(ct);
+        if (!solicitud.Empleado.Activo || !solicitud.Vehiculo.Activo || !solicitud.Departamento.Activo || !solicitud.TipoCombustible.Activo)
+            return Conflict(new { code = "SOLICITUD_CATALOGO_INACTIVO", message = "La solicitud contiene un empleado, vehículo, departamento o combustible inactivo." });
+        if (solicitud.Empleado.DepartamentoId != solicitud.DepartamentoId || solicitud.Vehiculo.DepartamentoId != solicitud.DepartamentoId)
+            return Conflict(new { code = "SOLICITUD_RELACIONES_INVALIDAS", message = "El empleado y el vehículo deben pertenecer al departamento de la solicitud." });
+        if (req.CantidadAutorizada > solicitud.CantidadSolicitada)
+            return BadRequest(new { code = "CANTIDAD_AUTORIZADA_EXCEDIDA", message = "No se puede autorizar más combustible del solicitado." });
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+        var updated = await _db.SolicitudesCombustible.Where(s => s.Id == id && s.Estado == EstadoSolicitud.Pendiente)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(s => s.Estado, EstadoSolicitud.Aprobada)
+                .SetProperty(s => s.CantidadAutorizada, req.CantidadAutorizada), ct);
+        if (updated == 0)
+            return Conflict(new { code = "SOLICITUD_YA_PROCESADA", message = "La solicitud ya fue procesada por otro usuario." });
+        await _db.Entry(solicitud).ReloadAsync(ct);
+        await RegistrarAuditoriaAsync("SOLICITUD_APROBADA", solicitud, actorId, ct);
+        await transaction.CommitAsync(ct);
 
         return Ok(ToDto(solicitud));
     }
@@ -202,6 +229,7 @@ if (!tipoCombustible.Activo)
     [Authorize(Roles = $"{Roles.Administrador},{Roles.Supervisor}")]
     public async Task<ActionResult<SolicitudDto>> Rechazar(int id, RechazarSolicitudRequest req, CancellationToken ct)
     {
+        if (!TryGetCurrentUserId(out var actorId)) return Unauthorized();
         var solicitud = await _db.SolicitudesCombustible
             .Include(s => s.Empleado)
             .Include(s => s.Vehiculo)
@@ -213,12 +241,23 @@ if (!tipoCombustible.Activo)
         if (solicitud.Estado != EstadoSolicitud.Pendiente)
             return Conflict(new { code = "SOLICITUD_YA_PROCESADA", message = "La solicitud ya fue procesada." });
 
-        solicitud.Estado = EstadoSolicitud.Rechazada;
-        solicitud.MotivoRechazo = req.MotivoRechazo;
-        await _db.SaveChangesAsync(ct);
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+        var updated = await _db.SolicitudesCombustible.Where(s => s.Id == id && s.Estado == EstadoSolicitud.Pendiente)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(s => s.Estado, EstadoSolicitud.Rechazada)
+                .SetProperty(s => s.MotivoRechazo, req.MotivoRechazo), ct);
+        if (updated == 0)
+            return Conflict(new { code = "SOLICITUD_YA_PROCESADA", message = "La solicitud ya fue procesada por otro usuario." });
+        await _db.Entry(solicitud).ReloadAsync(ct);
+        await RegistrarAuditoriaAsync("SOLICITUD_RECHAZADA", solicitud, actorId, ct);
+        await transaction.CommitAsync(ct);
 
         return Ok(ToDto(solicitud));
     }
+
+    private Task RegistrarAuditoriaAsync(string evento, SolicitudCombustible solicitud, int actorId, CancellationToken ct)
+        => _audit.WriteAsync(evento, "SolicitudCombustible", solicitud.Id.ToString(), actorId,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            new { solicitud.EmpleadoId, solicitud.VehiculoId, solicitud.DepartamentoId, solicitud.Estado, solicitud.CantidadSolicitada, solicitud.CantidadAutorizada, solicitud.MotivoRechazo }, ct);
 
     private static SolicitudDto ToDto(SolicitudCombustible s) => new(
         s.Id,

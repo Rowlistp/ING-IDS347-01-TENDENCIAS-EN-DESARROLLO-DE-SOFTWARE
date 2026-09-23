@@ -34,9 +34,9 @@ class _CameraScannerState extends State<CameraScanner> {
     super.dispose();
   }
 
-  void _showManualInputDialog() {
-    final textController = TextEditingController(text: 'COM-2026-000001');
-    showDialog<void>(
+  Future<void> _showManualInputDialog() async {
+    final textController = TextEditingController();
+    final value = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
@@ -53,8 +53,11 @@ class _CameraScannerState extends State<CameraScanner> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Escribe o pega el código del ticket QR para validarlo:',
-              style: GoogleFonts.publicSans(fontSize: 13, color: AppColors.textSecondary),
+              'Pega el contenido completo del QR firmado. El número del ticket no autoriza un despacho:',
+              style: GoogleFonts.publicSans(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -62,10 +65,15 @@ class _CameraScannerState extends State<CameraScanner> {
               autofocus: true,
               style: AppTheme.mono(fontSize: 14),
               decoration: InputDecoration(
-                hintText: 'COM-2026-XXXXXX',
+                hintText: 'FTQR1…',
                 prefixIcon: const Icon(Icons.qr_code_rounded, size: 20),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
           ],
@@ -79,19 +87,44 @@ class _CameraScannerState extends State<CameraScanner> {
             onPressed: () {
               final code = textController.text.trim();
               if (code.isNotEmpty) {
-                Navigator.of(ctx).pop();
-                widget.onScan(code);
+                Navigator.of(ctx).pop(code);
               }
             },
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
             child: const Text('Validar'),
           ),
         ],
       ),
     );
+    textController.dispose();
+    if (!mounted || value == null || !gate.accept(value)) return;
+    try {
+      await controller.stop();
+    } catch (_) {
+      /* La entrada manual funciona sin cámara. */
+    }
+    if (mounted) widget.onScan(value);
+  }
+
+  Future<void> _cameraAction(Future<void> Function() action) async {
+    try {
+      await action();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se pudo utilizar la cámara. Revisa los permisos o usa la entrada manual.',
+            ),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -105,7 +138,11 @@ class _CameraScannerState extends State<CameraScanner> {
           width: double.infinity,
           child: Row(
             children: [
-              const Icon(Icons.camera_alt_outlined, size: 18, color: Colors.white70),
+              const Icon(
+                Icons.camera_alt_outlined,
+                size: 18,
+                color: Colors.white70,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -134,21 +171,31 @@ class _CameraScannerState extends State<CameraScanner> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.no_photography_outlined, size: 48, color: Colors.white70),
+                        const Icon(
+                          Icons.no_photography_outlined,
+                          size: 48,
+                          color: Colors.white70,
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           'No se pudo abrir la cámara. Revisa el permiso de la cámara en Ajustes de tu teléfono.',
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.publicSans(color: Colors.white, fontSize: 13),
+                          style: GoogleFonts.publicSans(
+                            color: Colors.white,
+                            fontSize: 13,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         FilledButton.icon(
-                          onPressed: () => controller.start(),
+                          onPressed: () =>
+                              _cameraAction(() => controller.start()),
                           icon: const Icon(Icons.refresh_rounded, size: 18),
                           label: const Text('Reintentar cámara'),
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.accent,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                           ),
                         ),
                       ],
@@ -158,8 +205,10 @@ class _CameraScannerState extends State<CameraScanner> {
                 onDetect: (capture) async {
                   for (final barcode in capture.barcodes) {
                     final value = barcode.rawValue ?? barcode.displayValue;
-                    if (value != null && value.trim().isNotEmpty && gate.accept(value.trim())) {
-                      await controller.stop();
+                    if (value != null &&
+                        value.trim().isNotEmpty &&
+                        gate.accept(value.trim())) {
+                      await _cameraAction(() => controller.stop());
                       if (mounted) widget.onScan(value.trim());
                       break;
                     }
@@ -186,14 +235,18 @@ class _CameraScannerState extends State<CameraScanner> {
                       ),
                       child: IconButton(
                         icon: Icon(
-                          torchOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+                          torchOn
+                              ? Icons.flash_on_rounded
+                              : Icons.flash_off_rounded,
                           color: torchOn ? AppColors.accent : Colors.white,
                           size: 20,
                         ),
                         tooltip: 'Linterna',
                         onPressed: () async {
-                          await controller.toggleTorch();
-                          setState(() => torchOn = !torchOn);
+                          await _cameraAction(() async {
+                            await controller.toggleTorch();
+                            if (mounted) setState(() => torchOn = !torchOn);
+                          });
                         },
                       ),
                     ),
@@ -204,9 +257,14 @@ class _CameraScannerState extends State<CameraScanner> {
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
-                        icon: const Icon(Icons.flip_camera_ios_rounded, color: Colors.white, size: 20),
+                        icon: const Icon(
+                          Icons.flip_camera_ios_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         tooltip: 'Cambiar cámara',
-                        onPressed: () => controller.switchCamera(),
+                        onPressed: () =>
+                            _cameraAction(() => controller.switchCamera()),
                       ),
                     ),
                   ],
@@ -227,11 +285,16 @@ class _CameraScannerState extends State<CameraScanner> {
               onPressed: _showManualInputDialog,
               icon: const Icon(Icons.keyboard_outlined, size: 18),
               label: Text(
-                'Ingreso manual del código de ticket',
-                style: GoogleFonts.publicSans(fontSize: 13, fontWeight: FontWeight.w600),
+                'Ingreso manual del QR firmado',
+                style: GoogleFonts.publicSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               style: OutlinedButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
                 side: const BorderSide(color: AppColors.cardBorder),
                 foregroundColor: AppColors.textPrimary,
               ),

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '../hooks/useAuth'
+import { ROLES } from '../utils/rbac'
 import ConfirmModal from '../components/ConfirmModal'
 import { apiRequest } from '../services/api'
 import PageContainer from '../components/PageContainer'
@@ -87,6 +89,8 @@ function EmptyState({ onCreateClick }) {
 }
 
 export default function ProveedoresPage() {
+  const { user } = useAuth()
+  const esAdministrador = user?.roles?.includes(ROLES.ADMINISTRADOR)
   const [proveedores, setProveedores] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -337,7 +341,7 @@ export default function ProveedoresPage() {
                 </svg>
                 Editar
               </button>
-              {p.activo && (
+              {p.activo && esAdministrador && (
                 <button
                   type="button"
                   onClick={() => handleDeactivate(p)}
@@ -402,7 +406,7 @@ export default function ProveedoresPage() {
 
             {editingId && (
               <label className="flex items-center gap-2 text-sm text-tinta cursor-pointer">
-                <input type="checkbox" name="activo" checked={form.activo} onChange={handleFormChange} className="rounded text-tanque focus:ring-tanque" />
+                <input type="checkbox" name="activo" disabled={!esAdministrador && Boolean(proveedores.find((item) => item.id === editingId)?.activo)} checked={form.activo} onChange={handleFormChange} className="rounded text-tanque focus:ring-tanque" />
                 <span>Proveedor activo en el sistema</span>
               </label>
             )}

@@ -1,9 +1,11 @@
+> Registro histórico del grupo conservado desde main `d86e7c9`. La declaración histórica de certificación no sustituye las comprobaciones actuales ni las pruebas físicas pendientes. [Verificación actual](06-VERIFICACION-INTEGRACION.md) · [Hallazgos de integración QR/móvil](05-INTEGRACION-CORREGIDA.md).
+
 # BIT?CORA T?CNICA DE CONTROL DE CALIDAD Y DEFECTOS (DEFECT LOG)
 ## Sistema de Gesti?n y Control de Combustible ? FuelTrack ERP
-**Documento Oficial de Aseguramiento de Calidad (QA)**  
-**L?der de Calidad:** Rowlis Trinidad (Rowlistp@gmail.com)  
-**Fecha de Emisión:** 19 de Septiembre de 2026  
-**Versión:** 1.1 — Consolidado de Interoperabilidad Móvil QR, Despachos y Refinamiento UI  
+**Documento Oficial de Aseguramiento de Calidad (QA)**
+**Líder de Calidad:** Rowlis Trinidad (Rowlistp@gmail.com)
+**Fecha de Emisión:** 20 de Septiembre de 2026
+**Versión:** 1.2 — Consolidado de Interoperabilidad Móvil QR, Validaciones de Dominio y Refinamiento UI
 
 ---
 
@@ -12,15 +14,15 @@
 | Severidad | Abiertos | Resueltos | Mitigados / Documentados | Total |
 |---|---|---|---|---|
 | **Crítica** | 0 | 2 | 0 | 2 |
-| **Mayor** | 0 | 6 | 0 | 6 |
+| **Mayor** | 0 | 10 | 0 | 10 |
 | **Media** | 0 | 4 | 0 | 4 |
-| **Menor** | 0 | 1 | 0 | 1 |
-| **Total** | **0** | **13** | **0** | **13** |
+| **Menor** | 0 | 0 | 0 | 0 |
+| **Total** | **0** | **16** | **0** | **16** |
 
 **Tasa de Resolución:** 100.0%  
 **Estado del Sistema:** ✅ APROBADO PARA PRODUCCIÓN / CERTIFICADO  
 **Total Pruebas Automatizadas Backend:** 321/321 aprobadas (100%)  
-**Total Pruebas Automatizadas Móvil:** 26/26 aprobadas (100%), 0 advertencias (`flutter analyze`).
+**Total Pruebas Automatizadas Móvil:** 34/34 aprobadas (100%), 0 advertencias (`flutter analyze`).
 **Estado Frontend:** 0 errores de linter (`oxlint`), compilación de producción exitosa (`vite build`).
 
 ---
@@ -40,8 +42,13 @@
 | **DEF-2026-009** | Solicitudes de Combustible | Ausencia de Cálculos Rápidos y Validación de Límites de Autorización | Media | P2 (Media) | ✅ Resuelto |
 | **DEF-2026-010** | Gestión de Tickets | Falta de Nomenclatura Controlada y Desacoplamiento de Acciones Críticas | Mayor | P1 (Alta) | ✅ Resuelto |
 | **DEF-2026-011** | Despachos & Estaciones | Bloqueo por Selección Involuntaria de Estación Inactiva (HTTP 409 ESTACION_INACTIVA) | Mayor | P1 (Alta) | ✅ Resuelto |
-| **DEF-2026-012** | Móvil & Despachos | Desincronización en Escaneo Móvil de Tickets QR y Datos Hardcodeados | Mayor | P1 (Alta) | ✅ Resuelto |
-| **DEF-2026-013** | UI/UX & Frontend Web | Duplicación de Icono y Carácter '+' en Botones de Acción Primaria | Menor | P3 (Baja) | ✅ Resuelto |
+| **DEF-2026-012** | Tanques & Combustible | Creación de Tanque con Tipo de Combustible Inactivo Permitida en Endpoint POST | Mayor | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-013** | Solicitudes Recurrentes | Plantilla Recurrente Permite Entidades Inactivas y Departamento Incorrecto | Mayor | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-014** | Solicitudes de Combustible | Selector de Departamento Manual Permite Asignar Departamento Ajeno al Empleado | Mayor | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-015** | Recepciones de Combustible | Registro de Recepción Acepta Tanque con Combustible Inactivo | Mayor | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-016** | Inventario | Ajuste y Transferencia de Inventario Permite Tanques con Combustible Inactivo | Mayor | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-017** | Móvil & Despachos | Desincronización en Escaneo Móvil de Tickets QR y Datos Hardcodeados | Mayor | P1 (Alta) | ✅ Resuelto |
+| **DEF-2026-018** | UI/UX & Frontend Web | Duplicación de Icono y Carácter '+' en Botones de Acción Primaria | Menor | P3 (Baja) | ✅ Resuelto |
 
 ---
 
@@ -206,7 +213,7 @@
   - Prueba en vivo con API y PostgreSQL creando estación inactiva y verificando que el modal de despacho la excluye y confirma transacciones correctamente.
 
 ---
-### DEF-2026-012: Desincronización en Escaneo Móvil de Tickets QR y Datos Simulados Hardcodeados
+### DEF-2026-017: Desincronización en Escaneo Móvil de Tickets QR y Datos Simulados Hardcodeados
 - **Severidad:** Mayor (Fallo en interoperabilidad entre aplicación web, backend y aplicación móvil en estación)
 - **Prioridad:** P1 (Alta)
 - **Estado:** ✅ Resuelto en `mobile/lib`, `backend/FuelTrack.Api` y `frontend/src/pages/TicketsPage.jsx`
@@ -236,7 +243,7 @@
   - Pruebas de escaneo en vivo entre navegador web (`http://localhost:5173/tickets`) y dispositivo móvil Samsung Galaxy Note 10+ en red local.
 
 ---
-### DEF-2026-013: Duplicación de Icono y Carácter '+' en Botones de Acción Primaria en Frontend Web
+### DEF-2026-018: Duplicación de Icono y Carácter '+' en Botones de Acción Primaria en Frontend Web
 - **Severidad:** Menor (Inconsistencia estética y de usabilidad en interfaz gráfica)
 - **Prioridad:** P3 (Baja)
 - **Estado:** ✅ Resuelto en `frontend/src/pages/`
@@ -253,6 +260,74 @@
   - Auditoría exhaustiva mediante expresiones regulares en todo el árbol de componentes frontend (`frontend/src`).
   - Linter `oxlint` ejecutado con 0 errores.
   - Compilación de producción `vite build` completada con éxito.
+
+---
+
+---
+
+### DEF-2026-012: Creación de Tanque con Tipo de Combustible Inactivo Permitida en Endpoint POST
+- **Severidad:** Mayor (Viola integridad referencial del inventario — tanques sin combustible activo no deben crearse)
+- **Prioridad:** P1 (Alta)
+- **Estado:** ✅ Resuelto en `TanquesController.cs` y `TanquesPage.jsx`
+- **Componente:** `backend/FuelTrack.Api/Controllers/TanquesController.cs`, `frontend/src/pages/TanquesPage.jsx`, `DTOs/Tanques/TanqueDto.cs`
+- **Descripción:** El endpoint `POST /api/v1/tanques` aceptaba la creación de un nuevo tanque con un `tipoCombustibleId` cuyo registro estuviera marcado como inactivo (`Activo = false`). Aunque el endpoint de edición (`PUT`) ya realizaba esta validación, el de creación la omitía por completo.
+- **Causa Raíz (RCA):** En `TanquesController.Create()`, la entidad `TipoCombustible` se cargaba únicamente por ID sin verificar su propiedad `Activo`. El frontend tampoco filtraba el menú desplegable al crear, mostrando opciones inactivas.
+- **Resolución:**
+  1. **Backend:** `Create()` ahora carga el `TipoCombustible` completo con `FirstOrDefaultAsync` y valida `!tipoCombustible.Activo`, devolviendo HTTP 409 `TIPO_COMBUSTIBLE_INACTIVO`. Se añadió `bool TipoCombustibleActivo` al `TanqueDto` y todas las proyecciones.
+  2. **Frontend:** El dropdown de combustibles en el modal "Nuevo tanque" filtra `.filter(tc => tc.activo)`.
+- **Verificación:** 321/321 pruebas backend. Lint 0 errores. Build exitoso.
+
+---
+### DEF-2026-013: Plantilla de Solicitud Recurrente Permite Entidades Inactivas y Departamento Incorrecto
+- **Severidad:** Mayor (Plantillas con entidades inactivas generarán errores al ejecutarse automáticamente)
+- **Prioridad:** P1 (Alta)
+- **Estado:** ✅ Resuelto en `SolicitudesRecurrentesController.cs` y `SolicitudesRecurrentesPage.jsx`
+- **Componente:** `backend/.../SolicitudesRecurrentesController.cs`, `frontend/.../SolicitudesRecurrentesPage.jsx`
+- **Descripción:** `POST /api/v1/solicitudes-recurrentes` permitía crear plantillas referenciando empleados, vehículos y tipos de combustible marcados como inactivos, y adicionalmente permitía especificar un departamento diferente al del empleado seleccionado.
+- **Causa Raíz (RCA):** `Create()` no cargaba las entidades referenciadas para validar su estado. El frontend mostraba todas las entidades sin filtrar y tenía un selector manual de departamento.
+- **Resolución:**
+  1. **Backend:** `Create()` y `Activar()` ahora cargan cada FK con `FirstOrDefaultAsync` y verifican `.Activo`. El `DepartamentoId` se auto-deriva de `empleado.DepartamentoId`.
+  2. **Frontend:** Dropdowns de empleados, vehículos y combustibles filtrados a activos. El selector de departamento fue reemplazado por un badge de solo lectura que muestra el departamento del empleado seleccionado.
+- **Verificación:** 321/321 pruebas backend. Lint 0 errores. Build exitoso.
+
+---
+### DEF-2026-014: Selector de Departamento Manual Permite Asignar Departamento Ajeno al Empleado
+- **Severidad:** Mayor (Violación de integridad de datos — solicitudes de combustible asignadas a departamentos incorrectos)
+- **Prioridad:** P1 (Alta)
+- **Estado:** ✅ Resuelto en `SolicitudesController.cs` y `SolicitudesPage.jsx`
+- **Componente:** `backend/.../SolicitudesController.cs`, `frontend/.../SolicitudesPage.jsx`
+- **Descripción:** En el formulario "Nueva solicitud de combustible", el campo departamento era un selector libre que permitía escoger cualquier departamento sin relación con el empleado seleccionado. El backend tampoco validaba esta coherencia.
+- **Causa Raíz (RCA):** `SolicitudesController.Create()` no comparaba `req.DepartamentoId` contra `empleado.DepartamentoId`. El frontend no derivaba el departamento del empleado.
+- **Resolución:**
+  1. **Backend:** `Create()` valida `req.DepartamentoId != 0 && req.DepartamentoId != empleado.DepartamentoId` → HTTP 400 `DEPARTAMENTO_NO_COINCIDE`. Siempre se asigna `solicitud.DepartamentoId = empleado.DepartamentoId`.
+  2. **Frontend:** El selector de departamento fue eliminado del formulario. Se muestra el departamento como dato de solo lectura derivado del empleado. Los combustibles se filtran a activos.
+- **Verificación:** 321/321 pruebas backend. Lint 0 errores. Build exitoso.
+
+---
+### DEF-2026-015: Registro de Recepción Acepta Tanque con Tipo de Combustible Inactivo
+- **Severidad:** Mayor (Ingreso de combustible a un tanque con tipo inactivo genera inconsistencia en inventario)
+- **Prioridad:** P1 (Alta)
+- **Estado:** ✅ Resuelto en `RecepcionesController.cs` y `RecepcionesPage.jsx`
+- **Componente:** `backend/.../RecepcionesController.cs`, `frontend/.../RecepcionesPage.jsx`
+- **Descripción:** `POST /api/v1/recepciones` aceptaba registrar recepciones en tanques cuyo tipo de combustible estuviera inactivo. El frontend también listaba estos tanques en el selector.
+- **Causa Raíz (RCA):** `Create()` cargaba el tanque sin hacer `.Include(t => t.TipoCombustible)`, por lo que el campo `TipoCombustible` era null y no se podía evaluar `Activo`.
+- **Resolución:**
+  1. **Backend:** Se añadió `.Include(t => t.TipoCombustible)` al query del tanque. Se valida `!tanque.TipoCombustible.Activo` → HTTP 409 `TIPO_COMBUSTIBLE_INACTIVO`. Los proveedores también se filtran a activos en el frontend.
+  2. **Frontend:** Dropdowns de proveedores y tanques en el modal de recepción filtrados a activos con combustible activo.
+- **Verificación:** 321/321 pruebas backend. Lint 0 errores. Build exitoso.
+
+---
+### DEF-2026-016: Ajuste y Transferencia de Inventario Permite Tanques con Combustible Inactivo
+- **Severidad:** Mayor (Operaciones de inventario sobre tanques con combustible inactivo generan inconsistencias)
+- **Prioridad:** P1 (Alta)
+- **Estado:** ✅ Resuelto en `InventarioController.cs` y `InventarioPage.jsx`
+- **Componente:** `backend/.../InventarioController.cs`, `frontend/.../InventarioPage.jsx`
+- **Descripción:** Los endpoints `POST /inventario/ajustar` y `POST /inventario/transferir` aceptaban tanques con tipos de combustible inactivos. El frontend mostraba todos los tanques sin filtrar en ambos modales.
+- **Causa Raíz (RCA):** Igual que DEF-2026-015 — ausencia de `.Include(t => t.TipoCombustible)` en las queries de `Ajustar()` y `Transferir()`.
+- **Resolución:**
+  1. **Backend:** Ambas acciones cargan `TipoCombustible` con `Include` y validan `Activo` para el tanque origen y destino.
+  2. **Frontend:** Los selectores de tanque en los modales de Ajuste y Transferencia filtran `.filter(t => t.activo && t.tipoCombustibleActivo !== false)`.
+- **Verificación:** 321/321 pruebas backend. Lint 0 errores. Build exitoso.
 
 ---
 
@@ -277,4 +352,4 @@ Todas las modificaciones fueron validadas contra la suite de pruebas automatizad
 **Certificación de Calidad:**  
 Ingeniero Líder de Aseguramiento de Calidad: **Rowlis Trinidad**  
 Firma: ___________________________  
-Fecha: 19 de Septiembre de 2026
+Fecha: 20 de Septiembre de 2026

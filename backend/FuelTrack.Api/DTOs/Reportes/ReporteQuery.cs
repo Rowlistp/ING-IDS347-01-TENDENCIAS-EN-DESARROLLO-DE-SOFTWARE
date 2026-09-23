@@ -1,3 +1,5 @@
+using FuelTrack.Api.Models.Enums;
+
 namespace FuelTrack.Api.DTOs.Reportes;
 
 public sealed record ReporteQuery(
@@ -9,4 +11,6 @@ public sealed record ReporteQuery(
     int? VehiculoId,
     int? DepartamentoId,
     int Pagina,
-    int TamanoPagina);
+    int TamanoPagina,
+    int? TipoCombustibleId = null,
+    EstadoTicket? EstadoTicket = null);

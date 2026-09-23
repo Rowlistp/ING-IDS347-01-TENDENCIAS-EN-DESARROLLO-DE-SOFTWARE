@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
+import { formatDate } from '../utils/dates'
 import PageContainer from '../components/PageContainer'
 import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
@@ -32,7 +33,7 @@ function todayInputValue() {
 }
 
 function formatFecha(value) {
-  return value ? new Date(value).toLocaleDateString() : '—'
+  return formatDate(value)
 }
 
 export default function SolicitudesRecurrentesPage() {
@@ -74,7 +75,14 @@ export default function SolicitudesRecurrentesPage() {
   }, [])
 
   function handleFormChange(e) {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setForm((f) => {
+      if (name === 'empleadoId') {
+        const empleado = empleados.find((item) => item.id === Number(value))
+        return { ...f, empleadoId: value, departamentoId: String(empleado?.departamentoId || ''), vehiculoId: '' }
+      }
+      return { ...f, [name]: value }
+    })
   }
 
   function openCreate() {
@@ -258,7 +266,7 @@ export default function SolicitudesRecurrentesPage() {
             <Field label="Empleado">
               <select name="empleadoId" value={form.empleadoId} onChange={handleFormChange} required className={inputCls}>
                 <option value="">Seleccionar...</option>
-                {empleados.map((e) => (
+                {empleados.filter((e) => e.activo).map((e) => (
                   <option key={e.id} value={e.id}>{e.nombreCompleto}</option>
                 ))}
               </select>
@@ -266,15 +274,15 @@ export default function SolicitudesRecurrentesPage() {
             <Field label="Vehículo">
               <select name="vehiculoId" value={form.vehiculoId} onChange={handleFormChange} required className={inputCls}>
                 <option value="">Seleccionar...</option>
-                {vehiculos.map((v) => (
+                {vehiculos.filter((v) => v.activo && (!form.departamentoId || v.departamentoId === Number(form.departamentoId))).map((v) => (
                   <option key={v.id} value={v.id}>{v.placa} — {v.marca} {v.modelo}</option>
                 ))}
               </select>
             </Field>
-            <Field label="Departamento">
-              <select name="departamentoId" value={form.departamentoId} onChange={handleFormChange} required className={inputCls}>
+            <Field label="Departamento" hint="Se asigna automáticamente según el empleado">
+              <select name="departamentoId" value={form.departamentoId} disabled required className={inputCls}>
                 <option value="">Seleccionar...</option>
-                {departamentos.map((d) => (
+                {departamentos.filter((d) => d.activo).map((d) => (
                   <option key={d.id} value={d.id}>{d.nombre}</option>
                 ))}
               </select>
@@ -282,7 +290,7 @@ export default function SolicitudesRecurrentesPage() {
             <Field label="Tipo de combustible">
               <select name="tipoCombustibleId" value={form.tipoCombustibleId} onChange={handleFormChange} required className={inputCls}>
                 <option value="">Seleccionar...</option>
-                {tiposCombustible.map((t) => (
+                {tiposCombustible.filter((t) => t.activo).map((t) => (
                   <option key={t.id} value={t.id}>{t.nombre}</option>
                 ))}
               </select>
