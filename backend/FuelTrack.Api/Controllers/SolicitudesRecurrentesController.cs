@@ -51,6 +51,7 @@ public sealed class SolicitudesRecurrentesController : ControllerBase
         var solicitud = new SolicitudRecurrente
         {
             CantidadSolicitada = req.CantidadSolicitada,
+            UsarConsumoHistorico = req.UsarConsumoHistorico,
             Periodicidad = req.Periodicidad,
             FechaInicio = req.FechaInicio,
             FechaFin = req.FechaFin,
@@ -61,8 +62,12 @@ public sealed class SolicitudesRecurrentesController : ControllerBase
             Activa = true
         };
 
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
         _db.SolicitudesRecurrentes.Add(solicitud);
         await _db.SaveChangesAsync(ct);
+
+        await AuditarAsync("PLANTILLA_CREADA", solicitud, ct);
+        await transaction.CommitAsync(ct);
 
         await _db.Entry(solicitud).Reference(s => s.Empleado).LoadAsync(ct);
         await _db.Entry(solicitud).Reference(s => s.Vehiculo).LoadAsync(ct);
@@ -80,8 +85,10 @@ public sealed class SolicitudesRecurrentesController : ControllerBase
         if (!s.Activa)
             return Conflict(new { code = "YA_DESACTIVADA", message = "La plantilla ya está desactivada." });
 
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
         s.Activa = false;
-        await _db.SaveChangesAsync(ct);
+        await AuditarAsync(s.Activa ? "PLANTILLA_ACTIVADA" : "PLANTILLA_DESACTIVADA", s, ct);
+        await transaction.CommitAsync(ct);
         return Ok(ToDto(s));
     }
 
@@ -99,9 +106,24 @@ public sealed class SolicitudesRecurrentesController : ControllerBase
         if (s.FechaFin < DateOnly.FromDateTime(DateTime.UtcNow))
             return BadRequest(new { code = "PLANTILLA_VENCIDA", message = "La fecha de fin de la plantilla ya pasó. Cree una nueva plantilla." });
 
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
         s.Activa = true;
-        await _db.SaveChangesAsync(ct);
+        await AuditarAsync(s.Activa ? "PLANTILLA_ACTIVADA" : "PLANTILLA_DESACTIVADA", s, ct);
+        await transaction.CommitAsync(ct);
         return Ok(ToDto(s));
+    }
+
+    private async Task AuditarAsync(string evento, SolicitudRecurrente s, CancellationToken ct)
+    {
+        var claim = HttpContext?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        _db.Auditorias.Add(new Auditoria
+        {
+            Evento = evento, EntidadAfectada = "SolicitudRecurrente", IdentificadorRegistro = s.Id.ToString(),
+            UsuarioId = int.TryParse(claim, out var actor) ? actor : null,
+            DireccionIp = HttpContext?.Connection.RemoteIpAddress?.ToString(), FechaHora = DateTime.UtcNow,
+            DatosRelevantes = System.Text.Json.JsonSerializer.Serialize(new { s.Activa, s.UsarConsumoHistorico, s.CantidadSolicitada })
+        });
+        await _db.SaveChangesAsync(ct);
     }
 
     private Task<SolicitudRecurrente?> FindAsync(int id, CancellationToken ct) =>
@@ -116,5 +138,5 @@ public sealed class SolicitudesRecurrentesController : ControllerBase
         s.EmpleadoId, s.Empleado.NombreCompleto,
         s.VehiculoId, s.Vehiculo.Placa,
         s.DepartamentoId, s.Departamento.Nombre,
-        s.TipoCombustibleId, s.TipoCombustible.Nombre);
+        s.TipoCombustibleId, s.TipoCombustible.Nombre, s.UsarConsumoHistorico);
 }

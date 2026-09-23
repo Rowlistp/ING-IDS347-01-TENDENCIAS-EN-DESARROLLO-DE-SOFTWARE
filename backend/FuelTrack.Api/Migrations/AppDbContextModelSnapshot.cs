@@ -17,7 +17,7 @@ namespace FuelTrack.Api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.19")
+                .HasAnnotation("ProductVersion", "9.0.20")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -509,6 +509,9 @@ namespace FuelTrack.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<byte[]>("PdfComprobante")
+                        .HasColumnType("bytea");
+
                     b.Property<int>("ProveedorId")
                         .HasColumnType("integer");
 
@@ -685,6 +688,9 @@ namespace FuelTrack.Api.Migrations
 
                     b.Property<DateOnly?>("UltimaEjecucion")
                         .HasColumnType("date");
+
+                    b.Property<bool>("UsarConsumoHistorico")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("VehiculoId")
                         .HasColumnType("integer");

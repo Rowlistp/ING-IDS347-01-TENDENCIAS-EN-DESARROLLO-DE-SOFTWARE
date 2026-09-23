@@ -1,0 +1,14 @@
+**
+!backend/
+!backend/FuelTrack.Api/
+!backend/FuelTrack.Api/**
+!frontend/
+!frontend/**
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/.env*
+**/*.pfx
+**/*.pem
+**/appsettings.*.json

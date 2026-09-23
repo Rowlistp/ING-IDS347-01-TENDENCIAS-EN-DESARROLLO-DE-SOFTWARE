@@ -63,3 +63,7 @@ bash backend/scripts/run-mobile-e2e.sh
 El script usa PostgreSQL efímero y API real: emite QR firmado, recorre widgets y comprueba consumo único, inventario, movimiento, auditoría y rollback. Solo identidad y entrada del escáner se sustituyen en el test; no acredita cámara ni navegador nativo.
 
 Verificación del 20/09/2026: **34 pruebas móviles aprobadas**, análisis sin incidencias, APK construido y E2E Flutter → API → PostgreSQL aprobado. Quedan por ejecutar cámara/USB y acceso Keycloak con dispositivos y servicios reales. El lanzador Windows se revisó estáticamente, no se ejecutó en Windows. Guía de entrega: [integración](../docs/qa/07-GUIA-MANUAL-INTEGRACION.md).
+
+## Preparación de la demostración (22/09/2026)
+
+La revisión en Pixel 8 emulado verificó login local y detectó/corrigió un aviso que tapaba el escáner. También corrigió la liberación prematura del controlador del diálogo de ingreso manual de QR. La nueva prueba reproduce el error previo y verifica su cierre correcto. El emulador no sustituye las pruebas de cámara física o el envío SMS por SIM. Ver [guion](../docs/presentacion/GUION-DEMO.md) y [matriz SRS](../docs/presentacion/MATRIZ-SRS.md).

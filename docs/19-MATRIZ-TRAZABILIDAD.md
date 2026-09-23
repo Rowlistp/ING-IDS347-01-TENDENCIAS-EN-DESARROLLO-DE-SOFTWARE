@@ -1,5 +1,7 @@
 # 19 - Matriz de Trazabilidad
 
+> Registro histórico por fases. Para el contraste actualizado contra el SRS original, consultar [Matriz de preparación del producto (22/09/2026)](presentacion/MATRIZ-SRS.md). No usar los pendientes históricos de esta tabla como estado actual.
+
 ## 1. Propósito
 
 Relacionar los requisitos originales de `SRS.md` con fases, responsables,

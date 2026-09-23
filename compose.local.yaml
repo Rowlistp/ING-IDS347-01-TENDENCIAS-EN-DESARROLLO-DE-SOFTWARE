@@ -1,0 +1,38 @@
+name: fueltrack-local
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fueltrack
+      POSTGRES_USER: fueltrack
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD:?Run python3 infra/local/setup.py first}
+    volumes:
+      - local-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fueltrack -d fueltrack"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:${LOCAL_PORT:-5351}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__DefaultConnection: Host=db;Database=fueltrack;Username=fueltrack;Password=${LOCAL_DB_PASSWORD}
+      Database__MigrateOnStartup: "true"
+      Jwt__Key: ${LOCAL_JWT_KEY:?Run local setup first}
+      Tickets__SigningPrivateKeyPkcs8Base64: ${LOCAL_SIGNING_PRIVATE:?Run local setup first}
+      Tickets__SigningPublicKeySpkiBase64: ${LOCAL_SIGNING_PUBLIC:?Run local setup first}
+      BootstrapAdmin__Username: local.admin
+      BootstrapAdmin__Password: ${LOCAL_ADMIN_PASSWORD:?Run local setup first}
+      Notifications__WorkerEnabled: "false"
+      Notifications__Sms__Enabled: "false"
+      Notifications__Smtp__Enabled: "false"
+      Keycloak__Enabled: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  local-data:

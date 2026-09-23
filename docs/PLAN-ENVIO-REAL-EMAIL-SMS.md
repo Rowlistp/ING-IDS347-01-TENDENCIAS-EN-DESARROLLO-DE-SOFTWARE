@@ -95,3 +95,10 @@ La migración `AddPhase9NotificationsIntegration` ya está aplicada en la base d
 - No commitear `.env`, API keys ni passwords (el `.gitignore` ya cubre `.env`, pero revisar antes de cualquier commit).
 - No activar `WorkerEnabled=true` en CI ni con destinatarios reales masivos — solo local, con destinatarios de prueba propios.
 - No inventar un adaptador que "asuma éxito" si la respuesta del proveedor SMS no es clara — el contrato exige tratar respuesta ambigua como reintentable, no como éxito (ver `NotificationTransports.cs` línea 79-82).
+
+## Actualización 22/09/2026
+
+Existe un adaptador Textbee y un configurador privado en
+`backend/scripts/configure-textbee.py`. La advertencia anterior sobre el contrato
+genérico queda resuelta para ese proveedor. **La entrega externa sigue pendiente**:
+el equipo solo tiene emulador, sin Android con SIM vinculado. Ver [Textbee](29-TEXTBEE.md).

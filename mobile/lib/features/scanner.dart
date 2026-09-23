@@ -35,7 +35,7 @@ class _CameraScannerState extends State<CameraScanner> {
   }
 
   Future<void> _showManualInputDialog() async {
-    final textController = TextEditingController();
+    var enteredCode = "";
     final value = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -61,7 +61,7 @@ class _CameraScannerState extends State<CameraScanner> {
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: textController,
+              onChanged: (value) => enteredCode = value,
               autofocus: true,
               style: AppTheme.mono(fontSize: 14),
               decoration: InputDecoration(
@@ -85,7 +85,7 @@ class _CameraScannerState extends State<CameraScanner> {
           ),
           FilledButton(
             onPressed: () {
-              final code = textController.text.trim();
+              final code = enteredCode.trim();
               if (code.isNotEmpty) {
                 Navigator.of(ctx).pop(code);
               }
@@ -101,7 +101,6 @@ class _CameraScannerState extends State<CameraScanner> {
         ],
       ),
     );
-    textController.dispose();
     if (!mounted || value == null || !gate.accept(value)) return;
     try {
       await controller.stop();

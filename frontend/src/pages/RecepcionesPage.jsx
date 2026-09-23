@@ -3,11 +3,11 @@ import Field, { inputCls } from '../components/Field'
 import Modal from '../components/Modal'
 import PageContainer from '../components/PageContainer'
 import ResponsiveTable from '../components/ResponsiveTable'
-import apiRequest from '../services/api'
+import apiRequest, { apiDownload } from '../services/api'
 import { useTanques } from '../hooks/useTanques'
 import { useProveedores } from '../hooks/useProveedores'
 import { validateCapacidadCombustible, validateTextoMinimo, formatRNC } from '../utils/validators'
-import { imprimirComprobanteRecepcion, descargarComprobanteHtml } from '../utils/download'
+import { imprimirComprobanteRecepcion, getSequentialFilename, downloadBlob } from '../utils/download'
 
 const EMPTY_FORM = { proveedorId: '', tanqueId: '', numeroFactura: '', volumenRecibido: '', fecha: '' }
 
@@ -40,6 +40,8 @@ export default function RecepcionesPage() {
   const [detalle, setDetalle] = useState(null)
   const [detalleLoading, setDetalleLoading] = useState(false)
   const [detalleError, setDetalleError] = useState(null)
+  const [downloadingId, setDownloadingId] = useState(null)
+  const [downloadError, setDownloadError] = useState(null)
 
   const proveedorById = Object.fromEntries(proveedores.map((p) => [p.id, p]))
   const tanqueSeleccionado = tanques.find((t) => t.id === Number(form.tanqueId))
@@ -153,6 +155,21 @@ export default function RecepcionesPage() {
       setDetalleError(e.message)
     } finally {
       setDetalleLoading(false)
+    }
+  }
+
+  async function handleDescargarPdf(recepcion) {
+    setDownloadError(null)
+    setDownloadingId(recepcion.id)
+    try {
+      const { blob } = await apiDownload(`/recepciones/${recepcion.id}/pdf`)
+      const basePrefix = `comprobante-recepcion-REC-${String(recepcion.id).padStart(5, '0')}`
+      const filename = getSequentialFilename(basePrefix, 'pdf')
+      downloadBlob(blob, filename)
+    } catch (e) {
+      setDownloadError(e.message)
+    } finally {
+      setDownloadingId(null)
     }
   }
 
@@ -424,6 +441,8 @@ export default function RecepcionesPage() {
                 <span className="font-mono text-xs text-acero">ID: {detalle.id}</span>
               </div>
 
+              {downloadError && <p className="text-sm text-peligro">{downloadError}</p>}
+
               {/* Tarjeta de Volumen destacado */}
               <div className="rounded-lg border border-acero/20 bg-fondo p-4 text-center">
                 <span className="text-xs uppercase font-semibold text-acero tracking-wider">Volumen Total Descargado</span>
@@ -459,14 +478,15 @@ export default function RecepcionesPage() {
               <div className="flex flex-wrap justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => descargarComprobanteHtml(detalle, proveedorById[detalle.proveedorId]?.rnc)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-acero/30 bg-white px-3 py-2 text-xs font-medium text-tinta hover:bg-fondo transition-colors shadow-sm"
-                  title="Descargar comprobante en formato HTML imprimible para archivado"
+                  onClick={() => handleDescargarPdf(detalle)}
+                  disabled={downloadingId === detalle.id}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-acero/30 bg-white px-3 py-2 text-xs font-medium text-tinta hover:bg-fondo transition-colors shadow-sm disabled:opacity-50"
+                  title="Descargar comprobante en PDF"
                 >
                   <svg className="h-4 w-4 text-acero" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  Descargar comprobante
+                  {downloadingId === detalle.id ? 'Descargando...' : 'Descargar comprobante'}
                 </button>
                 <button
                   type="button"

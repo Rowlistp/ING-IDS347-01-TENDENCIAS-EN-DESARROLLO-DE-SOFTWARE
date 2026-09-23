@@ -49,6 +49,26 @@ public sealed class SolicitudRecurrenteService(IServiceScopeFactory scopeFactory
                 continue;
             }
 
+            var cantidad = plantilla.CantidadSolicitada;
+            if (plantilla.UsarConsumoHistorico)
+            {
+                var desde = hoy.AddDays(-90);
+                var historico = await db.Despachos
+                    .Where(d => d.Ticket.VehiculoId == plantilla.VehiculoId &&
+                        d.Ticket.TipoCombustibleId == plantilla.TipoCombustibleId &&
+                        d.Fecha >= desde && d.Fecha < hoy && d.GalonesServidos > 0)
+                    .Select(d => d.GalonesServidos).ToListAsync(ct);
+                if (historico.Count == 0)
+                {
+                    logger.LogWarning("Plantilla {Id} omitida: SIN_HISTORICO", plantilla.Id);
+                    continue;
+                }
+                var capacidad = await db.Vehiculos.Where(v => v.Id == plantilla.VehiculoId)
+                    .Select(v => v.CapacidadTanque).SingleAsync(ct);
+                cantidad = Math.Round(Math.Min(historico.Average(), Math.Min(cantidad, capacidad)), 4);
+                if (cantidad <= 0) continue;
+            }
+
             // La reserva y la solicitud se confirman juntas; dos procesos no generan el mismo día.
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             var reservadas = await db.SolicitudesRecurrentes
@@ -56,9 +76,9 @@ public sealed class SolicitudRecurrenteService(IServiceScopeFactory scopeFactory
                 .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.UltimaEjecucion, hoy), ct);
             if (reservadas == 0) continue;
 
-            db.SolicitudesCombustible.Add(new SolicitudCombustible
+            var solicitud = new SolicitudCombustible
             {
-                CantidadSolicitada = plantilla.CantidadSolicitada,
+                CantidadSolicitada = cantidad,
                 TipoSolicitud = "Automatica",
                 Estado = EstadoSolicitud.Pendiente,
                 FechaSolicitud = DateTime.UtcNow,
@@ -66,8 +86,16 @@ public sealed class SolicitudRecurrenteService(IServiceScopeFactory scopeFactory
                 VehiculoId = plantilla.VehiculoId,
                 DepartamentoId = plantilla.DepartamentoId,
                 TipoCombustibleId = plantilla.TipoCombustibleId
-            });
+            };
+            db.SolicitudesCombustible.Add(solicitud);
 
+            await db.SaveChangesAsync(ct);
+            db.Auditorias.Add(new Auditoria
+            {
+                Evento = "SOLICITUD_AUTOMATICA_CREADA", EntidadAfectada = "SolicitudCombustible",
+                IdentificadorRegistro = solicitud.Id.ToString(), FechaHora = DateTime.UtcNow,
+                DatosRelevantes = System.Text.Json.JsonSerializer.Serialize(new { PlantillaId = plantilla.Id, plantilla.UsarConsumoHistorico, Cantidad = cantidad, Origen = "PROGRAMADOR" })
+            });
             await db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
             generadas++;

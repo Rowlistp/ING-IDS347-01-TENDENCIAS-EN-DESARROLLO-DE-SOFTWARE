@@ -21,7 +21,18 @@ El proyecto contempla una plataforma web administrativa y una aplicación móvil
 | Autenticación / API | JWT interno + OAuth2/OIDC con Keycloak 26.7.3 |
 | Integraciones | API REST, SMTP y SMS Gateway |
 
-## Documentación
+## Arranque local reproducible
+
+Con Docker Compose, Python 3 y OpenSSL, desde la raíz:
+
+```sh
+python3 infra/local/setup.py
+docker compose --env-file .env.local -f compose.local.yaml up --build -d
+```
+
+Abrir **http://127.0.0.1:5351**. Usuario `local.admin`; contraseña generada en `.env.local` (`LOCAL_ADMIN_PASSWORD`). El archivo no se publica en Git. Este modo usa PostgreSQL y claves locales independientes del alojamiento opcional. Ver [ejecución local y Android](docs/31-EJECUCION-LOCAL.md).
+
+## Documentación del proyecto
 
 La documentación del proyecto se encuentra en [`docs/`](docs/).
 
@@ -78,25 +89,9 @@ También existe un [índice interno de documentación](docs/README.md).
 
 ## Estado actual
 
-Las **Fases 1 y 4 están implementadas y validadas en backend**. Fase 1 incluye
-autenticación local, OAuth2/OIDC con Keycloak 26.7.3, Authorization Code + PKCE
-S256, JWT interno, RBAC local, usuarios, roles, sesiones y auditoría append-only.
-Fase 4 incorpora emisión desde Solicitudes aprobadas, secuencia PostgreSQL, QR
-ECDSA P-256/SHA-256, validación, estados, PDF, anulación y preparación de
-notificaciones. F5 añade [Flutter Android](mobile/README.md) y despacho atómico
-con inventario, movimiento y auditoría. Cámara/login nativo requieren gate físico
-del tester físico, aunque F1/F4/F5 ya estén en main (PR #9). F7/F8 base también
-están integradas (PR #10/#11). F9 implementa SMTP/PDF, SMS/link seguro, cola con
-reintentos, cinco alertas y API REST: 285 pruebas aprobadas. Proveedor SMS y
-credenciales productivas siguen pendientes; [operación local](infra/notifications/README.md).
+La aplicación implementa catálogos, solicitudes manuales y recurrentes, tickets PDF/QR, validación y despacho, inventario, recepciones, cierres, reportes, notificaciones y auditoría. Web y Android comparten la API y sus reglas. El acceso admite cuentas locales y OAuth2/OIDC mediante Keycloak.
 
-El repositorio también contiene el backend base y catálogos desarrollados por
-otros builders. Esto no significa que el sistema completo ni las fases
-posteriores estén terminados. La implementación usa .NET 10 y dispone del
-workflow GitHub Actions `Backend Security` para compilar y ejecutar pruebas con
-PostgreSQL y Keycloak reales.
-
-El SRS se conserva como documento fuente. Los documentos adicionales organizan los requisitos y registran las decisiones técnicas del equipo sin sustituir el contenido original.
+La última suite completa del servidor registró 463 pruebas aprobadas, ninguna fallida ni omitida. La evidencia y los límites de aceptación están en [verificación](docs/presentacion/VERIFICACION.md) y [matriz SRS](docs/presentacion/MATRIZ-SRS.md). Entrega externa de SMS/correo, validación física y garantías productivas se acreditan por separado. El SRS fuente se conserva sin modificaciones; la decisión de usar .NET 10 está documentada.
 
 ## Alcance funcional principal
 

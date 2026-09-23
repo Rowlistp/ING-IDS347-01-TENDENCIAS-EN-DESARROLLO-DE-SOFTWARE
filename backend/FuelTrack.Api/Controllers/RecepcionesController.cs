@@ -18,10 +18,12 @@ public sealed class RecepcionesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly AuditService _audit;
-    public RecepcionesController(AppDbContext db, AuditService audit)
+    private readonly RecepcionPdfService _pdf;
+    public RecepcionesController(AppDbContext db, AuditService audit, RecepcionPdfService pdf)
     {
         _db = db;
         _audit = audit;
+        _pdf = pdf;
     }
 
     [HttpGet]
@@ -44,6 +46,13 @@ public sealed class RecepcionesController : ControllerBase
             .Include(r => r.Tanque)
             .FirstOrDefaultAsync(r => r.Id == id, ct);
         return r is null ? NotFound() : Ok(ToDto(r));
+    }
+
+    [HttpGet("{id:int}/pdf")]
+    public async Task<ActionResult> GetPdf(int id, CancellationToken ct)
+    {
+        var pdf = await _pdf.GetPdfAsync(id, ct);
+        return pdf is null ? NotFound() : File(pdf, "application/pdf", $"comprobante-recepcion-REC-{id:D5}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.pdf");
     }
 
     [HttpPost]

@@ -23,6 +23,7 @@ const EMPTY_FORM = {
   departamentoId: '',
   tipoCombustibleId: '',
   cantidadSolicitada: '',
+  usarConsumoHistorico: false,
   periodicidad: 'Mensual',
   fechaInicio: '',
   fechaFin: '',
@@ -113,6 +114,7 @@ export default function SolicitudesRecurrentesPage() {
           departamentoId: Number(form.departamentoId),
           tipoCombustibleId: Number(form.tipoCombustibleId),
           cantidadSolicitada: Number(form.cantidadSolicitada),
+          usarConsumoHistorico: form.usarConsumoHistorico,
           periodicidad: form.periodicidad,
           fechaInicio: form.fechaInicio,
           fechaFin: form.fechaFin || null,
@@ -199,7 +201,7 @@ export default function SolicitudesRecurrentesPage() {
               key: 'cantidadSolicitada',
               label: 'Cantidad',
               priority: 'high',
-              render: (p) => <span className="font-mono num font-bold text-tinta">{p.cantidadSolicitada} gal</span>,
+              render: (p) => <span className="font-mono num font-bold text-tinta">{p.cantidadSolicitada} gal{p.usarConsumoHistorico ? " (límite histórico)" : ""}</span>,
             },
             {
               key: 'periodicidad',
@@ -295,7 +297,13 @@ export default function SolicitudesRecurrentesPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Cantidad solicitada (por ejecución)">
+            <label className="flex items-center gap-2 text-sm text-tinta">
+              <input type="checkbox" checked={form.usarConsumoHistorico}
+                onChange={(e) => setForm((f) => ({ ...f, usarConsumoHistorico: e.target.checked }))} />
+              Calcular según consumo histórico
+            </label>
+            {form.usarConsumoHistorico && <p className="text-sm text-acero">Promedio por despacho del vehículo y combustible en los 90 días anteriores. La cantidad indicada y la capacidad del vehículo limitan el resultado. Sin historial no se genera solicitud. Siempre requiere aprobación.</p>}
+            <Field label={form.usarConsumoHistorico ? "Límite por ejecución (galones)" : "Cantidad solicitada (por ejecución)"}>
               <input
                 type="number"
                 name="cantidadSolicitada"
