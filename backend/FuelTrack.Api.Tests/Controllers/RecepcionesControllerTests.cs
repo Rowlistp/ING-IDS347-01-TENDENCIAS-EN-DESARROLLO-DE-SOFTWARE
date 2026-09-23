@@ -39,7 +39,7 @@ public sealed class RecepcionesControllerTests
 
     private RecepcionesController CrearController(int usuarioId)
     {
-        var controller = new RecepcionesController(_db, new AuditService(_db));
+        var controller = new RecepcionesController(_db, new AuditService(_db), new RecepcionPdfService(_db));
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext
@@ -241,5 +241,31 @@ public sealed class RecepcionesControllerTests
         Assert.AreEqual(0, await _db.MovimientosInventario.CountAsync());
         await _db.Entry(inv).ReloadAsync();
         Assert.AreEqual(4900m, inv.ExistenciaActual);
+    }
+
+    // ── GetPdf ──────────────────────────────────────────────────────────────
+
+    [TestMethod]
+    public async Task GetPdf_Returns404_CuandoNoExiste()
+    {
+        var result = await CrearController(1).GetPdf(999, CancellationToken.None);
+        Assert.IsInstanceOfType<NotFoundResult>(result);
+    }
+
+    [TestMethod]
+    public async Task GetPdf_ReturnsArchivoPdf_CuandoExiste()
+    {
+        var (proveedorId, tanqueId, usuarioId) = await CrearDependenciasAsync();
+        var ctrl = CrearController(usuarioId);
+        var created = await ctrl.Create(new CreateRecepcionRequest(proveedorId, tanqueId, "FAC-PDF", 50m, DateTime.UtcNow), default);
+        var recepcion = ((CreatedAtActionResult)created.Result!).Value as RecepcionDto;
+
+        var result = await ctrl.GetPdf(recepcion!.Id, CancellationToken.None);
+
+        var file = result as FileContentResult;
+        Assert.IsNotNull(file);
+        Assert.AreEqual("application/pdf", file.ContentType);
+        Assert.IsTrue(file.FileContents.Length > 0);
+        StringAssert.EndsWith(file.FileDownloadName, ".pdf");
     }
 }
