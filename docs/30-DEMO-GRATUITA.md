@@ -4,7 +4,7 @@ Revisión de fuentes oficiales: 22/09/2026. El objetivo es una demostración aca
 
 ## Demo publicada
 
-URL: https://fueltrack-intec-demo.onrender.com. Render Free y Neon Free, región Ohio. Versión de aplicación `7abc474`, publicada el 22/09/2026. Usuarios y claves se entregan por archivo privado y no forman parte del repositorio.
+URL: https://fueltrack-intec-demo.onrender.com. Render Free y Neon Free, región Ohio. Versión de aplicación `8655e89`, publicada el 22/09/2026. Usuarios y claves se entregan por archivo privado y no forman parte del repositorio.
 
 Se verificaron login de cinco roles, permisos, solicitud/aprobación/ticket/PDF, bloqueo de sobrecapacidad y QR inválido, cola vacía y TLS 1.3. El APK de demostración online usa esta URL; continúa siendo una compilación debug. La demo incluye solo datos ficticios.
 

@@ -43,7 +43,7 @@ Contenedor completo probado con PostgreSQL: inicio de sesión, catálogos, solic
 
 ## Demo pública verificada
 
-https://fueltrack-intec-demo.onrender.com — Render Free y PostgreSQL 18 en Neon, región Ohio. Commit desplegado `7abc474`. Se corrigió la configuración privada de conexión y Render confirma «Live».
+https://fueltrack-intec-demo.onrender.com — Render Free y PostgreSQL 18 en Neon, región Ohio. Commit desplegado `8655e89`. Se corrigió la configuración privada de conexión y Render confirma «Live».
 
 - Creación de cuatro cuentas adicionales y catálogos ficticios; inventario inicial 50 galones.
 - Solicitud, aprobación, emisión y descarga de PDF ejecutadas contra el servicio público.
