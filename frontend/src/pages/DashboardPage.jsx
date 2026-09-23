@@ -117,7 +117,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Tarjetas hoy — Grid fluido auto-fit/minmax */}
-      <div className="grid grid-cols-1 gap-3 sm:gap-4 [grid-template-columns:repeat(auto-fit,minmax(160px,1fr))] mb-6">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-3 sm:gap-4 mb-6">
         <StatCard label="Despachos hoy"        value={hoy.totalDespachos} />
         <StatCard label="Volumen hoy (gal)"    value={hoy.volumenDespachado.toFixed(1)} />
         <StatCard label="Solicitudes pendientes" value={hoy.solicitudesPendientes} />

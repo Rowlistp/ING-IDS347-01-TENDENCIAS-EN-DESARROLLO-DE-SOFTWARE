@@ -13,5 +13,6 @@ public record SolicitudRecurrenteDto(
     int EmpleadoId, string EmpleadoNombre,
     int VehiculoId, string VehiculoPlaca,
     int DepartamentoId, string DepartamentoNombre,
-    int TipoCombustibleId, string TipoCombustibleNombre
+    int TipoCombustibleId, string TipoCombustibleNombre,
+    bool UsarConsumoHistorico = false
 );

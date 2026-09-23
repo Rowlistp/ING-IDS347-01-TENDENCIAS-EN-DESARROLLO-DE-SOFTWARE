@@ -6,6 +6,7 @@ public class SolicitudRecurrente
 {
     public int Id { get; set; }
     public decimal CantidadSolicitada { get; set; }
+    public bool UsarConsumoHistorico { get; set; }
     public Periodicidad Periodicidad { get; set; }
     public DateOnly FechaInicio { get; set; }
     public DateOnly? FechaFin { get; set; }

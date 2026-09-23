@@ -107,11 +107,23 @@ export default function SolicitudesPage() {
   function handleFormChange(e) {
     const { name, value } = e.target
     if (name === 'empleadoId') {
-      const empleado = empleados.find((item) => item.id === Number(value))
+      const empleado = empleados.find((item) => String(item.id) === String(value))
       setForm((f) => ({ ...f, empleadoId: value, ...propuestaPara(empleado) }))
     } else if (name === 'vehiculoId') {
-      const vehiculo = vehiculos.find((v) => v.id === Number(value))
-      setForm((f) => ({ ...f, vehiculoId: value, tipoCombustibleId: combustibleDe(vehiculo) || f.tipoCombustibleId }))
+      const vehiculo = vehiculos.find((v) => String(v.id) === String(value))
+      setForm((f) => {
+        const emp = isSolicitanteOnly ? miEmpleado : empleados.find((e) => String(e.id) === String(f.empleadoId))
+        // El departamento sigue al vehículo (regla de main), salvo si es el vehículo
+        // habitual del empleado: ese puede ser de otro departamento y el del
+        // formulario debe seguir siendo el del empleado.
+        const esHabitual = Boolean(emp && vehiculo && vehiculo.id === emp.vehiculoHabitualId)
+        return {
+          ...f,
+          vehiculoId: value,
+          tipoCombustibleId: combustibleDe(vehiculo) || f.tipoCombustibleId,
+          departamentoId: !esHabitual && vehiculo?.departamentoId ? String(vehiculo.departamentoId) : f.departamentoId,
+        }
+      })
     } else {
       setForm((f) => ({ ...f, [name]: value }))
     }

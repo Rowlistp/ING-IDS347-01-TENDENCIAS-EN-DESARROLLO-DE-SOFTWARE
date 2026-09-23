@@ -390,17 +390,6 @@ export function imprimirComprobanteRecepcion(detalle, rnc = '') {
 }
 
 /**
- * Descarga el comprobante oficial de recepción como archivo HTML auto-contenido.
- */
-export function descargarComprobanteHtml(detalle, rnc = '') {
-  const html = generarHtmlComprobanteRecepcion(detalle, rnc)
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
-  const baseName = `comprobante-recepcion-REC-${String(detalle.id || 0).padStart(5, '0')}`
-  const filename = getSequentialFilename(baseName, 'html')
-  downloadBlob(blob, filename)
-}
-
-/**
  * Genera el documento HTML completo del Comprobante de Despacho oficial.
  */
 export function generarHtmlComprobanteDespacho(despacho, ticket = null) {

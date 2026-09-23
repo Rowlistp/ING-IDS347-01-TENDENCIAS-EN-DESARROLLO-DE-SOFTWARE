@@ -1,6 +1,6 @@
 # 28 — Integración móvil, QR y tickets
 
-Actualización del 20/09/2026. Integra las funciones de `main` en `76c81ed` con las correcciones de la UAT local y las validaciones del main actual `d86e7c9`. La revisión está preparada en `fix/diagnostico-web`, para revisión por Pull Request.
+Actualización del 20/09/2026. Integra las funciones de `main` en `76c81ed` con las correcciones de la UAT local y las validaciones del main actual `d86e7c9`.
 
 ## Flujo implementado
 

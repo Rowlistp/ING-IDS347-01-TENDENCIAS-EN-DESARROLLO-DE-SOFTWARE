@@ -107,3 +107,10 @@ por compatibilidad histórica; todas las notificaciones nuevas F4/F9 tienen clav
 - [MailKit SmtpClient](https://mimekit.net/docs/html/T_MailKit_Net_Smtp_SmtpClient.htm): cliente SMTP empleado.
 - [Mailpit API v1](https://mailpit.axllent.org/docs/api-v1/): inspección del correo recibido en las pruebas.
 - [Mailpit releases](https://github.com/axllent/mailpit/releases): versión local fijada en 1.30.0.
+
+## Proveedor Textbee
+
+La revisión de preparación del producto añade `Sms:Provider=Textbee`, `Sms:DeviceId`
+y un adaptador del contrato oficial. El valor predeterminado `Generic` conserva el
+contrato anterior. Ver [configuración y aceptación Textbee](../../docs/29-TEXTBEE.md).
+Para Textbee, resultados ambiguos requieren revisión manual antes de reenviar.

@@ -514,6 +514,9 @@ namespace FuelTrack.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<byte[]>("PdfComprobante")
+                        .HasColumnType("bytea");
+
                     b.Property<int>("ProveedorId")
                         .HasColumnType("integer");
 
@@ -690,6 +693,9 @@ namespace FuelTrack.Api.Migrations
 
                     b.Property<DateOnly?>("UltimaEjecucion")
                         .HasColumnType("date");
+
+                    b.Property<bool>("UsarConsumoHistorico")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("VehiculoId")
                         .HasColumnType("integer");

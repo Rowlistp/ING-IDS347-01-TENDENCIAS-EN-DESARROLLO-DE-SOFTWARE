@@ -208,7 +208,7 @@ public sealed class BusinessIntegrityValidationTests
         _db.Inventarios.Add(inv);
         await _db.SaveChangesAsync();
 
-        var controller = new RecepcionesController(_db, _audit) { ControllerContext = CreateControllerContext() };
+        var controller = new RecepcionesController(_db, _audit, new RecepcionPdfService(_db)) { ControllerContext = CreateControllerContext() };
         var req = new CreateRecepcionRequest(
             prov.Id,
             tanque.Id,

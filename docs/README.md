@@ -55,3 +55,13 @@ Estos documentos amplían y organizan el SRS; cuando incluyen una propuesta téc
 - OAuth2/OIDC con Keycloak 26.7.3.
 - Authorization Code + PKCE S256 para clientes públicos web y móvil.
 - RBAC de negocio resuelto exclusivamente con usuarios y roles locales de PostgreSQL.
+
+## Presentación al cliente y revisión SRS
+
+- [Guion de demostración](presentacion/GUION-DEMO.md)
+- [Matriz completa SRS](presentacion/MATRIZ-SRS.md)
+- [Configuración Textbee](29-TEXTBEE.md)
+
+- [Demo gratuita, iPhone/SIM y comunicaciones](30-DEMO-GRATUITA.md)
+
+- [Ejecución local independiente y Android](31-EJECUCION-LOCAL.md)
