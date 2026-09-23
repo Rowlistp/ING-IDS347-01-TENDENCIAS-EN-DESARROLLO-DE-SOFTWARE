@@ -34,10 +34,12 @@ public sealed class VehiculosController : ControllerBase
         var list = await _db.Vehiculos
             .AsNoTracking()
             .Include(v => v.Departamento)
+            .Include(v => v.TipoCombustible)
             .Select(v => new VehiculoDto(
                 v.Id, v.Placa, v.Ficha, v.Marca, v.Modelo, v.Año,
                 v.Tipo, v.CapacidadTanque, v.Odometro,
-                v.DepartamentoId, v.Departamento.Nombre, v.Activo))
+                v.DepartamentoId, v.Departamento.Nombre, v.Activo,
+                v.TipoCombustibleId, v.TipoCombustible != null ? v.TipoCombustible.Nombre : null))
             .ToListAsync(ct);
         return Ok(list);
     }
@@ -48,12 +50,10 @@ public sealed class VehiculosController : ControllerBase
         var v = await _db.Vehiculos
             .AsNoTracking()
             .Include(x => x.Departamento)
+            .Include(x => x.TipoCombustible)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (v is null) return NotFound();
-        return Ok(new VehiculoDto(
-            v.Id, v.Placa, v.Ficha, v.Marca, v.Modelo, v.Año,
-            v.Tipo, v.CapacidadTanque, v.Odometro,
-            v.DepartamentoId, v.Departamento.Nombre, v.Activo));
+        return Ok(ToDto(v));
     }
 
     [HttpPost]
@@ -80,6 +80,13 @@ if (!departamento.Activo)
         message = "No se puede asignar un vehículo a un departamento inactivo."
     });
 
+        if (!req.TipoCombustibleId.HasValue)
+            return BadRequest(new { code = "TIPO_COMBUSTIBLE_REQUERIDO",
+                message = "El tipo de combustible del vehículo es obligatorio." });
+
+        var errorCombustible = await ValidateTipoCombustibleAsync(req.TipoCombustibleId.Value, ct);
+        if (errorCombustible is not null) return errorCombustible;
+
         if (await _db.Vehiculos.AnyAsync(v => v.Placa == req.Placa, ct))
             return Conflict(new { code = "PLACA_DUPLICADA",
                 message = "La placa ya está registrada." });
@@ -99,21 +106,19 @@ if (!departamento.Activo)
             CapacidadTanque = req.CapacidadTanque,
             Odometro        = req.Odometro,
             DepartamentoId  = req.DepartamentoId,
+            TipoCombustibleId = req.TipoCombustibleId,
             Activo          = true
         };
         _db.Vehiculos.Add(entity);
         await _db.SaveChangesAsync(ct);
         await _db.Entry(entity).Reference(v => v.Departamento).LoadAsync(ct);
+        await _db.Entry(entity).Reference(v => v.TipoCombustible).LoadAsync(ct);
 
         await _audit.WriteAsync("VEHICULO_CREADO", "Vehiculo", entity.Id.ToString(), usuarioId,
             HttpContext.Connection.RemoteIpAddress?.ToString(),
-            new { entity.Placa, entity.DepartamentoId, entity.Activo }, ct);
+            new { entity.Placa, entity.DepartamentoId, entity.TipoCombustibleId, entity.Activo }, ct);
 
-        var dto = new VehiculoDto(
-            entity.Id, entity.Placa, entity.Ficha, entity.Marca, entity.Modelo, entity.Año,
-            entity.Tipo, entity.CapacidadTanque, entity.Odometro,
-            entity.DepartamentoId, entity.Departamento.Nombre, entity.Activo);
-        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, dto);
+        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ToDto(entity));
     }
 
     [HttpPut("{id:int}")]
@@ -125,6 +130,7 @@ if (!departamento.Activo)
 
         var entity = await _db.Vehiculos
             .Include(v => v.Departamento)
+            .Include(v => v.TipoCombustible)
             .FirstOrDefaultAsync(v => v.Id == id, ct);
         if (entity is null) return NotFound();
 
@@ -144,6 +150,13 @@ if (!departamento.Activo)
         code = "DEPARTAMENTO_INACTIVO",
         message = "No se puede asignar un vehículo a un departamento inactivo."
     });
+
+        // Omitido en PUT = conservar el combustible actual (igual que Activo).
+        if (req.TipoCombustibleId.HasValue && req.TipoCombustibleId != entity.TipoCombustibleId)
+        {
+            var errorCombustible = await ValidateTipoCombustibleAsync(req.TipoCombustibleId.Value, ct);
+            if (errorCombustible is not null) return errorCombustible;
+        }
 
         if (await _db.Vehiculos.AnyAsync(v => v.Placa == req.Placa && v.Id != id, ct))
             return Conflict(new { code = "PLACA_DUPLICADA",
@@ -170,20 +183,20 @@ if (!departamento.Activo)
         entity.CapacidadTanque = req.CapacidadTanque;
         entity.Odometro        = req.Odometro;
         entity.DepartamentoId  = req.DepartamentoId;
+        if (req.TipoCombustibleId.HasValue) entity.TipoCombustibleId = req.TipoCombustibleId;
         if (req.Activo.HasValue) entity.Activo = req.Activo.Value;
         await _db.SaveChangesAsync(ct);
 
         await _audit.WriteAsync("VEHICULO_ACTUALIZADO", "Vehiculo", entity.Id.ToString(), usuarioId,
             HttpContext.Connection.RemoteIpAddress?.ToString(),
-            new { entity.Placa, entity.DepartamentoId, entity.Activo }, ct);
+            new { entity.Placa, entity.DepartamentoId, entity.TipoCombustibleId, entity.Activo }, ct);
 
         if (entity.Departamento.Id != req.DepartamentoId)
             await _db.Entry(entity).Reference(v => v.Departamento).LoadAsync(ct);
+        if (entity.TipoCombustibleId.HasValue && entity.TipoCombustible?.Id != entity.TipoCombustibleId)
+            await _db.Entry(entity).Reference(v => v.TipoCombustible).LoadAsync(ct);
 
-        return Ok(new VehiculoDto(
-            entity.Id, entity.Placa, entity.Ficha, entity.Marca, entity.Modelo, entity.Año,
-            entity.Tipo, entity.CapacidadTanque, entity.Odometro,
-            entity.DepartamentoId, entity.Departamento.Nombre, entity.Activo));
+        return Ok(ToDto(entity));
     }
 
     [HttpDelete("{id:int}")]
@@ -205,6 +218,23 @@ if (!departamento.Activo)
             HttpContext.Connection.RemoteIpAddress?.ToString(), null, ct);
 
         return NoContent();
+    }
+
+    private static VehiculoDto ToDto(Vehiculo v) => new(
+        v.Id, v.Placa, v.Ficha, v.Marca, v.Modelo, v.Año,
+        v.Tipo, v.CapacidadTanque, v.Odometro,
+        v.DepartamentoId, v.Departamento.Nombre, v.Activo,
+        v.TipoCombustibleId, v.TipoCombustible?.Nombre);
+
+    private async Task<ActionResult?> ValidateTipoCombustibleAsync(int tipoCombustibleId, CancellationToken ct)
+    {
+        var tipo = await _db.TiposCombustible.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == tipoCombustibleId, ct);
+        if (tipo is null)
+            return BadRequest(new { code = "TIPO_COMBUSTIBLE_NOT_FOUND", message = "El tipo de combustible no existe." });
+        if (!tipo.Activo)
+            return BadRequest(new { code = "TIPO_COMBUSTIBLE_INACTIVO", message = "No se puede asignar un tipo de combustible inactivo al vehículo." });
+        return null;
     }
 
     private async Task<ConflictObjectResult?> ValidateDeactivationAsync(int id, CancellationToken ct)

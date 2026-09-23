@@ -139,6 +139,7 @@ El sistema deberá registrar:
 - Correo
 - Teléfono móvil
 - Estado
+- Vehículo habitual (opcional)
 
 ### RF-03 Gestión de Vehículos
 
@@ -151,6 +152,7 @@ El sistema deberá registrar:
 - Año
 - Tipo
 - Departamento
+- Tipo de combustible
 - Capacidad tanque
 - Kilómetros (Odómetro)
 - Estado
@@ -181,6 +183,8 @@ La solicitud incluirá:
 - Tipo de combustible
 - Fecha solicitud
 - Fecha vencimiento
+
+Al crear una solicitud manual, el sistema propone por defecto el vehículo habitual del empleado (o el único vehículo activo de su departamento) y el tipo de combustible de ese vehículo. Ambos valores pueden modificarse en la solicitud.
 
 ### RF-06 Emisión de Tickets Digitales
 

@@ -34,6 +34,7 @@ Proponer un modelo conceptual inicial basado en los datos explícitamente requer
 - Correo.
 - Teléfono.
 - Estado.
+- Vehículo habitual (opcional).
 
 ### Departamento
 
@@ -51,6 +52,7 @@ Proponer un modelo conceptual inicial basado en los datos explícitamente requer
 - Año.
 - Tipo.
 - Departamento.
+- Tipo de combustible.
 - Capacidad de tanque.
 - Odómetro.
 - Estado.
@@ -202,12 +204,14 @@ Departamento 1 --- N Vehículo
 
 Empleado 1 --- N Solicitud
 Vehículo 1 --- N Solicitud
+Vehículo 1 --- 0..N Empleado (vehículo habitual, opcional)
 
 Solicitud 1 --- 0..N Ticket
 Ticket 1 --- 0..1 Despacho
 
 TipoCombustible 1 --- N Ticket
 TipoCombustible 1 --- N Tanque
+TipoCombustible 1 --- N Vehículo
 
 Tanque 1 --- N Recepción
 Tanque 1 --- N MovimientoInventario

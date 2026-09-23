@@ -12,5 +12,7 @@ public record EmpleadoDto(
     string DepartamentoNombre,
     bool Activo,
     int? UsuarioId = null,
-    string? UsuarioNombre = null
+    string? UsuarioNombre = null,
+    int? VehiculoHabitualId = null,
+    string? VehiculoHabitualPlaca = null
 );

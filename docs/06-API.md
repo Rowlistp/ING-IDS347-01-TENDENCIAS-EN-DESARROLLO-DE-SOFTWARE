@@ -120,6 +120,8 @@ DELETE /api/v1/empleados/{id}  # desactivación lógica
 
 `GET /empleados/opciones`: Administrador/Supervisor/Auditor/Consulta; devuelve únicamente `{id,nombreCompleto}` para filtros, sin cédula, contacto ni ficha personal.
 
+`vehiculoHabitualId` (opcional) en `POST`/`PUT /empleados`; las respuestas incluyen `vehiculoHabitualId` y `vehiculoHabitualPlaca`. Debe existir y estar activo (`VEHICULO_NOT_FOUND` / `VEHICULO_INACTIVO`, 400); en `PUT` solo se valida si cambia respecto al valor actual y omitirlo lo deja en `null` (igual que `usuarioId`). Es un valor por defecto para solicitudes, no una restricción.
+
 ### Vehículos
 
 Rutas implementadas actualmente por Builder 1:
@@ -131,6 +133,8 @@ POST   /api/v1/vehiculos
 PUT    /api/v1/vehiculos/{id}
 DELETE /api/v1/vehiculos/{id}  # desactivación lógica
 ```
+
+`tipoCombustibleId`: obligatorio en `POST` (`TIPO_COMBUSTIBLE_REQUERIDO`, 400); debe existir y estar activo (`TIPO_COMBUSTIBLE_NOT_FOUND` / `TIPO_COMBUSTIBLE_INACTIVO`, 400). En `PUT`, omitirlo conserva el valor actual. Las respuestas incluyen `tipoCombustibleId` y `tipoCombustibleNombre`, que son `null` en vehículos creados antes de este campo.
 
 ### Departamentos
 

@@ -12,5 +12,7 @@ public record VehiculoDto(
     decimal Odometro,
     int DepartamentoId,
     string DepartamentoNombre,
-    bool Activo
+    bool Activo,
+    int? TipoCombustibleId = null,
+    string? TipoCombustibleNombre = null
 );

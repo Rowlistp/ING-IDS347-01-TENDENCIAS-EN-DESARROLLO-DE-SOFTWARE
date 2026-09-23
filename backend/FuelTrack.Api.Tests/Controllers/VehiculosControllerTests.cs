@@ -62,6 +62,14 @@ public sealed class VehiculosControllerTests
         return dep;
     }
 
+    private async Task<TipoCombustible> CrearTipoCombustibleAsync(string nombre = "Gasolina", bool activo = true)
+    {
+        var tipo = new TipoCombustible { Nombre = nombre, Activo = activo };
+        _db.TiposCombustible.Add(tipo);
+        await _db.SaveChangesAsync();
+        return tipo;
+    }
+
     private async Task<(Empleado empleado, Vehiculo vehiculo, TipoCombustible tipo)>
         CrearDependenciasAsync(Departamento dep)
     {
@@ -133,8 +141,9 @@ public sealed class VehiculosControllerTests
     public async Task Create_Returns201_ConDto()
     {
         var dep = await CrearDepartamentoAsync();
+        var tipo = await CrearTipoCombustibleAsync("Diesel");
         var req = new SaveVehiculoRequest("D300001", "FV03", "Toyota", "Hilux",
-            2022, "Camioneta", dep.Id, 60m);
+            2022, "Camioneta", dep.Id, 60m, TipoCombustibleId: tipo.Id);
 
         var result = await _controller.Create(req, CancellationToken.None);
         var created = result.Result as CreatedAtActionResult;
@@ -142,14 +151,58 @@ public sealed class VehiculosControllerTests
         Assert.AreEqual(201, created.StatusCode);
         var dto = created.Value as VehiculoDto;
         Assert.AreEqual("D300001", dto!.Placa);
+        Assert.AreEqual(tipo.Id, dto.TipoCombustibleId);
+        Assert.AreEqual("Diesel", dto.TipoCombustibleNombre);
+    }
+
+    [TestMethod]
+    public async Task Create_Returns400_CuandoFaltaTipoCombustible()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var req = new SaveVehiculoRequest("D300002", "FV03B", "Toyota", "Hilux",
+            2022, "Camioneta", dep.Id, 60m);
+
+        var result = await _controller.Create(req, CancellationToken.None);
+        var bad = result.Result as BadRequestObjectResult;
+        Assert.IsNotNull(bad);
+        StringAssert.Contains(bad.Value!.ToString()!, "TIPO_COMBUSTIBLE_REQUERIDO");
+        Assert.AreEqual(0, await _db.Vehiculos.CountAsync());
+    }
+
+    [TestMethod]
+    public async Task Create_Returns400_CuandoTipoCombustibleNoExiste()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var req = new SaveVehiculoRequest("D300003", "FV03C", "Toyota", "Hilux",
+            2022, "Camioneta", dep.Id, 60m, TipoCombustibleId: 999);
+
+        var result = await _controller.Create(req, CancellationToken.None);
+        var bad = result.Result as BadRequestObjectResult;
+        Assert.IsNotNull(bad);
+        StringAssert.Contains(bad.Value!.ToString()!, "TIPO_COMBUSTIBLE_NOT_FOUND");
+    }
+
+    [TestMethod]
+    public async Task Create_Returns400_CuandoTipoCombustibleInactivo()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var tipo = await CrearTipoCombustibleAsync("GLP", activo: false);
+        var req = new SaveVehiculoRequest("D300004", "FV03D", "Toyota", "Hilux",
+            2022, "Camioneta", dep.Id, 60m, TipoCombustibleId: tipo.Id);
+
+        var result = await _controller.Create(req, CancellationToken.None);
+        var bad = result.Result as BadRequestObjectResult;
+        Assert.IsNotNull(bad);
+        StringAssert.Contains(bad.Value!.ToString()!, "TIPO_COMBUSTIBLE_INACTIVO");
     }
 
     [TestMethod]
     public async Task Create_RegistraAuditoria()
     {
         var dep = await CrearDepartamentoAsync();
+        var tipo = await CrearTipoCombustibleAsync();
         var req = new SaveVehiculoRequest("D300001", "FV03", "Toyota", "Hilux",
-            2022, "Camioneta", dep.Id, 60m);
+            2022, "Camioneta", dep.Id, 60m, TipoCombustibleId: tipo.Id);
         await _controller.Create(req, CancellationToken.None);
 
         var auditoria = await _db.Auditorias.FirstOrDefaultAsync(a => a.Evento == "VEHICULO_CREADO");
@@ -179,10 +232,91 @@ public sealed class VehiculosControllerTests
         });
         await _db.SaveChangesAsync();
 
+        var tipo = await CrearTipoCombustibleAsync();
         var req = new SaveVehiculoRequest("F500001", "FV06", "KIA", "Picanto",
-            2022, "Sedan", dep.Id, 40m);
+            2022, "Sedan", dep.Id, 40m, TipoCombustibleId: tipo.Id);
         var result = await _controller.Create(req, CancellationToken.None);
         Assert.IsInstanceOfType<ConflictObjectResult>(result.Result);
+    }
+
+    // ── Combustible del vehículo en Update ──────────────────────────────────
+
+    private async Task<Vehiculo> CrearVehiculoConCombustibleAsync(Departamento dep, TipoCombustible tipo)
+    {
+        var v = new Vehiculo
+        {
+            Placa = "K900001", Ficha = "FV09", Marca = "Toyota", Modelo = "Hilux",
+            Año = 2022, Tipo = "Camioneta", CapacidadTanque = 60, Odometro = 0,
+            Activo = true, DepartamentoId = dep.Id, TipoCombustibleId = tipo.Id
+        };
+        _db.Vehiculos.Add(v);
+        await _db.SaveChangesAsync();
+        return v;
+    }
+
+    [TestMethod]
+    public async Task Update_ConservaCombustible_CuandoNoVieneEnElRequest()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var tipo = await CrearTipoCombustibleAsync("Diesel");
+        var v = await CrearVehiculoConCombustibleAsync(dep, tipo);
+
+        var req = new SaveVehiculoRequest("K900001", "FV09", "Toyota", "Hilux XL",
+            2022, "Camioneta", dep.Id, 60m);
+        var result = await _controller.Update(v.Id, req, CancellationToken.None);
+
+        var dto = (result.Result as OkObjectResult)!.Value as VehiculoDto;
+        Assert.AreEqual(tipo.Id, dto!.TipoCombustibleId);
+        Assert.AreEqual("Diesel", dto.TipoCombustibleNombre);
+    }
+
+    [TestMethod]
+    public async Task Update_CambiaCombustible_CuandoVieneEnElRequest()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var diesel = await CrearTipoCombustibleAsync("Diesel");
+        var gasolina = await CrearTipoCombustibleAsync("Gasolina");
+        var v = await CrearVehiculoConCombustibleAsync(dep, diesel);
+
+        var req = new SaveVehiculoRequest("K900001", "FV09", "Toyota", "Hilux",
+            2022, "Camioneta", dep.Id, 60m, TipoCombustibleId: gasolina.Id);
+        var result = await _controller.Update(v.Id, req, CancellationToken.None);
+
+        var dto = (result.Result as OkObjectResult)!.Value as VehiculoDto;
+        Assert.AreEqual(gasolina.Id, dto!.TipoCombustibleId);
+        Assert.AreEqual("Gasolina", dto.TipoCombustibleNombre);
+        Assert.AreEqual(gasolina.Id, (await _db.Vehiculos.AsNoTracking().FirstAsync(x => x.Id == v.Id)).TipoCombustibleId);
+    }
+
+    [TestMethod]
+    public async Task Update_Returns400_CuandoNuevoCombustibleInactivo_YNoModifica()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var diesel = await CrearTipoCombustibleAsync("Diesel");
+        var inactivo = await CrearTipoCombustibleAsync("GLP", activo: false);
+        var v = await CrearVehiculoConCombustibleAsync(dep, diesel);
+
+        var req = new SaveVehiculoRequest("K900001", "FV09", "Toyota", "Hilux",
+            2022, "Camioneta", dep.Id, 60m, TipoCombustibleId: inactivo.Id);
+        var result = await _controller.Update(v.Id, req, CancellationToken.None);
+
+        Assert.IsInstanceOfType<BadRequestObjectResult>(result.Result);
+        Assert.AreEqual(diesel.Id, (await _db.Vehiculos.AsNoTracking().FirstAsync(x => x.Id == v.Id)).TipoCombustibleId);
+    }
+
+    [TestMethod]
+    public async Task Update_PermiteEditar_VehiculoLegadoSinCombustible()
+    {
+        var dep = await CrearDepartamentoAsync();
+        var (_, vehiculo, _) = await CrearDependenciasAsync(dep);
+
+        var req = new SaveVehiculoRequest(vehiculo.Placa, vehiculo.Ficha, "Ford", "Ranger XL",
+            2021, "Camioneta", dep.Id, 80m);
+        var result = await _controller.Update(vehiculo.Id, req, CancellationToken.None);
+
+        var dto = (result.Result as OkObjectResult)!.Value as VehiculoDto;
+        Assert.IsNull(dto!.TipoCombustibleId);
+        Assert.IsNull(dto.TipoCombustibleNombre);
     }
 
     // ── Update ──────────────────────────────────────────────────────────────

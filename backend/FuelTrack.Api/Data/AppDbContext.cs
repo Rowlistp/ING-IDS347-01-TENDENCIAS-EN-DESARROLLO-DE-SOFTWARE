@@ -79,6 +79,16 @@ public class AppDbContext : DbContext
             .HasIndex(v => v.Placa).IsUnique();
         modelBuilder.Entity<Vehiculo>()
             .HasIndex(v => v.Ficha).IsUnique();
+        modelBuilder.Entity<Vehiculo>()
+            .HasOne(v => v.TipoCombustible)
+            .WithMany()
+            .HasForeignKey(v => v.TipoCombustibleId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Empleado>()
+            .HasOne(e => e.VehiculoHabitual)
+            .WithMany()
+            .HasForeignKey(e => e.VehiculoHabitualId)
+            .OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<Ticket>()
             .HasIndex(t => t.NumeroSecuencial).IsUnique();
         modelBuilder.Entity<Ticket>()

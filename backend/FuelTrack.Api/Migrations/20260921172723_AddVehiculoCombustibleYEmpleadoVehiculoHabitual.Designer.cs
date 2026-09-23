@@ -3,6 +3,7 @@ using System;
 using FuelTrack.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FuelTrack.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260921172723_AddVehiculoCombustibleYEmpleadoVehiculoHabitual")]
+    partial class AddVehiculoCombustibleYEmpleadoVehiculoHabitual
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -514,9 +517,6 @@ namespace FuelTrack.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<byte[]>("PdfComprobante")
-                        .HasColumnType("bytea");
-
                     b.Property<int>("ProveedorId")
                         .HasColumnType("integer");
 
@@ -693,9 +693,6 @@ namespace FuelTrack.Api.Migrations
 
                     b.Property<DateOnly?>("UltimaEjecucion")
                         .HasColumnType("date");
-
-                    b.Property<bool>("UsarConsumoHistorico")
-                        .HasColumnType("boolean");
 
                     b.Property<int>("VehiculoId")
                         .HasColumnType("integer");

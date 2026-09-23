@@ -78,18 +78,52 @@ export default function SolicitudesPage() {
     return () => { cancelado = true }
   }, [])
 
+  // Vehículos que se pueden elegir: los activos del departamento del empleado,
+  // más su vehículo habitual si el administrador le asignó uno de otro departamento.
+  function vehiculosElegibles(empleado, departamentoId) {
+    return vehiculos.filter(
+      (v) => v.activo && (v.departamentoId === Number(departamentoId) || (empleado && v.id === empleado.vehiculoHabitualId)),
+    )
+  }
+
+  function combustibleDe(vehiculo) {
+    const usable = vehiculo?.tipoCombustibleId && tiposCombustible.some((t) => t.id === vehiculo.tipoCombustibleId && t.activo)
+    return usable ? String(vehiculo.tipoCombustibleId) : ''
+  }
+
+  // Valores por defecto al elegir empleado: su vehículo habitual; si no tiene,
+  // el único vehículo activo del departamento. El combustible sale del vehículo.
+  function propuestaPara(empleado) {
+    if (!empleado) return { departamentoId: '', vehiculoId: '', tipoCombustibleId: '' }
+    const elegibles = vehiculosElegibles(empleado, empleado.departamentoId)
+    const vehiculo = elegibles.find((v) => v.id === empleado.vehiculoHabitualId) ?? (elegibles.length === 1 ? elegibles[0] : null)
+    return {
+      departamentoId: String(empleado.departamentoId),
+      vehiculoId: vehiculo ? String(vehiculo.id) : '',
+      tipoCombustibleId: combustibleDe(vehiculo),
+    }
+  }
+
   function handleFormChange(e) {
     const { name, value } = e.target
     if (name === 'empleadoId') {
       const empleado = empleados.find((item) => String(item.id) === String(value))
-      setForm((f) => ({ ...f, empleadoId: value, departamentoId: empleado ? String(empleado.departamentoId) : '', vehiculoId: '' }))
+      setForm((f) => ({ ...f, empleadoId: value, ...propuestaPara(empleado) }))
     } else if (name === 'vehiculoId') {
-      const v = vehiculos.find((veh) => String(veh.id) === String(value))
-      setForm((f) => ({
-        ...f,
-        vehiculoId: value,
-        departamentoId: (v && v.departamentoId) ? String(v.departamentoId) : f.departamentoId
-      }))
+      const vehiculo = vehiculos.find((v) => String(v.id) === String(value))
+      setForm((f) => {
+        const emp = isSolicitanteOnly ? miEmpleado : empleados.find((e) => String(e.id) === String(f.empleadoId))
+        // El departamento sigue al vehículo (regla de main), salvo si es el vehículo
+        // habitual del empleado: ese puede ser de otro departamento y el del
+        // formulario debe seguir siendo el del empleado.
+        const esHabitual = Boolean(emp && vehiculo && vehiculo.id === emp.vehiculoHabitualId)
+        return {
+          ...f,
+          vehiculoId: value,
+          tipoCombustibleId: combustibleDe(vehiculo) || f.tipoCombustibleId,
+          departamentoId: !esHabitual && vehiculo?.departamentoId ? String(vehiculo.departamentoId) : f.departamentoId,
+        }
+      })
     } else {
       setForm((f) => ({ ...f, [name]: value }))
     }
@@ -99,11 +133,21 @@ export default function SolicitudesPage() {
     setForm({
       ...EMPTY_FORM,
       empleadoId: miEmpleado ? String(miEmpleado.id) : '',
-      departamentoId: miEmpleado ? String(miEmpleado.departamentoId) : '',
+      ...(miEmpleado ? propuestaPara(miEmpleado) : {}),
     })
     setFormError(null)
     setShowCreate(true)
   }
+
+  const empleadoDelForm = isSolicitanteOnly ? miEmpleado : empleados.find((e) => String(e.id) === form.empleadoId)
+  const vehiculoSeleccionado = vehiculos.find((v) => String(v.id) === form.vehiculoId)
+  const avisoCombustible = !vehiculoSeleccionado
+    ? undefined
+    : !vehiculoSeleccionado.tipoCombustibleId
+      ? 'Este vehículo aún no tiene combustible definido; pide que se lo asignen en Vehículos.'
+      : String(vehiculoSeleccionado.tipoCombustibleId) === form.tipoCombustibleId
+        ? `Combustible del vehículo: ${vehiculoSeleccionado.tipoCombustibleNombre}.`
+        : `⚠️ Este vehículo usa ${vehiculoSeleccionado.tipoCombustibleNombre}; verifica el combustible antes de enviar.`
 
   const requiredFieldsFilled =
     (isSolicitanteOnly ? Boolean(miEmpleado) : Boolean(form.empleadoId)) &&
@@ -391,9 +435,11 @@ export default function SolicitudesPage() {
                 className={inputCls}
               >
                 <option value="">Seleccionar...</option>
-                {vehiculos.filter((v) => v.activo && v.departamentoId === Number(form.departamentoId)).map((v) => (
+                {vehiculosElegibles(empleadoDelForm, form.departamentoId).map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.placa} — {v.marca} {v.modelo} ({v.ficha})
+                    {v.tipoCombustibleNombre ? ` · ${v.tipoCombustibleNombre}` : ''}
+                    {empleadoDelForm && v.id === empleadoDelForm.vehiculoHabitualId ? ' · habitual' : ''}
                   </option>
                 ))}
               </select>
@@ -421,7 +467,7 @@ export default function SolicitudesPage() {
               </select>
             </Field>
 
-            <Field label="Tipo de combustible" required>
+            <Field label="Tipo de combustible" required hint={avisoCombustible}>
               <select
                 name="tipoCombustibleId"
                 value={form.tipoCombustibleId}

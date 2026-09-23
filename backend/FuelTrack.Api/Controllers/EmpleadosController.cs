@@ -49,10 +49,12 @@ public sealed class EmpleadosController : ControllerBase
             .Where(e => canReadAll || e.UsuarioId == userId)
             .Include(e => e.Departamento)
             .Include(e => e.Usuario)
+            .Include(e => e.VehiculoHabitual)
             .Select(e => new EmpleadoDto(
                 e.Id, e.Codigo, e.NombreCompleto, e.Cedula, e.Cargo,
                 e.Correo, e.Telefono, e.DepartamentoId, e.Departamento.Nombre, e.Activo,
-                e.UsuarioId, e.Usuario != null ? e.Usuario.NombreUsuario : null))
+                e.UsuarioId, e.Usuario != null ? e.Usuario.NombreUsuario : null,
+                e.VehiculoHabitualId, e.VehiculoHabitual != null ? e.VehiculoHabitual.Placa : null))
             .ToListAsync(ct);
         return Ok(list);
     }
@@ -68,12 +70,10 @@ public sealed class EmpleadosController : ControllerBase
             .Where(e => canReadAll || e.UsuarioId == userId)
             .Include(x => x.Departamento)
             .Include(x => x.Usuario)
+            .Include(x => x.VehiculoHabitual)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (e is null) return NotFound();
-        return Ok(new EmpleadoDto(
-            e.Id, e.Codigo, e.NombreCompleto, e.Cedula, e.Cargo,
-            e.Correo, e.Telefono, e.DepartamentoId, e.Departamento.Nombre, e.Activo,
-            e.UsuarioId, e.Usuario?.NombreUsuario));
+        return Ok(ToDto(e));
     }
 
     [HttpPost]
@@ -114,6 +114,12 @@ if (!departamento.Activo)
             if (!ok) return error!;
         }
 
+        if (req.VehiculoHabitualId.HasValue)
+        {
+            var errorVehiculo = await ValidateVehiculoHabitualAsync(req.VehiculoHabitualId.Value, ct);
+            if (errorVehiculo is not null) return errorVehiculo;
+        }
+
         var entity = new Empleado
         {
             Codigo         = req.Codigo,
@@ -124,24 +130,22 @@ if (!departamento.Activo)
             Telefono       = NotificationOptions.NormalizePhone(req.Telefono),
             DepartamentoId = req.DepartamentoId,
             Activo         = req.Activo,
-            UsuarioId      = req.UsuarioId
+            UsuarioId      = req.UsuarioId,
+            VehiculoHabitualId = req.VehiculoHabitualId
         };
         _db.Empleados.Add(entity);
         await _db.SaveChangesAsync(ct);
         await _db.Entry(entity).Reference(e => e.Departamento).LoadAsync(ct);
         if (entity.UsuarioId.HasValue)
             await _db.Entry(entity).Reference(e => e.Usuario).LoadAsync(ct);
+        if (entity.VehiculoHabitualId.HasValue)
+            await _db.Entry(entity).Reference(e => e.VehiculoHabitual).LoadAsync(ct);
 
         await _audit.WriteAsync("EMPLEADO_CREADO", "Empleado", entity.Id.ToString(), usuarioId,
             HttpContext.Connection.RemoteIpAddress?.ToString(),
-            new { entity.Codigo, entity.DepartamentoId, entity.Activo }, ct);
+            new { entity.Codigo, entity.DepartamentoId, entity.VehiculoHabitualId, entity.Activo }, ct);
 
-        var dto = new EmpleadoDto(
-            entity.Id, entity.Codigo, entity.NombreCompleto, entity.Cedula, entity.Cargo,
-            entity.Correo, entity.Telefono, entity.DepartamentoId,
-            entity.Departamento.Nombre, entity.Activo,
-            entity.UsuarioId, entity.Usuario?.NombreUsuario);
-        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, dto);
+        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, ToDto(entity));
     }
 
     [HttpPut("{id:int}")]
@@ -154,6 +158,7 @@ if (!departamento.Activo)
         var entity = await _db.Empleados
             .Include(e => e.Departamento)
             .Include(e => e.Usuario)
+            .Include(e => e.VehiculoHabitual)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
         if (entity is null) return NotFound();
 
@@ -188,6 +193,14 @@ if (!departamento.Activo)
             if (!ok) return error!;
         }
 
+        // Solo se valida si cambia: un vehículo habitual que se desactivó después
+        // no debe impedir editar el resto de los datos del empleado.
+        if (req.VehiculoHabitualId.HasValue && req.VehiculoHabitualId != entity.VehiculoHabitualId)
+        {
+            var errorVehiculo = await ValidateVehiculoHabitualAsync(req.VehiculoHabitualId.Value, ct);
+            if (errorVehiculo is not null) return errorVehiculo;
+        }
+
         if (entity.Activo && req.Activo == false)
         {
             if (!User.IsInRole(Roles.Administrador))
@@ -205,11 +218,12 @@ if (!departamento.Activo)
         entity.DepartamentoId = req.DepartamentoId;
         entity.Activo         = req.Activo;
         entity.UsuarioId      = req.UsuarioId;
+        entity.VehiculoHabitualId = req.VehiculoHabitualId;
         await _db.SaveChangesAsync(ct);
 
         await _audit.WriteAsync("EMPLEADO_ACTUALIZADO", "Empleado", entity.Id.ToString(), usuarioId,
             HttpContext.Connection.RemoteIpAddress?.ToString(),
-            new { entity.Codigo, entity.DepartamentoId, entity.Activo }, ct);
+            new { entity.Codigo, entity.DepartamentoId, entity.VehiculoHabitualId, entity.Activo }, ct);
 
         await _db.Entry(entity)
     .Reference(e => e.Departamento)
@@ -220,12 +234,12 @@ if (!departamento.Activo)
             await _db.Entry(entity).Reference(e => e.Usuario).LoadAsync(ct);
         else if (!entity.UsuarioId.HasValue)
             entity.Usuario = null;
+        if (entity.VehiculoHabitualId.HasValue)
+            await _db.Entry(entity).Reference(e => e.VehiculoHabitual).LoadAsync(ct);
+        else
+            entity.VehiculoHabitual = null;
 
-        return Ok(new EmpleadoDto(
-            entity.Id, entity.Codigo, entity.NombreCompleto, entity.Cedula, entity.Cargo,
-            entity.Correo, entity.Telefono, entity.DepartamentoId,
-            entity.Departamento.Nombre, entity.Activo,
-            entity.UsuarioId, entity.Usuario?.NombreUsuario));
+        return Ok(ToDto(entity));
     }
 
     [HttpPut("{id:int}/vincular-usuario")]
@@ -236,6 +250,7 @@ if (!departamento.Activo)
         var entity = await _db.Empleados
             .Include(e => e.Departamento)
             .Include(e => e.Usuario)
+            .Include(e => e.VehiculoHabitual)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
         if (entity is null) return NotFound();
 
@@ -255,11 +270,7 @@ if (!departamento.Activo)
         if (entity.UsuarioId.HasValue)
             await _db.Entry(entity).Reference(e => e.Usuario).LoadAsync(ct);
 
-        return Ok(new EmpleadoDto(
-            entity.Id, entity.Codigo, entity.NombreCompleto, entity.Cedula, entity.Cargo,
-            entity.Correo, entity.Telefono, entity.DepartamentoId,
-            entity.Departamento.Nombre, entity.Activo,
-            entity.UsuarioId, entity.Usuario?.NombreUsuario));
+        return Ok(ToDto(entity));
     }
 
     [HttpDelete("{id:int}")]
@@ -281,6 +292,22 @@ if (!departamento.Activo)
             HttpContext.Connection.RemoteIpAddress?.ToString(), null, ct);
 
         return NoContent();
+    }
+
+    private static EmpleadoDto ToDto(Empleado e) => new(
+        e.Id, e.Codigo, e.NombreCompleto, e.Cedula, e.Cargo,
+        e.Correo, e.Telefono, e.DepartamentoId, e.Departamento.Nombre, e.Activo,
+        e.UsuarioId, e.Usuario?.NombreUsuario,
+        e.VehiculoHabitualId, e.VehiculoHabitual?.Placa);
+
+    private async Task<ActionResult?> ValidateVehiculoHabitualAsync(int vehiculoId, CancellationToken ct)
+    {
+        var vehiculo = await _db.Vehiculos.AsNoTracking().FirstOrDefaultAsync(v => v.Id == vehiculoId, ct);
+        if (vehiculo is null)
+            return BadRequest(new { code = "VEHICULO_NOT_FOUND", message = "El vehículo no existe." });
+        if (!vehiculo.Activo)
+            return BadRequest(new { code = "VEHICULO_INACTIVO", message = "No se puede asignar un vehículo inactivo como habitual." });
+        return null;
     }
 
     private async Task<(bool ok, ActionResult? error)> ValidateUsuarioVinculoAsync(

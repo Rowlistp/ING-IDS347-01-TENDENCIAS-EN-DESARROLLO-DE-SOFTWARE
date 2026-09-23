@@ -7,6 +7,7 @@ import ResponsiveTable from '../components/ResponsiveTable'
 import StatusBadge from '../components/StatusBadge'
 import { useAuth } from '../hooks/useAuth'
 import { useDepartamentos } from '../hooks/useDepartamentos'
+import { useTiposCombustible } from '../hooks/useTiposCombustible'
 import apiRequest from '../services/api'
 import { canManageCatalogs } from '../utils/rbac'
 import {
@@ -24,6 +25,7 @@ const EMPTY_FORM = {
   año: '',
   tipo: '',
   departamentoId: '',
+  tipoCombustibleId: '',
   capacidadTanque: '',
   odometro: '',
 }
@@ -34,6 +36,7 @@ export default function VehiculosPage() {
   const esAdministrador = user?.roles?.includes('Administrador') ?? false
   const [vehiculos, setVehiculos] = useState([])
   const departamentos = useDepartamentos()
+  const tiposCombustible = useTiposCombustible()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -92,6 +95,10 @@ export default function VehiculosPage() {
       errs.departamentoId = 'Debe seleccionar un departamento.'
     }
 
+    if (!f.tipoCombustibleId) {
+      errs.tipoCombustibleId = 'Debe seleccionar el tipo de combustible del vehículo.'
+    }
+
     const capErr = validateCapacidadTanqueVehiculo(f.capacidadTanque)
     if (capErr) errs.capacidadTanque = capErr
 
@@ -118,6 +125,8 @@ export default function VehiculosPage() {
       setFieldErrors((prev) => ({ ...prev, capacidadTanque: validateCapacidadTanqueVehiculo(value) }))
     } else if (name === 'departamentoId') {
       setFieldErrors((prev) => ({ ...prev, departamentoId: value ? null : 'Debe seleccionar un departamento.' }))
+    } else if (name === 'tipoCombustibleId') {
+      setFieldErrors((prev) => ({ ...prev, tipoCombustibleId: value ? null : 'Debe seleccionar el tipo de combustible del vehículo.' }))
     }
   }
 
@@ -139,6 +148,7 @@ export default function VehiculosPage() {
       año: String(veh.año),
       tipo: veh.tipo,
       departamentoId: veh.departamentoId,
+      tipoCombustibleId: veh.tipoCombustibleId ?? '',
       capacidadTanque: String(veh.capacidadTanque),
       odometro: String(veh.odometro),
       activo: veh.activo,
@@ -156,6 +166,7 @@ export default function VehiculosPage() {
     form.año &&
     form.tipo.trim() &&
     form.departamentoId &&
+    form.tipoCombustibleId &&
     form.capacidadTanque &&
     Object.values(fieldErrors).every((err) => !err)
 
@@ -176,6 +187,7 @@ export default function VehiculosPage() {
       año: Number(form.año),
       tipo: form.tipo.trim(),
       departamentoId: Number(form.departamentoId),
+      tipoCombustibleId: Number(form.tipoCombustibleId),
       capacidadTanque: Number(form.capacidadTanque),
       odometro: form.odometro ? Number(form.odometro) : 0,
       ...(editingId ? { activo: Boolean(form.activo) } : {}),
@@ -292,6 +304,14 @@ export default function VehiculosPage() {
               label: 'Departamento',
               priority: 'high',
               render: (veh) => <span className="text-acero">{veh.departamentoNombre}</span>,
+            },
+            {
+              key: 'tipoCombustibleNombre',
+              label: 'Combustible',
+              priority: 'med',
+              render: (veh) => veh.tipoCombustibleNombre
+                ? <span className="text-tinta">{veh.tipoCombustibleNombre}</span>
+                : <span className="text-xs italic text-advertencia">Sin definir</span>,
             },
             {
               key: 'capacidadTanque',
@@ -477,6 +497,30 @@ export default function VehiculosPage() {
                     {d.nombre}
                   </option>
                 ))}
+              </select>
+            </Field>
+
+            <Field
+              label="Tipo de combustible"
+              required
+              error={fieldErrors.tipoCombustibleId}
+              hint="Combustible que usa este vehículo; se propone automáticamente al crear solicitudes."
+            >
+              <select
+                name="tipoCombustibleId"
+                value={form.tipoCombustibleId}
+                onChange={handleFormChange}
+                required
+                className={fieldErrors.tipoCombustibleId ? inputClsError : inputCls}
+              >
+                <option value="">Seleccionar combustible...</option>
+                {tiposCombustible
+                  .filter((t) => t.activo !== false || t.id === Number(form.tipoCombustibleId))
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nombre}{t.activo === false ? ' (inactivo)' : ''}
+                    </option>
+                  ))}
               </select>
             </Field>
 

@@ -16,6 +16,11 @@ public class Vehiculo
     public int DepartamentoId { get; set; }
     public Departamento Departamento { get; set; } = null!;
 
+    // Nullable solo para no invalidar vehículos creados antes de este campo;
+    // la API exige un valor al crear vehículos nuevos.
+    public int? TipoCombustibleId { get; set; }
+    public TipoCombustible? TipoCombustible { get; set; }
+
     public ICollection<SolicitudCombustible> Solicitudes { get; set; } = new List<SolicitudCombustible>();
     public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
 }
